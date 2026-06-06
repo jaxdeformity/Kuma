@@ -1,0 +1,8 @@
+# KUMA Guard backend — Python 3.11+
+# Keep this lean: it runs on a Raspberry Pi.
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+
+# Test-only (install with: pip install -r requirements.txt -r requirements-dev.txt)
+# Real packet capture (Sprint 2+) will add: scapy, and system tshark/tcpdump.

@@ -1,0 +1,22 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# --- KUMA runtime data (keep the dir + sample jsonl, ignore the live DB) ---
+backend/data/kuma.db
+backend/data/*.db-journal
+
+# --- PlatformIO / firmware build ---
+firmware/**/.pio/
+firmware/**/.pioenvs/
+firmware/**/.piolibdeps/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

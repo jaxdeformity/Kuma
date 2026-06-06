@@ -1,0 +1,5 @@
+{
+  "lab_mode": false,
+  "approved_targets": [],
+  "notes": "Future Apex Mode lab action allowlist. NO disruptive actions in Sprint 1. Any future action requires lab_mode=true, an explicit target in approved_targets, and per-action confirmation."
+}

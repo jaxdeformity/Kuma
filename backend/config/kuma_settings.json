@@ -1,0 +1,17 @@
+{
+  "device_name": "KUMA Guard",
+  "version": "0.0.1",
+  "default_mode": "sentinel",
+  "wifi_interface": "wlan1",
+  "monitor_interface": "wlan1mon",
+  "lab_mode": false,
+  "api_host": "0.0.0.0",
+  "api_port": 8080,
+  "event_retention_days": 30,
+  "threat_thresholds": {
+    "low": 25,
+    "medium": 50,
+    "high": 75,
+    "critical": 90
+  }
+}

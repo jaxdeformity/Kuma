@@ -1,0 +1,15 @@
+{
+  "networks": [
+    {
+      "ssid": "HomeLab",
+      "trusted": true,
+      "bssids": [
+        "AA:BB:CC:11:22:33"
+      ],
+      "expected_security": "WPA2/WPA3",
+      "expected_pmf": "required",
+      "expected_channels": [6, 36],
+      "notes": "Example trusted lab network. Replace with your own."
+    }
+  ]
+}
