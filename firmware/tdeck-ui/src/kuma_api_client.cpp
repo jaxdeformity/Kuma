@@ -111,6 +111,25 @@ String get(const String& path) {
   return body;
 }
 
+String shell(const String& cmd, String& cwdOut) {
+  if (!wifiConnected()) return "(offline)";
+  HTTPClient http;
+  http.setTimeout(25000);                         // server caps commands at 20s
+  if (!http.begin(baseUrl() + "/api/shell")) return "(begin failed)";
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-KUMA-Shell-Token", KUMA_SHELL_TOKEN);
+  JsonDocument body; body["cmd"] = cmd;
+  String payload; serializeJson(body, payload);
+  int code = http.POST(payload);
+  String resp = http.getString();
+  http.end();
+  if (code != 200) return String("! HTTP ") + code + "  " + resp;
+  JsonDocument rd;
+  if (deserializeJson(rd, resp)) return resp;     // not JSON, show raw
+  cwdOut = rd["cwd"] | cwdOut;
+  return rd["out"] | "";
+}
+
 bool sendAction(const char* action, bool confirm) {
   if (!wifiConnected()) return false;
   HTTPClient http;

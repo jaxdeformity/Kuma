@@ -19,6 +19,7 @@ constexpr int ROWS = 21, COLW = 52;
 
 String g_buf[ROWS];
 int g_count = 0;
+String g_cwd = "~";          // tracked from the Pi shell responses
 
 lgfx::LovyanGFX* G() { return fbReady ? (lgfx::LovyanGFX*)&FB : (lgfx::LovyanGFX*)D; }
 
@@ -47,20 +48,20 @@ void render(const String& input) {
     else if (g_buf[r].startsWith("*")) c = AMBER;
     g->setTextColor(c, BG); g->setCursor(4, 28 + r * 9); g->print(g_buf[r]);
   }
+  String pr = g_cwd; if (pr.length() > 16) pr = "~" + pr.substring(pr.length() - 13);
   g->setTextColor(GREEN, BG); g->setCursor(4, 230);
-  g->printf("kuma> %s_", input.c_str());
+  g->printf("%s$ %s_", pr.c_str(), input.c_str());
   if (fbReady) FB.pushSprite(D, 0, 0);
 }
 
 const char* HELP[] = {
-  "commands:",
-  " status        device/mode/threat/level",
-  " events        recent detections",
-  " net           mapped network count",
-  " mode <name>   hibernate|foraging|honey|sentinel|apex",
-  " get <path>    raw GET (e.g. get /api/progress)",
-  " clear         wipe the screen",
-  " exit          back to dashboard",
+  "this is a REAL shell on the Pi (kuma1).",
+  "any command runs on the Pi: ls, cd, cat,",
+  "ps, ip a, systemctl status kuma-backend...",
+  "built-ins:",
+  " status / events / net   KUMA summaries",
+  " mode <name>             switch KUMA mode",
+  " clear / exit",
 };
 
 void exec(const String& raw) {
@@ -108,7 +109,19 @@ void exec(const String& raw) {
     if (body.length() > 360) body = body.substring(0, 360) + "...";
     putLine(body);
   }
-  else { putLine(String("! unknown: ") + cmd + " (try help)"); }
+  else {
+    // anything else: run it as a real shell command on the Pi
+    String out = kuma_api::shell(line, g_cwd);
+    int start = 0, n = out.length();
+    while (start < n) {
+      int nl = out.indexOf('\n', start);
+      String ln = (nl < 0) ? out.substring(start) : out.substring(start, nl);
+      ln.replace("\t", "  ");
+      if (ln.length() || nl >= 0) putLine(ln);
+      if (nl < 0) break;
+      start = nl + 1;
+    }
+  }
 }
 }  // namespace
 

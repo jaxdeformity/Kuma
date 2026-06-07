@@ -33,5 +33,6 @@ namespace kuma_api {
   bool setMode(KumaMode mode);                    // POST /api/mode
   bool postBattleWin();                           // POST /api/progress/battle-win
   String get(const String& path);                 // raw GET (for the terminal)
+  String shell(const String& cmd, String& cwdOut);// POST /api/shell -> combined output
   bool sendAction(const char* action, bool confirm);  // POST /api/action
 }
