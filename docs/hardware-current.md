@@ -1,4 +1,4 @@
-# KUMA Guard — Current Hardware (v0.0)
+# KUMA Guard - Current Hardware (v0.0)
 
 ## The prototype stack
 
@@ -20,7 +20,7 @@ Raspberry Pi 4 Model B
 
 - The Pi keeps **two interfaces**: `wlan0` (or Ethernet) for the LAN/API, and `wlan1` (the USB dongle) for monitor-mode capture.
 - The M5Core and the Pi are on the **same network**; the M5Core reaches the Pi at `KUMA_BACKEND_HOST:8080` (set in `firmware/m5core-ui/include/config.h`).
-- v0.0 needs **no** monitor-mode dongle at all — mock mode runs on the Pi (or your laptop) alone.
+- v0.0 needs **no** monitor-mode dongle at all - mock mode runs on the Pi (or your laptop) alone.
 
 ## Deliberately NOT in v0.0
 
@@ -32,4 +32,4 @@ custom PCB · sealed enclosure · T-Deck · Cardputer · Pi Zero 2 W · BLE dong
 - **Shrink the brain**: evaluate Pi Zero 2 W once the pipeline + detections are stable (Sprint 2 candidate #10).
 - **Better face**: M5Core2 (touch), or a Cardputer for a keyboard.
 - **More ears**: a second dongle for dual-band / dedicated channel-hopping; later, optional Sub-GHz / BLE sensing modules.
-- **Enclosure**: 3D-printed pocket shell — only after it earns the pocket on the desk.
+- **Enclosure**: 3D-printed pocket shell - only after it earns the pocket on the desk.

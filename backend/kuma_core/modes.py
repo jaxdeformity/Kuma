@@ -12,7 +12,7 @@ should be about the environment.
     Apex      = respond
 
 Mode switching is clean, logged, and validated against a known set. The engine
-holds no packet-capture state — detectors do — so it stays trivially testable.
+holds no packet-capture state - detectors do - so it stays trivially testable.
 """
 from __future__ import annotations
 

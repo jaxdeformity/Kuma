@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — LovyanGFX display driver for the ST7789 panel.
+// KUMA Guard T-Deck - LovyanGFX display driver for the ST7789 panel.
 // Config matches the T-Deck's shared-SPI wiring (see tdeck_pins.h).
 #pragma once
 

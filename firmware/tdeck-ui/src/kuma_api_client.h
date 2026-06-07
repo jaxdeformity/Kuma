@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — backend HTTP client (real).
+// KUMA Guard T-Deck - backend HTTP client (real).
 #pragma once
 #include <Arduino.h>
 #include "kuma_types.h"

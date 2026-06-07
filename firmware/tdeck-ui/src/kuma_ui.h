@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — screen rendering + the bear mascot.
+// KUMA Guard T-Deck - screen rendering + the bear mascot.
 #pragma once
 #include "display.h"
 #include "kuma_api_client.h"

@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — screen rendering (SKELETON).
+// KUMA Guard M5Core - screen rendering (SKELETON).
 //
 // Uses M5Unified's M5.Display (M5GFX). Sprint 1 draws text-only screens that
 // match docs/api.md layouts; the pixel bear is a crude placeholder. Sprint 2

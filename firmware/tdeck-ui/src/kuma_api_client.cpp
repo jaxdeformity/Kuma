@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — backend HTTP client implementation.
+// KUMA Guard T-Deck - backend HTTP client implementation.
 #include "kuma_api_client.h"
 #include <WiFi.h>
 #include <HTTPClient.h>

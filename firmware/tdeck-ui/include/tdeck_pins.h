@@ -1,4 +1,4 @@
-// KUMA Guard — LilyGo T-Deck pin map.
+// KUMA Guard - LilyGo T-Deck pin map.
 // Source: Xinyuan-LilyGO/T-Deck examples/UnitTest/utilities.h
 #pragma once
 

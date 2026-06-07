@@ -1,4 +1,4 @@
-"""Pydantic request/response models — the contract the M5Core firmware reads.
+"""Pydantic request/response models - the contract the M5Core firmware reads.
 
 Keep these in lockstep with docs/api.md. The M5Core parses these shapes, so a
 breaking change here is a breaking change to the firmware.

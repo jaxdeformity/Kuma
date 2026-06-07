@@ -1,9 +1,9 @@
-"""Wi-Fi Foraging — AP discovery and baseline building.
+"""Wi-Fi Foraging - AP discovery and baseline building.
 
 SKELETON for Sprint 1. The real implementation (Sprint 2) wraps simple Linux
 tooling first (``iw dev <iface> scan``, ``nmcli -f ... dev wifi``) before any
 scapy/tshark packet parsing. Prefer reliable command wrappers over clever
-frame parsing — get the pipeline working, then deepen.
+frame parsing - get the pipeline working, then deepen.
 
 Honesty rule: foraging NEVER auto-trusts a network. Observations land in the
 ``observations`` table; promotion to ``trusted_networks.json`` is an explicit,

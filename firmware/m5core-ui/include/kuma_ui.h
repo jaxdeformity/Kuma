@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — screen rendering + navigation.
+// KUMA Guard M5Core - screen rendering + navigation.
 #pragma once
 
 #include "kuma_api_client.h"

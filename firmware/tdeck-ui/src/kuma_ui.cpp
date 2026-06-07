@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — UI implementation (LovyanGFX).
+// KUMA Guard T-Deck - UI implementation (LovyanGFX).
 #include "kuma_ui.h"
 
 namespace {

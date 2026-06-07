@@ -1,14 +1,14 @@
-# KUMA Guard — HTTP API
+# KUMA Guard - HTTP API
 
 Base URL: `http://<pi-ip>:8080`. Interactive docs (Swagger) at `/docs`. All bodies are JSON.
 
-This is the contract the M5Core firmware depends on — changes here must stay in sync with `firmware/m5core-ui/` and `backend/kuma_api/schemas.py`.
+This is the contract the M5Core firmware depends on - changes here must stay in sync with `firmware/m5core-ui/` and `backend/kuma_api/schemas.py`.
 
 ---
 
 ## `GET /api/status`
 
-Device heartbeat. Polled by the M5Core every 1–3s.
+Device heartbeat. Polled by the M5Core every 1-3s.
 
 ```json
 {

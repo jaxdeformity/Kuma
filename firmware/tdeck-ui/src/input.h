@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — input: BlackBerry-style I2C keyboard + trackball.
+// KUMA Guard T-Deck - input: BlackBerry-style I2C keyboard + trackball.
 #pragma once
 
 enum class InputEvent { None, Up, Down, Left, Right, Select, Back };

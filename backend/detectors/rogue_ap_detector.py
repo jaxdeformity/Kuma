@@ -1,4 +1,4 @@
-"""Rogue AP detection — observations vs the trusted baseline.
+"""Rogue AP detection - observations vs the trusted baseline.
 
 SKELETON for Sprint 1. Compares live observations against trusted_networks.json
 and the known_aps table. Signals (see docs/detection-logic.md):

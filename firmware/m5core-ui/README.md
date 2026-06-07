@@ -1,4 +1,4 @@
-# KUMA Guard — M5Core Firmware (the Face)
+# KUMA Guard - M5Core Firmware (the Face)
 
 PlatformIO project for the **M5Stack M5Core BASIC** (ESP32). The M5Core is a thin UI client: it joins Wi-Fi, polls the Pi backend over HTTP, renders the pixel bear + status, and lets you switch modes / confirm safe actions. **It does no packet capture.**
 
@@ -34,8 +34,8 @@ m5core-ui/
 
 ## Screens (Sprint 1)
 
-- **Home** — `KUMA GUARD / SENTINEL MODE / Threat / Events / Backend` + bear
-- **Mode Select** — Hibernate · Foraging · Honey · Sentinel · Apex
+- **Home** - `KUMA GUARD / SENTINEL MODE / Threat / Events / Backend` + bear
+- **Mode Select** - Hibernate · Foraging · Honey · Sentinel · Apex
 
 Event List / Event Detail / Action Confirm screens are stubbed and land in Sprint 2 alongside the real HTTP client.
 

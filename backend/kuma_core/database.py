@@ -4,7 +4,7 @@ Single-file DB at backend/data/kuma.db. Tables mirror the spec: events,
 known_aps, observations, actions, settings. Events are also mirrored to
 events.jsonl for grep-friendly debugging.
 
-Deliberately uses the stdlib sqlite3 with row factories instead of an ORM —
+Deliberately uses the stdlib sqlite3 with row factories instead of an ORM -
 this runs on a Pi, dependencies are a cost, and the schema is tiny.
 """
 from __future__ import annotations

@@ -1,6 +1,6 @@
-# KUMA Guard — T-Deck Firmware (flagship face)
+# KUMA Guard - T-Deck Firmware (flagship face)
 
-PlatformIO firmware for the **LilyGo T-Deck / T-Deck Plus** (ESP32-S3). The T-Deck is KUMA's premium handheld face: it joins Wi-Fi, polls the Pi backend, and renders the bear + status. Keyboard + trackball give real on-device navigation. **No packet capture** — pure UI client.
+PlatformIO firmware for the **LilyGo T-Deck / T-Deck Plus** (ESP32-S3). The T-Deck is KUMA's premium handheld face: it joins Wi-Fi, polls the Pi backend, and renders the bear + status. Keyboard + trackball give real on-device navigation. **No packet capture** - pure UI client.
 
 Chosen over the M5Core face because the T-Deck adds a **keyboard** (on-device config), **trackball + 2.8" screen** (scrollable event list), and **LoRa + GPS** (future: off-Wi-Fi alert paging, geotagged detections).
 
@@ -41,4 +41,4 @@ tdeck-ui/
 
 ## Status
 
-First cut — compiles against the real T-Deck pin map; HTTP client is fully wired (this is the Sprint 2 firmware work). On-hardware display/keyboard tuning may need small tweaks when first flashed (panel invert/offset, trackball polarity). The Bruce firmware currently on the T-Deck gets overwritten on flash — the M5Core is the Bruce attacker now.
+First cut - compiles against the real T-Deck pin map; HTTP client is fully wired (this is the Sprint 2 firmware work). On-hardware display/keyboard tuning may need small tweaks when first flashed (panel invert/offset, trackball polarity). The Bruce firmware currently on the T-Deck gets overwritten on flash - the M5Core is the Bruce attacker now.

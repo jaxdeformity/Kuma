@@ -294,7 +294,7 @@ class EvilTwinTracker:
                 mode="sentinel", event_type="evil_twin_suspected",
                 confidence=88, severity="high",
                 message=f"BSSID-SPOOF suspected: trusted AP {bssid} ('{ssid}') "
-                        f"beacon fingerprint changed — impersonation",
+                        f"beacon fingerprint changed - impersonation",
                 ssid=ssid, bssid=bssid, channel=channel, source=bssid,
                 raw_json={"known_fps": sorted(self.good_fps[bssid]),
                           "seen_fp": fp, "detector": "fingerprint"})

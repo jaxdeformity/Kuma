@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — mode + bear-state enums (mirror the backend).
+// KUMA Guard M5Core - mode + bear-state enums (mirror the backend).
 #pragma once
 
 enum class KumaMode { Hibernate, Foraging, Honey, Sentinel, Apex, Unknown };

@@ -1,4 +1,4 @@
-# KUMA Guard — Modes
+# KUMA Guard - Modes
 
 KUMA has five first-class modes. Each one is both a *behaviour* and a *face*. The lifecycle reads as a defender's day:
 
@@ -8,7 +8,7 @@ Modes are defined in `backend/kuma_core/modes.py`. Switching is validated, logge
 
 ---
 
-## 🐻 Hibernate — *conserve*
+##  Hibernate - *conserve*
 
 | | |
 |---|---|
@@ -17,7 +17,7 @@ Modes are defined in `backend/kuma_core/modes.py`. Switching is validated, logge
 | **Bear state** | `sleeping` |
 | **Allowed actions** | acknowledge_alert, export_events, enter_* |
 
-## 🐻 Foraging — *discover*
+##  Foraging - *discover*
 
 | | |
 |---|---|
@@ -26,16 +26,16 @@ Modes are defined in `backend/kuma_core/modes.py`. Switching is validated, logge
 | **Bear state** | `foraging` |
 | **Allowed actions** | + start_mock_capture |
 
-## 🐻 Honey — *deceive*
+##  Honey - *deceive*
 
 | | |
 |---|---|
 | **Purpose** | Deception / bait / decoy telemetry. **Simulated only in v0.0.** |
-| **Backend** | Mock honey events (`honey_profile_enabled`, `honey_interaction_mock`, …). No real services, no credential capture. |
+| **Backend** | Mock honey events (`honey_profile_enabled`, `honey_interaction_mock`, ...). No real services, no credential capture. |
 | **Bear state** | `honey_trap` |
 | **Allowed actions** | + clear_mock_events |
 
-## 🐻 Sentinel — *detect* (the core)
+##  Sentinel - *detect* (the core)
 
 | | |
 |---|---|
@@ -44,7 +44,7 @@ Modes are defined in `backend/kuma_core/modes.py`. Switching is validated, logge
 | **Bear state** | `suspicious` (calm) → escalates to `alert` when threat level is high/critical |
 | **Allowed actions** | acknowledge_alert, start_mock_capture, export_events, clear_mock_events, enter_* |
 
-## 🐻 Apex — *respond* (framework only)
+##  Apex - *respond* (framework only)
 
 | | |
 |---|---|
@@ -53,7 +53,7 @@ Modes are defined in `backend/kuma_core/modes.py`. Switching is validated, logge
 | **Bear state** | `apex_ready` |
 | **Allowed actions** | acknowledge_alert, export_events, enter_* |
 
-**Apex safety gate** — any future action must clear *all* of: `lab_mode=true` · target in `lab_targets.json` allowlist · explicit per-action confirm · logged · rate-limited · short duration · human review. Until those exist, Apex only does framework/UI plumbing.
+**Apex safety gate** - any future action must clear *all* of: `lab_mode=true` · target in `lab_targets.json` allowlist · explicit per-action confirm · logged · rate-limited · short duration · human review. Until those exist, Apex only does framework/UI plumbing.
 
 ---
 

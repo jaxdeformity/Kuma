@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — shared mode / bear-state types (mirror the backend).
+// KUMA Guard T-Deck - shared mode / bear-state types (mirror the backend).
 #pragma once
 #include <Arduino.h>
 

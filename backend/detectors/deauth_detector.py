@@ -1,6 +1,6 @@
 """Passive deauth / disassociation burst detection.
 
-SKELETON for Sprint 1. Real implementation (Sprint 2+) is PASSIVE ONLY — it
+SKELETON for Sprint 1. Real implementation (Sprint 2+) is PASSIVE ONLY - it
 listens on a monitor-mode interface and counts management frames; it never
 transmits. The offensive mirror of this is exactly what Bjorn/Bruce *send*; we
 only ever count and score them.

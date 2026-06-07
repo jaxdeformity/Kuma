@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — backend HTTP client.
+// KUMA Guard M5Core - backend HTTP client.
 #pragma once
 
 #include <Arduino.h>

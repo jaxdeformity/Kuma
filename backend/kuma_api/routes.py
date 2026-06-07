@@ -1,4 +1,4 @@
-"""HTTP routes — the surface the M5Core polls.
+"""HTTP routes - the surface the M5Core polls.
 
     GET  /api/status    device + mode + threat + bear_state + event count
     GET  /api/events    recent events (limit/severity/event_type/since)
@@ -8,7 +8,7 @@
 
 Sprint 1 actions are local/non-disruptive by design. The Apex action framework
 enforces lab_mode + allowlist + explicit confirm before anything could ever
-touch RF — and no RF action exists yet.
+touch RF - and no RF action exists yet.
 """
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Mock detector — the engine that proves the pipeline before real capture.
+"""Mock detector - the engine that proves the pipeline before real capture.
 
 This is intentionally the FIRST detector to exist. It manufactures plausible
 events so the whole chain (event -> scoring -> SQLite -> API -> M5Core face)

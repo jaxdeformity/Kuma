@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — pixel bear sprite data (SKELETON / placeholder).
+// KUMA Guard M5Core - pixel bear sprite data (SKELETON / placeholder).
 //
 // Sprint 2: define small RGB565 bitmaps per BearState and blit them with
 // M5.Display.pushImage(x, y, w, h, data). For flicker-free animation use an

@@ -1,4 +1,4 @@
-"""Evil-twin detection — rogue AP that also looks like a security/RF anomaly.
+"""Evil-twin detection - rogue AP that also looks like a security/RF anomaly.
 
 SKELETON for Sprint 1. Builds on RogueApDetector: a new BSSID for a known SSID
 is *suspicious*; if it also shows a security downgrade or a suspicious RSSI jump

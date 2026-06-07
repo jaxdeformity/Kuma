@@ -103,22 +103,22 @@
       <div class="vp-tag" id="bstate">--</div>
     </div>
     <div class="readout">
-      <div class="mode" id="mode">— MODE</div>
+      <div class="mode" id="mode">- MODE</div>
       <div class="threat-l">THREAT LEVEL</div>
-      <div class="threat" id="threat">—</div>
+      <div class="threat" id="threat">-</div>
       <div class="gauge" id="gauge"></div>
-      <div class="kv"><span>events / 10m</span><b id="ev10">—</b></div>
-      <div class="kv"><span>uptime</span><b id="uptime">—</b></div>
-      <div class="kv"><span>sensor</span><b id="iface">—</b></div>
+      <div class="kv"><span>events / 10m</span><b id="ev10">-</b></div>
+      <div class="kv"><span>uptime</span><b id="uptime">-</b></div>
+      <div class="kv"><span>sensor</span><b id="iface">-</b></div>
     </div>
   </div>
 
   <div class="defenses" id="defenses"></div>
-  <div id="apex">⚠ APEX ENGAGED — <span id="apexmsg"></span></div>
+  <div id="apex"> APEX ENGAGED - <span id="apexmsg"></span></div>
 
   <div class="console">
     <div class="ctitle">EVENT LOG <span class="cur"></span></div>
-    <table><tbody id="events"><tr><td class="m" style="color:var(--dim)">awaiting backend…</td></tr></tbody></table>
+    <table><tbody id="events"><tr><td class="m" style="color:var(--dim)">awaiting backend...</td></tr></tbody></table>
   </div>
   <div class="foot"><span id="footstat">connecting</span><span>KUMA Guard · read-only · <a href="/docs">api</a></span></div>
 
@@ -182,7 +182,7 @@ function drawBear(state,threat){
   // nose (blunt triangle)
   for(let x=14;x<=18;x++)px(x,20,nose); for(let x=15;x<=17;x++)px(x,21,nose); px(16,22,nose);
 
-  // heavy angled brow (always scowling) — outer high, inner low
+  // heavy angled brow (always scowling) - outer high, inner low
   for(let t=0;t<2;t++){line(8,13+t,14,16+t,dark); line(24,13+t,18,16+t,dark);}
 
   if(state==='sleeping'){ line(10,18,13,18,dark); line(19,18,22,18,dark); }
@@ -226,7 +226,7 @@ const detail = e => e.message || ((e.bssid||'') + ' ' + (e.ssid||'')).trim();
 function renderEvents(){
   const tb = document.getElementById('events');
   if(!lastEvents.length){
-    tb.innerHTML = '<tr><td class="m" style="color:var(--dim)">no events — all quiet</td></tr>';
+    tb.innerHTML = '<tr><td class="m" style="color:var(--dim)">no events - all quiet</td></tr>';
     return;
   }
   const order = []; const g = {};
@@ -265,12 +265,12 @@ async function tick(){
     const s=await(await fetch('/api/status',{cache:'no-store'})).json();
     document.getElementById('ver').textContent='v'+s.version;
     document.getElementById('chan').textContent=(s.wifi_interface||'wlan');
-    document.getElementById('mode').textContent=(s.mode||'—').toUpperCase()+' MODE';
+    document.getElementById('mode').textContent=(s.mode||'-').toUpperCase()+' MODE';
     document.getElementById('ev10').textContent=s.events_last_10m;
     document.getElementById('uptime').textContent=hms(s.uptime_seconds);
     document.getElementById('iface').textContent=s.wifi_interface;
     document.getElementById('bstate').textContent=(s.bear_state||'--').toUpperCase();
-    const t=document.getElementById('threat');t.textContent=(s.threat_level||'—').toUpperCase();t.style.color=TC[s.threat_level]||'var(--ink)';
+    const t=document.getElementById('threat');t.textContent=(s.threat_level||'-').toUpperCase();t.style.color=TC[s.threat_level]||'var(--ink)';
     gauge(s.threat_level); drawBear(s.bear_state,s.threat_level);
     document.getElementById('live').className='live ok';document.getElementById('livetxt').textContent='ONLINE';
     document.getElementById('footstat').textContent='live · 2s poll';

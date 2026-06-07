@@ -1,0 +1,86 @@
+// Shared core for the KUMA dashboard design variants.
+// - drawBear(ctx,state,threat): the Akakabuto pixel bear (32x32)
+// - getData(): live API with a baked-in SAMPLE fallback so variants look alive
+//   whether opened locally (file://) or served from the Pi.
+const BW = 32;
+function _px(ctx,x,y,c){if(x<0||y<0||x>=BW||y>=BW)return;ctx.fillStyle=c;ctx.fillRect(x|0,y|0,1,1);}
+function _disk(cx,cy,r,fn){const r2=r*r;
+  for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){
+    const dx=x-cx,dy=y-cy;if(dx*dx+dy*dy<=r2&&x>=0&&y>=0&&x<BW&&y<BW)fn(x,y);}}
+function _line(ctx,x0,y0,x1,y1,c){x0|=0;y0|=0;x1|=0;y1|=0;
+  const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;
+  let err=dx-dy,x=x0,y=y0;
+  for(;;){_px(ctx,x,y,c);if(x===x1&&y===y1)break;const e2=2*err;
+    if(e2>-dy){err-=dy;x+=sx;}if(e2<dx){err+=dx;y+=sy;}}}
+function drawBear(ctx,state,threat){
+  ctx.clearRect(0,0,BW,BW);
+  const hi=(threat==='high'||threat==='critical'),med=(threat==='medium'),alert=(state==='alert');
+  const fur=hi?'#9d5f47':med?'#8f7748':'#7e7160',furD=hi?'#6f3d2d':med?'#5f4b2d':'#52483c';
+  const crown=hi?'#c83a28':'#9c4a36',dark='#221b13',red='#d83a2a';
+  const muz='#d9d0b9',nose='#15110c',fang='#f4f0e3';
+  const eyeC=alert?'#ff5340':(hi?'#ff8a55':med?'#ffd24a':'#cdd5c6'),earY=alert?9:7;
+  const P=(x,y,c)=>_px(ctx,x,y,c),L=(a,b,c,d,e)=>_line(ctx,a,b,c,d,e);
+  const mask=[];for(let y=0;y<BW;y++)mask[y]=new Array(BW).fill(false);
+  const set=(x,y)=>{if(x>=0&&y>=0&&x<BW&&y<BW)mask[y][x]=true;};
+  _disk(16,18,11,set);_disk(7,earY,3.5,set);_disk(25,earY,3.5,set);_disk(16,24,7.6,set);
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++){if(mask[y][x])continue;let adj=false;
+    for(const d of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){
+      const ny=y+d[1],nx=x+d[0];if(ny>=0&&ny<BW&&nx>=0&&nx<BW&&mask[ny][nx]){adj=true;break;}}
+    if(adj)P(x,y,dark);}
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++)if(mask[y][x])P(x,y,y>21?furD:fur);
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++)if(mask[y][x]&&y>=7&&y<=13){
+    const dx=(x-16)/9,dy=(y-7)/6.5;if(dx*dx+dy*dy<=1)P(x,y,crown);}
+  _disk(7,earY,1.4,(x,y)=>P(x,y,dark));_disk(25,earY,1.4,(x,y)=>P(x,y,dark));
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++){const ex=(x-16)/6,ey=(y-24)/4.3;
+    if(ex*ex+ey*ey<=1&&mask[y][x])P(x,y,muz);}
+  for(let x=14;x<=18;x++)P(x,20,nose);for(let x=15;x<=17;x++)P(x,21,nose);P(16,22,nose);
+  for(let t=0;t<2;t++){L(8,13+t,14,16+t,dark);L(24,13+t,18,16+t,dark);}
+  if(state==='sleeping'){L(10,18,13,18,dark);L(19,18,22,18,dark);}
+  else if(state==='error'){L(10,16,13,19,'#888');L(13,16,10,19,'#888');L(19,16,22,19,'#888');L(22,16,19,19,'#888');}
+  else{const slit=17;
+    for(let x=10;x<=13;x++){P(x,slit,eyeC);P(x,slit+1,eyeC);}
+    for(let x=19;x<=22;x++){P(x,slit,eyeC);P(x,slit+1,eyeC);}
+    P(12,slit,nose);P(12,slit+1,nose);P(20,slit,nose);P(20,slit+1,nose);
+    if(alert){P(11,slit,'#fff');P(21,slit,'#fff');}
+    if(state==='suspicious'){for(let x=10;x<=13;x++)P(x,slit,fur);for(let x=19;x<=22;x++)P(x,slit,fur);}}
+  if(alert){for(let x=13;x<=19;x++)P(x,25,dark);
+    for(let x=14;x<=18;x++)P(x,26,nose);P(15,27,nose);P(17,27,nose);
+    P(14,25,fang);P(15,26,fang);P(18,25,fang);P(17,26,fang);}
+  else{L(13,25,16,26,dark);L(19,25,16,26,dark);}
+  L(8,11,13,18,red);
+}
+
+const SAMPLE = {
+  status:{device_name:"KUMA Guard",version:"0.0.1",mode:"sentinel",threat_level:"high",
+    bear_state:"alert",events_last_10m:18,uptime_seconds:9123,wifi_interface:"wlan1mon"},
+  events:[
+    {event_type:"deauth_burst",severity:"high",timestamp:"2026-06-07T06:02:11Z",message:"Deauth burst on channel 10 (1640 frames/10s)",bssid:"02:00:5E:00:53:1D"},
+    {event_type:"deauth_burst",severity:"high",timestamp:"2026-06-07T06:01:48Z",message:"Deauth burst on channel 10 (1240 frames/10s)",bssid:"02:00:5E:00:53:1D"},
+    {event_type:"evil_twin_suspected",severity:"high",timestamp:"2026-06-07T06:01:30Z",message:"Known SSID 'DemoNet_2G' from unknown BSSID 02:CA:FE:11:22:33, security downgrade (OPEN vs WPA2)"},
+    {event_type:"evil_twin_suspected",severity:"high",timestamp:"2026-06-07T06:01:02Z",message:"Known SSID 'DemoNet_2G' from unknown BSSID 02:CA:FE:44:55:66, security downgrade"},
+    {event_type:"beacon_flood",severity:"medium",timestamp:"2026-06-07T06:00:40Z",message:"Beacon flood: BSSID DE:AD:BE:EF:F1:00 advertising 7 SSIDs"},
+    {event_type:"karma_suspected",severity:"medium",timestamp:"2026-06-07T06:00:12Z",message:"Karma: BSSID CA:FE:00:00:00:01 probe-responding for 6 distinct SSIDs"},
+    {event_type:"handshake_harvest_pattern",severity:"high",timestamp:"2026-06-07T05:59:55Z",message:"EAPOL harvest spike following deauth burst (8 handshakes/30s)"},
+    {event_type:"apex_response",severity:"high",timestamp:"2026-06-07T05:59:50Z",message:"APEX active defense: harden_pmf + containment dispatched for 02:00:5E:00:53:1D"}
+  ]
+};
+async function getData(){
+  if(location.protocol==='file:')  // local review: skip the (hanging) file:// fetch
+    return {status:SAMPLE.status,events:SAMPLE.events,live:false};
+  try{
+    const [s,e]=await Promise.all([
+      fetch('/api/status',{cache:'no-store'}).then(r=>r.json()),
+      fetch('/api/events?limit=60',{cache:'no-store'}).then(r=>r.json())]);
+    return {status:s,events:e,live:true};
+  }catch(_){ return {status:SAMPLE.status,events:SAMPLE.events,live:false}; }
+}
+const SEVRANK={low:0,medium:1,high:2,critical:3},SEVNAME=['low','medium','high','critical'];
+function groupEvents(events){
+  const order=[],g={};
+  events.forEach(e=>{const k=e.event_type||'?';
+    if(!g[k]){g[k]={type:k,items:[],sev:0,latest:e};order.push(k);}
+    g[k].items.push(e);g[k].sev=Math.max(g[k].sev,SEVRANK[e.severity]||0);});
+  return order.map(k=>g[k]);
+}
+function hms(s){s=s||0;const p=n=>String(n).padStart(2,'0');return p(s/3600|0)+':'+p((s%3600)/60|0)+':'+p(s%60);}
+const detail=e=>e.message||((e.bssid||'')+' '+(e.ssid||'')).trim();

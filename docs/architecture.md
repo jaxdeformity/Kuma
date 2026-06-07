@@ -1,4 +1,4 @@
-# KUMA Guard — Architecture
+# KUMA Guard - Architecture
 
 ## The split-brain principle
 
@@ -12,7 +12,7 @@ KUMA separates the **brain** (a Linux box that can do real packet capture and ru
 │  • alerts / event list       │
 │  • buttons (A/B/C)           │
 └──────────────┬───────────────┘
-               │  HTTP (JSON)   — polls /api/status (1–3s), /api/events (5s)
+               │  HTTP (JSON)   - polls /api/status (1-3s), /api/events (5s)
                │                  posts /api/mode, /api/action
 ┌──────────────▼───────────────┐
 │  Raspberry Pi 4     (BRAIN)  │   Python 3 / FastAPI / SQLite
@@ -36,7 +36,7 @@ KUMA separates the **brain** (a Linux box that can do real packet capture and ru
 |--------|----------------|
 | `kuma_core/config.py` | Loads JSON configs into a reloadable `settings` singleton |
 | `kuma_core/modes.py` | The five-mode state machine + `ModeEngine` |
-| `kuma_core/events.py` | `make_event()` factory — the one way events are born |
+| `kuma_core/events.py` | `make_event()` factory - the one way events are born |
 | `kuma_core/scoring.py` | confidence → severity, event list → threat level |
 | `kuma_core/database.py` | SQLite (events, known_aps, observations, actions, settings) + JSONL mirror |
 | `detectors/mock_detector.py` | Synthetic events that drive the Sprint 1 demo |
@@ -54,7 +54,7 @@ detector  ─▶  events.make_event()  ─▶  scoring.severity_for()
           ─▶  M5Core renders bear_state + counts
 ```
 
-The same path serves mock and real events — the only thing that changes in Sprint 2 is *who calls `make_event()`*. That's why we build the pipeline first and the packet parsing second.
+The same path serves mock and real events - the only thing that changes in Sprint 2 is *who calls `make_event()`*. That's why we build the pipeline first and the packet parsing second.
 
 ## Why the M5Core does no capture
 

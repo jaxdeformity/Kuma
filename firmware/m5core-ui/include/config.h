@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — build-time config.
+// KUMA Guard M5Core - build-time config.
 // Sprint 1: edit these here. Sprint 2: move to an on-device config screen.
 #pragma once
 

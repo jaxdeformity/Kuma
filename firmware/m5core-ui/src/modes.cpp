@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — mode/bear-state string mapping (mirrors backend).
+// KUMA Guard M5Core - mode/bear-state string mapping (mirrors backend).
 #include "modes.h"
 #include <string.h>
 

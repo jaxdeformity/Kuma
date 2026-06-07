@@ -1,4 +1,4 @@
-// KUMA Guard T-Deck — input implementation.
+// KUMA Guard T-Deck - input implementation.
 //
 // Keyboard: the T-Deck has an ESP32-C3 keyboard co-processor on I2C @ 0x55.
 // Reading one byte returns the ASCII of the last pressed key (0 = none).

@@ -1,4 +1,4 @@
-// KUMA Guard M5Core — backend HTTP client (SKELETON).
+// KUMA Guard M5Core - backend HTTP client (SKELETON).
 //
 // Sprint 2 fills these in with WiFi.begin() + HTTPClient + ArduinoJson.
 // The function bodies below are safe no-ops/stubs so the firmware links and

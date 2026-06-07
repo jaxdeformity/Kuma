@@ -18,7 +18,7 @@ Core principle:
 - Everything should be open-source and reproducible.
 - Favor modular code and honest limitations.
 - Do not overpromise detection certainty.
-- Treat “known bad/suspicious” as confidence-scored, not absolute truth.
+- Treat "known bad/suspicious" as confidence-scored, not absolute truth.
 
 ---
 
@@ -873,7 +873,7 @@ The M5Core should:
 
 - connect to configured Wi-Fi
 - use configurable backend IP/port
-- poll `/api/status` every 1–3 seconds
+- poll `/api/status` every 1-3 seconds
 - poll `/api/events` every 5 seconds or on button press
 - send mode changes to `/api/mode`
 - send safe actions to `/api/action`

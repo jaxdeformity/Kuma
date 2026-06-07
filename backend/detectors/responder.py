@@ -1,4 +1,4 @@
-"""Apex Mode — automated active defense.
+"""Apex Mode - automated active defense.
 
 When the live detector flags a deauth_burst and Apex is armed (lab_mode +
 apex_active_response in lab_targets.json), this orchestrates defensive
@@ -119,7 +119,7 @@ class ApexResponder:
         c = self.cfg.get("containment", {})
         url = c.get("blacklist_url")
         if not url:
-            return f"containment dispatched (stub) for {attacker} — set containment.blacklist_url"
+            return f"containment dispatched (stub) for {attacker} - set containment.blacklist_url"
         try:
             payload = {"mac": attacker, **c.get("payload", {})}
             req = urllib.request.Request(

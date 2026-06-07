@@ -7,7 +7,7 @@ An Event is the atomic unit that flows through KUMA:
 Detectors should build events through :func:`make_event` so the timestamp,
 confidence clamping and severity assignment are always consistent. KUMA's
 honesty rule lives here: if a detector is unsure, the message should say
-"suspected" and confidence should reflect it — we never hard-assert
+"suspected" and confidence should reflect it - we never hard-assert
 attribution.
 """
 from __future__ import annotations

@@ -1,4 +1,4 @@
-// KUMA Guard — M5Core UI client entrypoint.
+// KUMA Guard - M5Core UI client entrypoint.
 //
 // The M5Core is the face/controller only. It:
 //   1. joins Wi-Fi,

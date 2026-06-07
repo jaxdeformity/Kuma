@@ -1,4 +1,4 @@
-// KUMA Guard — LilyGo T-Deck UI client (flagship face).
+// KUMA Guard - LilyGo T-Deck UI client (flagship face).
 //
 // Boot: power-enable -> I2C -> display -> Wi-Fi -> poll the Pi backend and
 // render the bear. Trackball/keyboard drive a small screen state machine.
@@ -28,7 +28,7 @@ static uint32_t g_lastStatusPoll = 0;
 void setup() {
   Serial.begin(115200);
 
-  // T-Deck master power-enable — without this the panel/keyboard stay dark.
+  // T-Deck master power-enable - without this the panel/keyboard stay dark.
   pinMode(TDECK_POWERON, OUTPUT);
   digitalWrite(TDECK_POWERON, HIGH);
   delay(100);

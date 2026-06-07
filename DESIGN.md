@@ -1,7 +1,7 @@
-# KUMA Guard — DESIGN.md
+# KUMA Guard - DESIGN.md
 
-> The single source of truth for how KUMA looks and feels. Every surface — the
-> web dashboard, the T-Deck handheld face, any future UI — must read like it
+> The single source of truth for how KUMA looks and feels. Every surface - the
+> web dashboard, the T-Deck handheld face, any future UI - must read like it
 > came from the same instrument. AI agents and humans: read this before
 > touching UI. (Format per [Google Stitch DESIGN.md](https://stitch.withgoogle.com/docs/design-md/overview/) /
 > [awesome-design-md](https://github.com/VoltAgent/awesome-design-md); principles per
@@ -10,7 +10,7 @@
 ## 1. Personality
 
 KUMA is a **field instrument**, not a web app. Think threat-monitoring console,
-oscilloscope, a piece of gear with a serial number — bolted together, honest,
+oscilloscope, a piece of gear with a serial number - bolted together, honest,
 a little industrial. It has one living element: a **pixel-art bear mascot** whose
 mood is the at-a-glance status. The instrument is calm until something is wrong;
 then it is unambiguous.
@@ -62,8 +62,8 @@ CRT touch: a faint `repeating-linear-gradient` scanline overlay at ~50% opacity,
 ## 4. Typography
 
 - Stack: `"JetBrains Mono","Cascadia Mono","SF Mono",ui-monospace,Consolas,monospace`. Monospace is the brand.
-- Letter-spacing `.04em` body; wide tracking (`.3–.42em`) on UPPERCASE labels/wordmark.
-- Sizes: 10px labels (tracked, dim, uppercase) · 12–13px body · 22–34px readouts (threat level). No more than ~4 sizes.
+- Letter-spacing `.04em` body; wide tracking (`.3-.42em`) on UPPERCASE labels/wordmark.
+- Sizes: 10px labels (tracked, dim, uppercase) · 12-13px body · 22-34px readouts (threat level). No more than ~4 sizes.
 - Numbers: tabular. Threat level and counts are the loudest text.
 
 ## 5. Spacing & layout
@@ -76,16 +76,16 @@ CRT touch: a faint `repeating-linear-gradient` scanline overlay at ~50% opacity,
 
 ## 6. Components
 
-- **Header strip** — wordmark `KUMA·GUARD`, version, sensor iface, live blip (green pulse = online, red = offline).
-- **Bear viewport** — bordered, faint radial glow, the pixel bear centered, a dim state tag bottom-left.
-- **Readout** — MODE (cyan, tracked), THREAT LEVEL label + big colored value, a 4-segment gauge, key/value rows (events/10m, uptime, sensor) on dotted dividers.
-- **Defenses strip** — one cell per detector with a LED dot; green=armed, amber=hot (firing).
-- **Apex banner** — red, flashing, only when active defense fires.
-- **Event console** — grouped by type: a clickable summary row (caret · severity · type · `×count` amber badge · latest message), expanding to indented child rows (`└` connector) with timestamps. Newest first.
+- **Header strip** - wordmark `KUMA·GUARD`, version, sensor iface, live blip (green pulse = online, red = offline).
+- **Bear viewport** - bordered, faint radial glow, the pixel bear centered, a dim state tag bottom-left.
+- **Readout** - MODE (cyan, tracked), THREAT LEVEL label + big colored value, a 4-segment gauge, key/value rows (events/10m, uptime, sensor) on dotted dividers.
+- **Defenses strip** - one cell per detector with a LED dot; green=armed, amber=hot (firing).
+- **Apex banner** - red, flashing, only when active defense fires.
+- **Event console** - grouped by type: a clickable summary row (caret · severity · type · `×count` amber badge · latest message), expanding to indented child rows (`└` connector) with timestamps. Newest first.
 
 ## 7. The bear (shared spec)
 
-The bear is **Akakabuto** — a battle-scarred guardian, not a teddy. Fierce by
+The bear is **Akakabuto** - a battle-scarred guardian, not a teddy. Fierce by
 design: a broad heavy head, small pinned ears, a permanent angled scowling brow,
 a grizzled muzzle, a red **"helmet" crown** marking and a diagonal **battle scar**
 across the left brow (the Silver Fang nod). It is **algorithmic pixel art** on a
@@ -105,12 +105,12 @@ Mood by state:
 | `apex_ready` | dots | Apex |
 | `error` | grey X | backend unreachable |
 
-Fierce-but-readable is the target — menacing in `alert`, watchful when calm.
+Fierce-but-readable is the target - menacing in `alert`, watchful when calm.
 Preview every state at once with `designs/bear-preview.html`. The art must never
 be a thing of nightmares (we've been there).
 
 ## 8. Cross-surface
 
-- **Web dashboard** (`backend/kuma_api/static/dashboard.html`) — the reference implementation of this system.
-- **T-Deck handheld** (`firmware/tdeck-ui/`) — same palette, same bear, same readouts, rendered with LovyanGFX. It is a *control surface*, not just a display (see ROADMAP): mode switching, alert ack, event browsing, self-test.
+- **Web dashboard** (`backend/kuma_api/static/dashboard.html`) - the reference implementation of this system.
+- **T-Deck handheld** (`firmware/tdeck-ui/`) - same palette, same bear, same readouts, rendered with LovyanGFX. It is a *control surface*, not just a display (see ROADMAP): mode switching, alert ack, event browsing, self-test.
 - New surfaces inherit this file. If a choice isn't covered here, it should match the dashboard, then this doc gets updated.

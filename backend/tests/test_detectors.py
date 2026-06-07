@@ -1,7 +1,7 @@
 """Unit tests for the live detector logic (trackers, fingerprinting, Apex).
 
-The trackers are pure logic — they return event dicts, they don't capture or
-write to the DB — so they're tested directly with synthetic input, no Wi-Fi
+The trackers are pure logic - they return event dicts, they don't capture or
+write to the DB - so they're tested directly with synthetic input, no Wi-Fi
 hardware. Scapy is used only to build in-memory beacons for the fingerprint
 and security parsers.
 """
