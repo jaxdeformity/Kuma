@@ -24,6 +24,7 @@ static int        g_eventCount = 0;
 static Screen g_screen = Screen::Home;
 static int    g_modeIndex = 3;             // default highlight: Sentinel
 static uint32_t g_lastStatusPoll = 0;
+static uint8_t  g_statusFails = 0;         // tolerate transient poll failures
 
 void setup() {
   Serial.begin(115200);
@@ -64,7 +65,13 @@ void loop() {
   // --- poll backend (Home screen refresh) --------------------------------
   if (now - g_lastStatusPoll >= KUMA_STATUS_POLL_MS) {
     g_lastStatusPoll = now;
-    kuma_api::fetchStatus(g_status);
+    KumaStatus tmp;
+    if (kuma_api::fetchStatus(tmp)) {
+      g_status = tmp; g_statusFails = 0;          // good poll -> update
+    } else if (++g_statusFails >= 3) {
+      g_status.online = false;                    // only after 3 fails (~6s)
+      g_status.bearState = BearState::Error;
+    }                                             // else: keep last-good bear
     if (g_screen == Screen::Home) kuma_ui::drawHome(g_status);
   }
 

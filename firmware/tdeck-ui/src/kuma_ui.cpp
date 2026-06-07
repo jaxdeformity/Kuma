@@ -143,7 +143,8 @@ void drawHome(const KumaStatus& s) {
   int si = bearSpriteIndex(bs);
   if (si >= 0) {
     const BearSprite& sp = BEAR_SPRITES[si];
-    g->drawPng(sp.data, sp.len, 160 - sp.w / 2, 112 - sp.h / 2);
+    if (!g->drawPng(sp.data, sp.len, 160 - sp.w / 2, 112 - sp.h / 2))
+      drawBear(g, bs, 160, 112, 58);   // decode hiccup -> algorithmic fallback
   } else {
     drawBear(g, bs, 160, 112, 58);
   }
