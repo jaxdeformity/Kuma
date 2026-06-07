@@ -63,11 +63,11 @@ void scene(const char* msg, bool menu, int sel, const BearSprite& kuma,
   g->setCursor(6, 3); g->print(msg);
   // enemy sprite (top-right) + info (top-left)
   const BearSprite& es = ENEMY_SPRITES[en];
-  spr(es, 318 - es.w, 16);
-  g->fillRect(6, 14, 150, 34, BOX); g->drawRect(6, 14, 150, 34, DIM);
-  g->setTextColor(FG, BOX); g->setCursor(10, 18); g->print(EN_NAME[en]);
-  spr(SKULL_S, 132, 16);                            // unknown rank
-  hpbar(10, 36, 140, eHp, eMax);
+  spr(es, 318 - es.w, 14);
+  g->fillRect(6, 14, 178, 50, BOX); g->drawRect(6, 14, 178, 50, DIM);
+  g->setTextColor(FG, BOX); g->setCursor(10, 20); g->print(EN_NAME[en]);
+  spr(SKULL_S, 120, 18);                            // unknown rank (big skull)
+  hpbar(10, 44, 162, eHp, eMax);
   // KUMA sprite (bottom-left)
   spr(kuma, 6, 238 - kuma.h);
   // KUMA info (right of sprite)
@@ -80,12 +80,14 @@ void scene(const char* msg, bool menu, int sel, const BearSprite& kuma,
     const int cx[4]={150,234,150,234}, cy[4]={146,146,192,192};
     for (int i=0;i<4;i++){
       bool s = (i==sel);
-      g->fillRect(cx[i], cy[i], 82, 44, s?0x13E6:BOX);
+      bool weak = EN_WEAK[en] & (1<<i);
+      uint16_t bgc = s ? 0x13E6 : BOX;
+      g->fillRect(cx[i], cy[i], 82, 44, bgc);
       g->drawRect(cx[i], cy[i], 82, 44, s?CYAN:DIM);
-      g->setTextColor(s?CYAN:FG, s?0x13E6:BOX);
+      // super-effective abilities tinted amber (no separate marker glyph)
+      g->setTextColor(s ? CYAN : (weak ? AMBER : FG), bgc);
       g->setCursor(cx[i]+4, cy[i]+6); g->print(AB_NAME[i]);
-      if (EN_WEAK[en] & (1<<i)) { g->setTextColor(AMBER, s?0x13E6:BOX); g->setCursor(cx[i]+72, cy[i]+6); g->print("*"); }
-      g->setTextColor(GREY, s?0x13E6:BOX); g->setCursor(cx[i]+4, cy[i]+24); g->print(AB_SUB[i]);
+      g->setTextColor(GREY, bgc); g->setCursor(cx[i]+4, cy[i]+24); g->print(AB_SUB[i]);
     }
   }
   push();
@@ -198,17 +200,20 @@ void begin(LGFX_TDeck* d) {
 }
 
 bool maybeStart(const KumaStatus& s) {
-  static unsigned long cooldownUntil = 0;
+  // Fire once per threat episode: re-arm only after the threat drops back down,
+  // so a sustained/repeated same-type attack rolls into a single encounter.
+  static bool armed = true;
   if (!s.online) return false;
-  if (!(s.threatLevel == "high" || s.threatLevel == "critical")) return false;
-  if (millis() < cooldownUntil) return false;
+  bool high = (s.threatLevel == "high" || s.threatLevel == "critical");
+  if (!high) { armed = true; return false; }   // threat cleared -> ready for the next
+  if (!armed) return false;                     // already battled this episode
   KumaEvent ev[8];
   int n = kuma_api::fetchEvents(ev, 8);
   int en = -1;
   for (int i=0;i<n;i++) { en = eventToEnemy(ev[i].eventType); if (en>=0) break; }
   if (en < 0) return false;
+  armed = false;                                // consume this episode
   run(en, s.level);
-  cooldownUntil = millis() + 60000;        // one battle per ~minute
   return true;
 }
 

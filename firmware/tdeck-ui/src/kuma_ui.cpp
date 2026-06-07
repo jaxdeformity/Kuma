@@ -151,27 +151,32 @@ void drawHome(const KumaStatus& s) {
     drawBear(g, bs, 160, 112, 58);
   }
 
-  // --- status / say line (centered) --------------------------------------
-  String say = !s.online ? "backend offline"
-             : (s.eventsLast10m > 0 ? s.threatLevel : String("all quiet"));
-  say.toUpperCase();
-  g->setTextSize(2);
-  g->setTextColor(s.online ? threatColor(s.threatLevel) : GREY, BG);
-  g->setCursor(160 - (int)say.length() * 6, 178); g->print(say.c_str());
+  // --- mood line (the bear's state conveys the threat, no "HIGH" label) ---
+  const char* mood; uint16_t mc;
+  if (!s.online) { mood = "OFFLINE"; mc = GREY; }
+  else switch (s.bearState) {
+    case BearState::Alert:      mood = "! THREAT DETECTED"; mc = RED;   break;
+    case BearState::Logging:    mood = "INVESTIGATING";     mc = AMBER; break;
+    case BearState::Suspicious: mood = "ON WATCH";          mc = AMBER; break;
+    case BearState::HoneyTrap:  mood = "LURING";            mc = CYAN;  break;
+    case BearState::Foraging:   mood = "FORAGING";          mc = GREEN; break;
+    case BearState::Sleeping:   mood = "RESTING";           mc = GREEN; break;
+    default:                    mood = "MONITORING";        mc = GREEN; break;
+  }
+  g->setTextSize(2); g->setTextColor(mc, BG);
+  g->setCursor(160 - (int)strlen(mood) * 6, 178); g->print(mood);
 
-  // --- stat bar ----------------------------------------------------------
+  // --- stat bar (no threat readout) --------------------------------------
   g->drawFastHLine(0, 206, 320, 0x2945);
-  const int   cxs[5]    = {32, 96, 160, 224, 288};
-  const char* labels[5] = {"THREAT", "UPTIME", "EVENTS", "NETWRK", "SENSOR"};
+  const int   cxs[4]    = {40, 120, 200, 280};
+  const char* labels[4] = {"UPTIME", "EVENTS", "NETWORKS", "SENSOR"};
   char up[16]; hms(s.uptimeSeconds, up);
   char ev[8]; snprintf(ev, sizeof ev, "%u", s.eventsLast10m);
   char nw[8]; snprintf(nw, sizeof nw, "%u", s.networkCount);
-  String thr = s.online ? s.threatLevel : String("--"); thr.toUpperCase();
-  const char* vals[5] = {thr.c_str(), up, ev, nw,
-                         s.online ? s.wifiInterface.c_str() : "--"};
-  uint16_t vcol[5] = {threatColor(s.threatLevel), FG, FG, CYAN, FG};
+  const char* vals[4] = {up, ev, nw, s.online ? s.wifiInterface.c_str() : "--"};
+  uint16_t vcol[4] = {FG, FG, CYAN, FG};
   g->setTextSize(1);
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 4; ++i) {
     g->setTextColor(GREY, BG);
     g->setCursor(cxs[i] - (int)strlen(labels[i]) * 3, 212); g->print(labels[i]);
     g->setTextColor(vcol[i], BG);

@@ -123,7 +123,6 @@
     <div class="msg" id="msg">monitoring the air. all quiet.</div>
     <div class="menu hidden" id="menu"></div>
     <div class="bar" id="statbar">
-      <div>THREAT<b id="th" style="color:var(--grn)">-</b></div>
       <div>UPTIME<b id="up">-</b></div><div>EVENTS<b id="ev">-</b></div>
       <div>NETWORKS<b id="nw">-</b></div><div>SENSOR<b id="sn">-</b></div>
     </div>
@@ -276,8 +275,6 @@ function updateFace(s,events){
   const ms=monState(s);
   setMon(ms||['HIBERNATING','FORAGING','HONEY'][Math.floor(Date.now()/9000)%3]);
   $('dot').className='dot';$('dtx').textContent='ONLINE';$('lv').textContent='Lv '+(s.level||1);
-  const tl=s.threat_level||'low',hi=(tl==='high'||tl==='critical'),med=tl==='medium';
-  const th=$('th');th.textContent=tl.toUpperCase();th.style.color=hi?'var(--red)':med?'var(--amb)':'var(--grn)';
   $('up').textContent=hms(s.uptime_seconds);$('ev').textContent=s.events_last_10m;
   $('nw').textContent=s.network_count!=null?s.network_count:'-';$('sn').textContent=s.wifi_interface||'-';
   if(!events.length){msg('monitoring the air. all quiet.');}
