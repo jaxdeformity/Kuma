@@ -11,10 +11,15 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
-from .config import DATA_DIR
+from .config import DATA_DIR, settings
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 DB_PATH = DATA_DIR / "kuma.db"
 EVENTS_JSONL = DATA_DIR / "events.jsonl"
@@ -75,6 +80,26 @@ CREATE TABLE IF NOT EXISTS settings (
     key         TEXT PRIMARY KEY,
     value       TEXT,
     updated_at  TEXT
+);
+CREATE TABLE IF NOT EXISTS networks (
+    bssid       TEXT PRIMARY KEY,
+    ssid        TEXT,
+    security    TEXT,
+    channel     INTEGER,
+    best_rssi   INTEGER,
+    first_seen  TEXT,
+    last_seen   TEXT,
+    times_seen  INTEGER DEFAULT 1,
+    lat         REAL,
+    lon         REAL
+);
+CREATE TABLE IF NOT EXISTS connections (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    ssid            TEXT UNIQUE,
+    bssid           TEXT,
+    first_connected TEXT,
+    last_connected  TEXT,
+    times           INTEGER DEFAULT 1
 );
 """
 
@@ -218,6 +243,135 @@ def insert_observation(obs: dict) -> int:
         )
         conn.commit()
         return cur.lastrowid
+
+
+# --- settings (key/value) ----------------------------------------------
+def get_setting(key: str) -> str | None:
+    with connect() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+    return row["value"] if row else None
+
+
+def set_setting(key: str, value: str) -> None:
+    with connect() as conn:
+        conn.execute(
+            "INSERT INTO settings (key,value,updated_at) VALUES (?,?,?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+            (key, str(value), _now()),
+        )
+        conn.commit()
+
+
+# --- networks (WiGLE-style passive map) --------------------------------
+def record_network(bssid: str, ssid: str | None = None, security: str | None = None,
+                   channel: int | None = None, rssi: int | None = None,
+                   timestamp: str | None = None) -> bool:
+    """Upsert an observed AP. Returns True if this BSSID was never seen before."""
+    if not bssid:
+        return False
+    bssid = bssid.upper()
+    ts = timestamp or _now()
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT best_rssi FROM networks WHERE bssid=?", (bssid,)
+        ).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO networks (bssid,ssid,security,channel,best_rssi,"
+                "first_seen,last_seen,times_seen) VALUES (?,?,?,?,?,?,?,1)",
+                (bssid, ssid, security, channel, rssi, ts, ts),
+            )
+            conn.commit()
+            return True
+        best = row["best_rssi"]
+        new_best = rssi if (best is None or (rssi is not None and rssi > best)) else best
+        conn.execute(
+            "UPDATE networks SET last_seen=?, times_seen=times_seen+1, best_rssi=?, "
+            "ssid=COALESCE(NULLIF(?,''),ssid), security=COALESCE(?,security), "
+            "channel=COALESCE(?,channel) WHERE bssid=?",
+            (ts, new_best, ssid, security, channel, bssid),
+        )
+        conn.commit()
+        return False
+
+
+def get_networks(limit: int = 1000) -> list[dict]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM networks ORDER BY last_seen DESC LIMIT ?", (int(limit),)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count_networks() -> int:
+    with connect() as conn:
+        (n,) = conn.execute("SELECT COUNT(*) FROM networks").fetchone()
+    return int(n)
+
+
+def record_connection(ssid: str, bssid: str | None = None,
+                      timestamp: str | None = None) -> bool:
+    """Log a network KUMA's host connected to. True if it's a new network."""
+    if not ssid:
+        return False
+    ts = timestamp or _now()
+    bssid = (bssid or "").upper() or None
+    with connect() as conn:
+        row = conn.execute("SELECT id FROM connections WHERE ssid=?", (ssid,)).fetchone()
+        if row is None:
+            conn.execute(
+                "INSERT INTO connections (ssid,bssid,first_connected,last_connected,times) "
+                "VALUES (?,?,?,?,1)", (ssid, bssid, ts, ts),
+            )
+            conn.commit()
+            return True
+        conn.execute(
+            "UPDATE connections SET last_connected=?, times=times+1, "
+            "bssid=COALESCE(?,bssid) WHERE id=?", (ts, bssid, row["id"]),
+        )
+        conn.commit()
+        return False
+
+
+def get_connections() -> list[dict]:
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM connections ORDER BY last_connected DESC"
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _wigle_authmode(security: str | None) -> str:
+    s = (security or "").upper().strip()
+    if not s or s in ("OPEN", "NONE"):
+        return "[OPEN][ESS]"
+    return "[" + s + "][ESS]"
+
+
+def _wigle_field(v: Any) -> str:
+    s = "" if v is None else str(v)
+    if "," in s or '"' in s:
+        s = '"' + s.replace('"', '""') + '"'
+    return s
+
+
+def wigle_csv() -> str:
+    """Export the observed network map as a WiGLE WigleWifi-1.4 CSV string."""
+    pre = ("WigleWifi-1.4,appRelease=KUMA,model=KUMA,release=" + settings.version +
+           ",device=kuma,display=,board=,brand=kuma")
+    hdr = ("MAC,SSID,AuthMode,FirstSeen,Channel,RSSI,CurrentLatitude,"
+           "CurrentLongitude,AltitudeMeters,AccuracyMeters,Type")
+    lines = [pre, hdr]
+    for n in get_networks(limit=100000):
+        lines.append(",".join([
+            n.get("bssid") or "", _wigle_field(n.get("ssid")),
+            _wigle_authmode(n.get("security")), n.get("first_seen") or "",
+            str(n.get("channel") or ""), str(n.get("best_rssi") or ""),
+            str(n.get("lat") if n.get("lat") is not None else 0.0),
+            str(n.get("lon") if n.get("lon") is not None else 0.0),
+            "0", "0", "WIFI",
+        ]))
+    return "\n".join(lines) + "\n"
 
 
 # --- helpers ------------------------------------------------------------

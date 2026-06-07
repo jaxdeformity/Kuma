@@ -12,6 +12,7 @@
   .top{display:flex;justify-content:space-between;align-items:center;padding:8px 13px;border-bottom:1px solid var(--faint)}
   .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif}
   .mark{font-size:18px;letter-spacing:.1em;color:var(--wht)}
+  #lv{font-size:11px;color:var(--grn);letter-spacing:.12em;margin-left:8px;text-shadow:0 0 6px rgba(70,224,122,.4)}
   .dot{font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px}
   .dot i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:p 1.7s infinite}
   .dot.off i{background:var(--red);box-shadow:none;animation:none}
@@ -28,7 +29,7 @@
   .bar b.hot{color:var(--red)}.bar b.warn{color:var(--amb)}.bar b.ok{color:var(--grn)}
 </style></head><body>
   <div class="unit">
-    <div class="top"><div class="mark"><span class="jp">クマ</span></div>
+    <div class="top"><div class="mark"><span class="jp">クマ</span><span id="lv">Lv 1</span></div>
       <div class="dot" id="dot"><i></i><span id="dtx">ONLINE</span></div></div>
     <div class="stage">
       <img id="bear" alt="KUMA">
@@ -38,6 +39,7 @@
       <div>THREAT<b id="th" class="ok">-</b></div>
       <div>UPTIME<b id="up">-</b></div>
       <div>EVENTS/10m<b id="ev">-</b></div>
+      <div>NETWORKS<b id="nw">-</b></div>
       <div>SENSOR<b id="sn">-</b></div>
     </div>
   </div>
@@ -49,7 +51,7 @@ const STATE_SPRITE={                      // bear_state -> state portrait
   suspicious:'03_sentinel', alert:'06_alert', apex_ready:'05_apex', apex:'05_apex',
   investigating:'07_investigating', defending:'08_defending',
   attacking:'09_attacking', victory:'10_victory', error:'03_sentinel'};
-const SPV='?v=3';  // bump to bust browser cache when sprites change
+const SPV='?v=4';  // bump to bust browser cache when sprites change
 for(const k of Object.values(STATE_SPRITE)){const im=new Image();im.src='sprites/states/'+k+'.png'+SPV;}
 function drawBear(state){
   const key=STATE_SPRITE[state]||STATE_SPRITE.error;
@@ -57,8 +59,8 @@ function drawBear(state){
 }
 
 // ---- live data -------------------------------------------------------
-const SAMPLE={status:{version:"0.0.1",mode:"sentinel",threat_level:"low",bear_state:"foraging",events_last_10m:0,uptime_seconds:9123,wifi_interface:"wlan1mon"},events:[]};
-const ATTACK={status:{mode:"sentinel",threat_level:"high",bear_state:"alert",events_last_10m:14,uptime_seconds:9240,wifi_interface:"wlan1mon"},events:[{event_type:"deauth_burst",severity:"high",channel:10,raw_json:{frame_count:1640}}]};
+const SAMPLE={status:{version:"0.0.1",mode:"sentinel",threat_level:"low",bear_state:"foraging",events_last_10m:0,uptime_seconds:9123,wifi_interface:"wlan1mon",level:7,xp:194,network_count:42},events:[]};
+const ATTACK={status:{mode:"sentinel",threat_level:"high",bear_state:"alert",events_last_10m:14,uptime_seconds:9240,wifi_interface:"wlan1mon",level:7,xp:194,network_count:42},events:[{event_type:"deauth_burst",severity:"high",channel:10,raw_json:{frame_count:1640}}]};
 async function getData(){if(location.protocol==='file:'){const d=new Date();return (Math.floor(d.getSeconds()/6)%2)?ATTACK:SAMPLE;}
   try{const[s,e]=await Promise.all([fetch('/api/status',{cache:'no-store'}).then(r=>r.json()),fetch('/api/events?limit=20',{cache:'no-store'}).then(r=>r.json())]);return{status:s,events:e,live:true};}catch(_){return SAMPLE;}}
 function hms(s){s=s||0;const p=n=>String(n).padStart(2,'0');return p(s/3600|0)+':'+p((s%3600)/60|0)+':'+p(s%60);}
@@ -81,7 +83,9 @@ async function render(){
   const th=document.getElementById('th');th.textContent=tl.toUpperCase();th.className=hi?'hot':med?'warn':'ok';
   document.getElementById('up').textContent=hms(s.uptime_seconds);
   document.getElementById('ev').textContent=s.events_last_10m;
+  document.getElementById('nw').textContent=s.network_count!=null?s.network_count:'-';
   document.getElementById('sn').textContent=s.wifi_interface||'-';
+  document.getElementById('lv').textContent='Lv '+(s.level||1);
   const say=document.getElementById('say');
   if(!events.length){say.textContent='all quiet';say.className='say';}
   else{const top=events.slice().sort((a,b)=>(SEV[b.severity]||0)-(SEV[a.severity]||0))[0];

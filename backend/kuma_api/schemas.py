@@ -18,6 +18,9 @@ class StatusResponse(BaseModel):
     wifi_interface: str
     events_last_10m: int
     backend_status: str = "online"
+    level: int = 1
+    xp: int = 0
+    network_count: int = 0
 
 
 class EventModel(BaseModel):

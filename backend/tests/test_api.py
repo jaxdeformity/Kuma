@@ -58,3 +58,26 @@ def test_events_endpoint(client):
     r = client.get("/api/events?limit=5")
     assert r.status_code == 200
     assert isinstance(r.json(), list)
+
+
+def test_status_has_level_and_networks(client):
+    b = client.get("/api/status").json()
+    assert b["level"] == 1 and b["xp"] == 0 and b["network_count"] == 0
+
+
+def test_progress_endpoint(client):
+    b = client.get("/api/progress").json()
+    assert b["level"] == 1 and b["max_level"] == 99
+
+
+def test_networks_export_csv(client, temp_db):
+    temp_db.record_network("AA:BB:CC:DD:EE:FF", "Net", "WPA2", 6, -50)
+    r = client.get("/api/networks/export")
+    assert r.status_code == 200
+    assert r.text.startswith("WigleWifi-1.4")
+    assert "AA:BB:CC:DD:EE:FF" in r.text
+
+
+def test_battle_win_awards_xp(client):
+    b = client.post("/api/progress/battle-win").json()
+    assert b["xp"] == 10 and b["level"] == 1

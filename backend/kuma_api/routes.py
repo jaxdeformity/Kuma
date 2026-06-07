@@ -15,8 +15,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 
-from kuma_core import database
+from kuma_core import database, progress
 from kuma_core.config import settings
 from . import schemas
 from . import state
@@ -35,7 +36,7 @@ SAFE_ACTIONS = {
 def get_status() -> schemas.StatusResponse:
     ten_min_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)
                    ).strftime("%Y-%m-%dT%H:%M:%SZ")
-    recent = database.get_events(limit=50)
+    prog = progress.get_progress()
     return schemas.StatusResponse(
         device=settings.device_name,
         version=settings.version,
@@ -46,7 +47,33 @@ def get_status() -> schemas.StatusResponse:
         wifi_interface=settings.monitor_interface,
         events_last_10m=database.count_events_since(ten_min_ago),
         backend_status="online",
+        level=prog["level"],
+        xp=prog["xp"],
+        network_count=database.count_networks(),
     )
+
+
+@router.get("/progress")
+def get_progress() -> dict:
+    return progress.get_progress()
+
+
+@router.get("/networks")
+def get_networks(limit: int = 1000) -> dict:
+    return {"count": database.count_networks(),
+            "networks": database.get_networks(limit=limit)}
+
+
+@router.get("/networks/export")
+def export_networks() -> PlainTextResponse:
+    return PlainTextResponse(database.wigle_csv(), media_type="text/csv",
+                             headers={"Content-Disposition":
+                                      "attachment; filename=kuma-wigle.csv"})
+
+
+@router.post("/progress/battle-win")
+def battle_win() -> dict:
+    return progress.award("battle_win")
 
 
 @router.get("/events", response_model=list[schemas.EventModel])
