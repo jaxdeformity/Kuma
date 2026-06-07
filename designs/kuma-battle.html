@@ -6,7 +6,8 @@
   *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000}
   body{color:var(--ink);font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
     display:flex;flex-direction:column;align-items:center;gap:12px;min-height:100vh;padding:18px;letter-spacing:.04em}
-  .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif}
+  .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif;margin:0 .22em}
+  .mark .jp{margin:0}
   img{image-rendering:pixelated}
   /* T-Deck-sized console */
   .unit{width:440px;max-width:100%;border:1px solid var(--faint);background:#0a0e0c;position:relative;overflow:hidden}
@@ -251,11 +252,11 @@ function playClip(states,perMs,done){ if(kumaClipTimer)clearInterval(kumaClipTim
   kumaClipTimer=setInterval(()=>{i++;if(i>=states.length){clearInterval(kumaClipTimer);kumaClipTimer=null;if(done)done();return;}setKuma(states[i]);},perMs);}
 function once(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
 
-// battle idle loop (sentinel + bob + occasional alert blink)
+// battle idle: STATIC sentinel (no state swaps - those caused size jumps).
+// KUMA only animates on action (ability clips / encounter / intro).
 let idleLoop=null;
-function startIdle(){stopIdle();setKuma('SENTINEL');ksp.classList.add('bob');
-  idleLoop=setInterval(()=>{if(S&&S.phase==='menu'){setKuma('ALERT');setTimeout(()=>{if(S&&S.phase==='menu')setKuma('SENTINEL');},160);}},3400);}
-function stopIdle(){if(idleLoop){clearInterval(idleLoop);idleLoop=null;}ksp.classList.remove('bob');}
+function startIdle(){stopIdle();setKuma('SENTINEL');ksp.classList.remove('bob');}
+function stopIdle(){if(idleLoop){clearInterval(idleLoop);idleLoop=null;}}
 
 // ---- fx --------------------------------------------------------------
 function fxSlash(){const fx=$('fx');const s=document.createElement('div');s.className='slash';
