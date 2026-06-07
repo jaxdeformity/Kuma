@@ -1,5 +1,6 @@
 // KUMA Guard T-Deck - UI implementation (LovyanGFX).
 #include "kuma_ui.h"
+#include "bear_sprites_data.h"
 
 namespace {
 LGFX_TDeck* D = nullptr;
@@ -29,6 +30,20 @@ uint16_t threatColor(const String& t) {
 
 void hms(uint32_t s, char* buf) {
   sprintf(buf, "%02u:%02u:%02u", s / 3600, (s % 3600) / 60, s % 60);
+}
+
+// bear_state -> embedded sprite index (-1 = use algorithmic fallback)
+int bearSpriteIndex(BearState st) {
+  switch (st) {
+    case BearState::Sleeping:   return 0;  // hibernating
+    case BearState::Foraging:   return 1;
+    case BearState::Suspicious: return 2;  // sentinel
+    case BearState::HoneyTrap:  return 3;  // honey
+    case BearState::ApexReady:  return 4;  // apex
+    case BearState::Alert:      return 5;
+    case BearState::Logging:    return 6;  // investigating
+    default:                    return -1; // Error / offline -> fallback
+  }
 }
 }  // namespace
 
@@ -123,8 +138,15 @@ void drawHome(const KumaStatus& s) {
   g->print(s.online ? "ONLINE" : "OFFLINE");
   g->drawFastHLine(0, 26, 320, 0x2945);
 
-  // --- bear, centered ----------------------------------------------------
-  drawBear(g, s.online ? s.bearState : BearState::Error, 160, 112, 58);
+  // --- bear, centered (real sprite, algorithmic fallback) ----------------
+  BearState bs = s.online ? s.bearState : BearState::Error;
+  int si = bearSpriteIndex(bs);
+  if (si >= 0) {
+    const BearSprite& sp = BEAR_SPRITES[si];
+    g->drawPng(sp.data, sp.len, 160 - sp.w / 2, 112 - sp.h / 2);
+  } else {
+    drawBear(g, bs, 160, 112, 58);
+  }
 
   // --- status / say line (centered) --------------------------------------
   String say = !s.online ? "backend offline"
