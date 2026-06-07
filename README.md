@@ -1,5 +1,5 @@
 <!-- KUMA Guard — root README -->
-# 🐻 KUMA Guard
+# クマ 
 
 **An open-source, DIY, blue-team cyber-defense gadget.**
 
