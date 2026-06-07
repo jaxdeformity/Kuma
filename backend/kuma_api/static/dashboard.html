@@ -76,6 +76,13 @@
   td.m{color:var(--ink)}
   .lo{color:var(--grn)} .me{color:var(--amb)} .hi,.cr{color:var(--red)}
   .apexrow td{color:var(--red)!important;background:rgba(255,71,71,.05)}
+  tr.grp{cursor:pointer}
+  tr.grp:hover td{background:rgba(70,224,122,.06)}
+  td.t .car{color:var(--dim);display:inline-block;width:11px}
+  .cnt{color:var(--amb);font-weight:700}
+  tr.child td{color:var(--dim);font-size:11px;background:rgba(255,255,255,.012)}
+  tr.child td.m{padding-left:20px}
+  tr.child td.ty::before{content:"└";color:var(--faint)}
   .foot{display:flex;justify-content:space-between;color:var(--dim);font-size:10px;padding:6px 2px}
   .cur::after{content:"\2588";color:var(--grn);animation:pulse 1s steps(2) infinite}
 </style>
@@ -191,6 +198,50 @@ function defenses(active){const d=document.getElementById('defenses');d.innerHTM
     el.className='def'+(active[k]?' hot':' armed');
     el.innerHTML='<span class="led"></span>'+label;d.appendChild(el);});}
 
+// --- grouped, collapsible event log ------------------------------------
+let lastEvents = [];
+const expanded = new Set();
+const SEVRANK = {low:0, medium:1, high:2, critical:3};
+const SEVNAME = ['low','medium','high','critical'];
+const scls = s => ({low:'lo',medium:'me',high:'hi',critical:'cr'}[s]||'lo');
+const detail = e => e.message || ((e.bssid||'') + ' ' + (e.ssid||'')).trim();
+function renderEvents(){
+  const tb = document.getElementById('events');
+  if(!lastEvents.length){
+    tb.innerHTML = '<tr><td class="m" style="color:var(--dim)">no events — all quiet</td></tr>';
+    return;
+  }
+  const order = []; const g = {};
+  lastEvents.forEach(e => {
+    const k = e.event_type || '?';
+    if(!g[k]){ g[k] = {items:[], sev:0, latest:e}; order.push(k); }
+    g[k].items.push(e);
+    g[k].sev = Math.max(g[k].sev, SEVRANK[e.severity]||0);
+  });
+  let html = '';
+  order.forEach(k => {
+    const grp = g[k]; const sev = SEVNAME[grp.sev]; const open = expanded.has(k);
+    const apex = k==='apex_response' ? ' apexrow' : '';
+    html += `<tr class="grp${apex}" data-type="${k}">`+
+      `<td class="t"><span class="car">${open?'▾':'▸'}</span></td>`+
+      `<td class="s ${scls(sev)}">${sev.toUpperCase().slice(0,4)}</td>`+
+      `<td class="ty">${k}</td>`+
+      `<td class="m"><span class="cnt">×${grp.items.length}</span> ${detail(grp.latest)}</td></tr>`;
+    if(open) grp.items.forEach(e => {
+      html += `<tr class="child"><td class="t">${(e.timestamp||'').slice(11,19)}</td>`+
+        `<td class="s ${scls(e.severity)}">${(e.severity||'').toUpperCase().slice(0,4)}</td>`+
+        `<td class="ty"></td><td class="m">${detail(e)}</td></tr>`;
+    });
+  });
+  tb.innerHTML = html;
+}
+document.getElementById('events').addEventListener('click', e => {
+  const row = e.target.closest('tr.grp'); if(!row) return;
+  const k = row.getAttribute('data-type');
+  expanded.has(k) ? expanded.delete(k) : expanded.add(k);
+  renderEvents();
+});
+
 async function tick(){
   try{
     const s=await(await fetch('/api/status',{cache:'no-store'})).json();
@@ -206,7 +257,7 @@ async function tick(){
     document.getElementById('live').className='live ok';document.getElementById('livetxt').textContent='ONLINE';
     document.getElementById('footstat').textContent='live · 2s poll';
 
-    const ev=await(await fetch('/api/events?limit=14',{cache:'no-store'})).json();
+    const ev=await(await fetch('/api/events?limit=60',{cache:'no-store'})).json();
     const active={}; let apexHot=false, apexMsg='';
     ev.forEach(e=>{const tp=e.event_type||'';
       if(tp.includes('deauth'))active.deauth=1;
@@ -221,16 +272,8 @@ async function tick(){
     if(apexHot){ab.classList.add('on');document.getElementById('apexmsg').textContent=apexMsg;}
     else ab.classList.remove('on');
 
-    const tb=document.getElementById('events');
-    tb.innerHTML = ev.length? ev.map(e=>{
-      const sc={low:'lo',medium:'me',high:'hi',critical:'cr'}[e.severity]||'lo';
-      const apex=e.event_type==='apex_response'?' apexrow':'';
-      const tm=(e.timestamp||'').slice(11,19);
-      return `<tr class="${apex}"><td class="t">${tm}</td>`+
-        `<td class="s ${sc}">${(e.severity||'').toUpperCase().slice(0,4)}</td>`+
-        `<td class="ty">${e.event_type||''}</td>`+
-        `<td class="m">${e.message||((e.bssid||'')+' '+(e.ssid||''))}</td></tr>`;
-    }).join(''):'<tr><td class="m" style="color:var(--dim)">no events — all quiet</td></tr>';
+    lastEvents = ev;
+    renderEvents();
   }catch(err){
     document.getElementById('live').className='live';document.getElementById('livetxt').textContent='OFFLINE';
     document.getElementById('footstat').textContent='backend unreachable';
