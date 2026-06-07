@@ -1,108 +1,60 @@
-<!doctype html><html><head><meta charset="utf-8"><title>kuma bear v2</title>
+<!doctype html><html><head><meta charset="utf-8"><title>kuma cub</title>
 <style>
-  body{background:#0b0e0c;margin:0;padding:26px;font:12px ui-monospace,monospace;color:#566;
-    display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end}
+  body{background:#cfe3ef;margin:0;padding:30px;font:12px ui-monospace,monospace;color:#456;
+    display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end}
   .cell{text-align:center}
-  canvas{image-rendering:pixelated;width:192px;height:192px;
-    background:radial-gradient(120% 120% at 50% 42%,rgba(120,90,60,.10),transparent 62%);border:1px solid #2a322d}
-  .lbl{margin-top:7px;letter-spacing:.18em;text-transform:uppercase;font-size:11px}
+  canvas{image-rendering:pixelated;width:256px;height:256px;background:#dfeef6;border:1px solid #9bb}
+  .lbl{margin-top:8px;letter-spacing:.18em;text-transform:uppercase;font-size:11px}
 </style></head><body>
 <script>
-const W=24;
-let CTX;
-function px(x,y,c){if(x<0||y<0||x>=W||y>=W||!c)return;CTX.fillStyle=c;CTX.fillRect(x|0,y|0,1,1);}
-function tri(x0,y0,x1,y1,x2,y2,c){const mnx=Math.min(x0,x1,x2),mxx=Math.max(x0,x1,x2),mny=Math.min(y0,y1,y2),mxy=Math.max(y0,y1,y2);
-  for(let y=mny;y<=mxy;y++)for(let x=mnx;x<=mxx;x++){const w0=(x1-x)*(y2-y)-(x2-x)*(y1-y),w1=(x2-x)*(y0-y)-(x0-x)*(y2-y),w2=(x0-x)*(y1-y)-(x1-x)*(y0-y);
-    if((w0>=0&&w1>=0&&w2>=0)||(w0<=0&&w1<=0&&w2<=0))px(x,y,c);}}
-
-// hand-authored body. o=outline # =fur :=shadow m=muzzle n=nose .=empty
-const BODY=[
-"........................",
-"....ooo......ooo........",
-"...o###o....o###o......",
-"...o####o..o####o.......",
-"..o######oo######o......",
-".o################o....",
-".o################o....",
-"o##################o...",
-"o##################o...",
-"o##################o...",
-"o##################o...",
-"o##################o...",
-".o################o....",
-".o#####mmmmmmmm###o....",
-".o####mmmmmmmmmm##o....",
-"..o##mmmmmnnmmmmm#o....",
-"..o##mmmmmnnmmmmm#o....",
-"...o#mmmmmmmmmmm#o.....",
-"....o#mmmmmmmmm#o......",
-".....o#########o.......",
-"......oo#####oo........",
-".......ooooooo........."
+// full-body sitting chibi cub, Pokemon/kawaii style. hand-authored sprite grid.
+// .=empty o=outline B=fur b=fur-shadow T=belly/muzzle e=eye n=nose p=cheek w=shine
+const ART=[
+"................................",
+".....oooo..........oooo.........",
+"....oBBBBo........oBBBBo........",
+"....oBbbBo........oBbbBo........",
+"...oBBBBBBoo....ooBBBBBBo.......",
+"..oBBBBBBBBBooooBBBBBBBBBo......",
+".oBBBBBBBBBBBBBBBBBBBBBBBBo.....",
+".oBBBBBBBBBBBBBBBBBBBBBBBBo.....",
+"oBBBBBBBBBBBBBBBBBBBBBBBBBBo....",
+"oBBBBBBBBBBBBBBBBBBBBBBBBBBo....",
+"oBBBBBBweBBBBBBBBBBweBBBBBBo....",
+"oBBBBBBeeBBBBBBBBBBeeBBBBBBo....",
+"oBBBBppBBBBTTTTBBBBBppBBBBBo....",
+"oBBBBppBBBTTnnTTBBBBppBBBBBo....",
+".oBBBBBBBBTTnnTTBBBBBBBBBBo.....",
+".oBBBBBBBBBTTTTBBBBBBBBBBo......",
+"..oBBBBBBBBBBBBBBBBBBBBBBo......",
+"...oBBBBBBBBBBBBBBBBBBBo........",
+"....oBBBBBBBBBBBBBBBBBo.........",
+".....oBBBBBBBBBBBBBBBo.........",
+"....oBBBBBBBBBBBBBBBBBBo........",
+"...oBBBBoTTTTTTTTooBBBBBo.......",
+"..oBBBBoTTTTTTTTTToBBBBBBo......",
+"..oBBBBoTTTTTTTTTToBBBBBBo......",
+"..oBBBBoTTTTTTTTTToBBBBBBo......",
+"..oBBBBBoTTTTTTTToBBBBBBBo......",
+"..oBBBBBBoTTTTTToBBBBBBBBo......",
+"...oBBBBBBBBBBBBBBBBBBBBo.......",
+"..ooBBBoooBBBBBBoooBBBBoo.......",
+".oBBBBBBoTToBBBBoTToBBBBBBo.....",
+".oBBbbBBoTToBBBBoTToBBbbBBo.....",
+"..oooooo..oooooo..oooooo......."
 ];
-function paint(threat){
+let CTX;const W=ART[0].length,H=ART.length;
+function draw(threat,scale){
   const hi=(threat==='high'||threat==='critical'),med=(threat==='medium');
-  const C={o:'#1a130d',
-    '#':hi?'#a8553a':med?'#977040':'#8a7053',
-    ':':hi?'#7a3826':med?'#664a28':'#5e4c39',
-    m:'#ddd3bb', n:'#140f0a'};
-  for(let y=0;y<BODY.length;y++)for(let x=0;x<BODY[y].length;x++){
-    let ch=BODY[y][x];
-    if(ch==='#'&&(y>16||x>15))ch=':';        // cel shadow lower-right
-    px(x,y,C[ch]);
-  }
+  const C={'.':null,o:'#3a2418',
+    B:hi?'#a5552f':med?'#9c6f3c':'#9a6a3e',
+    b:hi?'#7d3a20':med?'#6f4c28':'#754d2c',
+    T:'#e6c89a', e:'#1a120c', n:'#1a120c', p:'#f0a0a8', w:'#fff'};
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const c=C[ART[y][x]];if(c){CTX.fillStyle=c;CTX.fillRect(x,y,1,1);}}
 }
-const EL=6, ER=15, EY=10;                      // eye centers
-
-function drawBear(state,threat){
-  CTX.clearRect(0,0,W,W);
-  const hi=(threat==='high'||threat==='critical'),med=(threat==='medium'),demon=(state==='alert'||state==='apex');
-  const out='#1a130d', white='#f4f2ea', nose='#140f0a', fang='#f6f2e6', red='#e23a26', horn='#e7dcc2';
-  const glow = state==='alert'?'#ff3a2a':(state==='apex'?'#ff7a3a':hi?'#ff9a40':med?'#ffd24a':null);
-
-  // horns first (behind nothing, above ears) for demon states
-  if(demon){ tri(5,4,8,4,5,0,horn); tri(16,4,13,4,16,0,horn);
-             px(5,4,out);px(8,4,out);px(16,4,out);px(13,4,out); }
-  paint(threat);
-
-  // ---- eyes ----
-  function roundEye(cx,look){                   // cute big eye
-    for(const[dx,dy]of[[0,-1],[-1,0],[0,0],[1,0],[0,1]])px(cx+dx,EY+dy,nose); // plus-shaped dark
-    px(cx-1,EY-1,nose);px(cx+1,EY-1,nose);px(cx-1,EY+1,nose);px(cx+1,EY+1,nose); // fill to 3x3
-    px(cx+(look||-1),EY-1,white);               // shine
-    if(glow){px(cx,EY,glow);}                    // glowing iris center when threat up
-  }
-  function slit(cx){ for(let i=-1;i<=1;i++)px(cx+i,EY,glow||'#cdd5c6'); px(cx,EY,nose); }
-  function angry(cx,s){ for(let i=0;i<3;i++){px(cx-1+i,EY+(s>0?i: (2-i)),glow);px(cx-1+i,EY+1+(s>0?i:(2-i)),glow);} px(cx,EY,nose); px(cx-1*s,EY-1,out); }
-
-  if(state==='sleeping'){ for(const cx of[EL,ER]){px(cx-1,EY,out);px(cx,EY+1,out);px(cx+1,EY,out);} }
-  else if(state==='error'){ for(const cx of[EL,ER]){px(cx-1,EY-1,'#9a9a9a');px(cx+1,EY+1,'#9a9a9a');px(cx+1,EY-1,'#9a9a9a');px(cx-1,EY+1,'#9a9a9a');px(cx,EY,'#9a9a9a');} }
-  else if(state==='suspicious'){ slit(EL); slit(ER);
-    px(EL-2,EY-2,out);px(EL-1,EY-1,out); px(ER+2,EY-2,out);px(ER+1,EY-1,out); } // skeptical brow tilt
-  else if(state==='alert'||state==='apex'){ angry(EL,1); angry(ER,-1);
-    for(let t=0;t<2;t++){px(EL-2+t,EY-2,out);px(EL+1+t,EY-1,out);px(ER+1-t,EY-2,out);px(ER-2+t,EY-1,out);} } // furrow
-  else if(state==='honey'){ for(const cx of[EL,ER]){px(cx-1,EY,out);px(cx+1,EY,out);px(cx,EY,'#ffd24a');} } // half-lidded smug
-  else { roundEye(EL,-1); roundEye(ER,-1); }     // foraging / default: cute
-
-  // ---- mouth (muzzle is around rows 13-18, center col ~10) ----
-  const MX=10,MY=18;
-  if(demon){ for(let x=MX-3;x<=MX+3;x++)px(x,MY-1,out);            // snarl
-    for(let x=MX-2;x<=MX+2;x++)px(x,MY,nose);
-    tri(MX-3,MY-1,MX-1,MY-1,MX-2,MY-3,fang); tri(MX+1,MY-1,MX+3,MY-1,MX+2,MY-3,fang);
-    px(7,7,red);px(8,8,red);px(9,9,red);px(10,10,red);            // diagonal scar
-  }
-  else if(state==='sleeping'){ px(MX-1,MY-1,out);px(MX,MY,out);px(MX+1,MY-1,out); }
-  else if(state==='honey'){ px(MX-2,MY,out);px(MX-1,MY,out);px(MX,MY-1,out);px(MX+1,MY-1,out); } // smirk
-  else if(state==='error'){ px(MX-2,MY-1,out);px(MX-1,MY,out);px(MX,MY-1,out);px(MX+1,MY,out);px(MX+2,MY-1,out); } // wavy
-  else { px(MX-2,MY-1,out);px(MX-1,MY,out);px(MX,MY,out);px(MX+1,MY,out);px(MX+2,MY-1,out); } // gentle smile
-}
-
-const STATES=[['sleeping','low'],['foraging','low'],['suspicious','medium'],['alert','high'],['error','low']];
-for(const [st,th] of STATES){
-  const cell=document.createElement('div');cell.className='cell';
-  const cv=document.createElement('canvas');cv.width=W;cv.height=W;
-  CTX=cv.getContext('2d');drawBear(st,th);
-  const l=document.createElement('div');l.className='lbl';l.textContent=st+' / '+th;
-  cell.appendChild(cv);cell.appendChild(l);document.body.appendChild(cell);
-}
+const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+CTX=cv.getContext('2d');draw('low');
+const cell=document.createElement('div');cell.className='cell';
+cell.appendChild(cv);const l=document.createElement('div');l.className='lbl';l.textContent='cub / calm';cell.appendChild(l);
+document.body.appendChild(cell);
 </script></body></html>
