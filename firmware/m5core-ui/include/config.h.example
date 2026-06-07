@@ -1,5 +1,5 @@
-// KUMA Guard M5Core - build-time config.
-// Sprint 1: edit these here. Sprint 2: move to an on-device config screen.
+// KUMA Guard M5Core - build-time config TEMPLATE.
+// Copy to config.h and fill in. config.h is gitignored so secrets never commit.
 #pragma once
 
 // --- Wi-Fi (station mode; the M5Core joins your LAN to reach the Pi) -------

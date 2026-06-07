@@ -6,17 +6,33 @@ venv/
 *.egg-info/
 .pytest_cache/
 
-# --- KUMA runtime data (keep the dir + sample jsonl, ignore the live DB) ---
+# --- KUMA runtime data: live DB + captured RF data (privacy: BSSIDs/SSIDs) ---
 backend/data/kuma.db
 backend/data/*.db-journal
+backend/data/*.db
+backend/data/events.jsonl
+backend/data/*.csv
 
 # --- PlatformIO / firmware build ---
 firmware/**/.pio/
 firmware/**/.pioenvs/
 firmware/**/.piolibdeps/
 
-# Secrets: T-Deck local config holds Wi-Fi creds (use config.h.example as template)
+# --- Secrets / local config (NEVER commit; templates are *.example) ---
+# board configs hold Wi-Fi creds + the shell token
 firmware/tdeck-ui/include/config.h
+firmware/m5core-ui/include/config.h
+**/config.h
+!**/config.h.example
+# keys / certs / env / tokens
+*.pem
+*.key
+*.env
+.env
+id_ed25519*
+id_rsa*
+*.token
+**/secrets.*
 
 # --- OS / editor ---
 .DS_Store

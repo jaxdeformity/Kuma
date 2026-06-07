@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# KUMA secret guard: block credentials, keys, board configs, and captured RF data
+# from ever being committed. Enable once with:  git config core.hooksPath .githooks
+# Override a single commit (only if you are SURE) with:  git commit --no-verify
+set -u
+fail=0
+staged() { git diff --cached --name-only --diff-filter=ACM; }
+diff_body() { git diff --cached -U0 -- . ':(exclude).githooks/*'; }
+
+# 1) board config.h files hold Wi-Fi creds + the shell token (templates are *.example)
+bad=$(staged | grep -E 'include/config\.h$' || true)
+if [ -n "$bad" ]; then
+  echo "BLOCKED: board config.h staged (Wi-Fi creds / shell token). Commit config.h.example instead:"
+  echo "$bad"; fail=1
+fi
+
+# 2) captured RF data (privacy: neighbours' BSSIDs/SSIDs/locations)
+cap=$(staged | grep -E 'backend/data/(events\.jsonl$|.*\.csv$|.*\.db$)' || true)
+if [ -n "$cap" ]; then echo "BLOCKED: captured data staged:"; echo "$cap"; fail=1; fi
+
+# 3) key / cert / env / token files
+kf=$(staged | grep -E '\.(pem|key|env)$|id_(ed25519|rsa)|\.token$' || true)
+if [ -n "$kf" ]; then echo "BLOCKED: key/secret file staged:"; echo "$kf"; fail=1; fi
+
+# 4) secret material inside the staged diff
+body=$(diff_body)
+if echo "$body" | grep -qE 'BEGIN [A-Z ]*PRIVATE KEY|ssh-(rsa|ed25519) AAAA'; then
+  echo "BLOCKED: private key / ssh key material in staged changes."; fail=1
+fi
+if echo "$body" | grep -qE 'KUMA_SHELL_TOKEN[[:space:]]+"[0-9a-fA-F]{16,}"'; then
+  echo "BLOCKED: shell token literal in staged changes."; fail=1
+fi
+if echo "$body" | grep -E 'KUMA_WIFI_PASSWORD[[:space:]]+"' | grep -qv 'YOUR_PASSWORD'; then
+  echo "BLOCKED: real Wi-Fi password in staged changes."; fail=1
+fi
+
+if [ "$fail" = "1" ]; then
+  echo ""
+  echo "Commit aborted by KUMA secret guard (.githooks/pre-commit)."
+  exit 1
+fi
+exit 0

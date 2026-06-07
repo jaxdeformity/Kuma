@@ -78,10 +78,20 @@ def run_shell(cmd: str) -> dict:
             _shell_cwd = newdir
             return {"out": "", "code": 0, "cwd": _shell_cwd}
         return {"out": f"cd: {target}: no such file or directory", "code": 1, "cwd": _shell_cwd}
+    # block obviously-interactive commands that need a TTY (would just hang)
+    first = cmd.split()[0] if cmd.split() else ""
+    INTERACTIVE = {"top", "htop", "nano", "vi", "vim", "less", "more", "man",
+                   "ssh", "telnet", "python", "python3", "watch"}
+    if first in INTERACTIVE:
+        return {"out": f"{first}: interactive command not supported in this shell "
+                       f"(no TTY). Use a non-interactive form, e.g. piped output.",
+                "code": 1, "cwd": _shell_cwd}
     try:
-        p = subprocess.run(cmd, shell=True, cwd=_shell_cwd, capture_output=True,
-                           text=True, timeout=20)
+        print(f"[shell] cwd={_shell_cwd} cmd={cmd!r}", flush=True)   # visible in journalctl
+        p = subprocess.run(cmd, shell=True, executable="/bin/bash", cwd=_shell_cwd,
+                           capture_output=True, text=True, timeout=20)
         out = (p.stdout or "") + (p.stderr or "")
+        print(f"[shell] -> code {p.returncode}, {len(out)} bytes", flush=True)
         return {"out": out[:6000], "code": p.returncode, "cwd": _shell_cwd}
     except subprocess.TimeoutExpired:
         return {"out": "(command timed out after 20s)", "code": 124, "cwd": _shell_cwd}
