@@ -1,0 +1,3 @@
+# KUMA live-capture deps (Sprint 2+). Install on the Pi with the monitor dongle.
+# Kept separate so the core backend stays lean and hardware-free.
+scapy>=2.5
