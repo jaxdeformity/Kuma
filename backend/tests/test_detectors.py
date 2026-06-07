@@ -95,7 +95,7 @@ def test_evil_twin_on_security_downgrade():
 
 def test_fingerprint_spoof_on_trusted_bssid():
     import time
-    t = L.EvilTwinTracker(TRUSTED)
+    t = L.EvilTwinTracker(TRUSTED, fingerprint_enabled=True)
     bssid = "AA:BB:CC:00:00:01"
     for _ in range(L.EvilTwinTracker.LEARN_HITS):     # learn the legit fp
         t.add("Home", bssid, 6, "WPA2", "goodfp")
@@ -110,10 +110,18 @@ def test_fingerprint_spoof_on_trusted_bssid():
     assert ev["raw_json"]["detector"] == "fingerprint"
 
 
+def test_fingerprint_off_by_default():
+    """Fingerprint-spoof detection is opt-in; off, a trusted BSSID never fires."""
+    t = L.EvilTwinTracker(TRUSTED)               # default: fingerprint disabled
+    bssid = "AA:BB:CC:00:00:01"
+    out = [t.add("Home", bssid, 6, "WPA2", "fp" + str(i % 4)) for i in range(40)]
+    assert all(e is None for e in out)
+
+
 def test_multiple_legit_fingerprints_no_false_positive():
     """A multi-radio router with two legit fingerprints must not false-alarm."""
     import time
-    t = L.EvilTwinTracker(TRUSTED)
+    t = L.EvilTwinTracker(TRUSTED, fingerprint_enabled=True)
     bssid = "AA:BB:CC:00:00:01"
     for fp in ("fpA", "fpB"):                          # learn both legit variants
         for _ in range(L.EvilTwinTracker.LEARN_HITS):

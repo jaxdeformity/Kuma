@@ -248,11 +248,16 @@ class EvilTwinTracker:
     LEARN_HITS = 3       # a fingerprint must recur this often to be a legit variant
     RECUR = 6            # a non-baseline fingerprint must recur this often to alert
 
-    def __init__(self, trusted: list[dict]) -> None:
+    def __init__(self, trusted: list[dict], fingerprint_enabled: bool = False) -> None:
         self.trusted = {n["ssid"]: {b.upper() for b in n.get("bssids", [])}
                         for n in trusted}
         self.expected = {n["ssid"]: n.get("expected_security") for n in trusted}
         self.alerted: dict[tuple[str, str], float] = {}
+        # Fingerprint-spoof detection is OPT-IN: exact-hash AP fingerprinting is
+        # too noisy on real multi-radio routers (a radio that beacons rarely on
+        # the watched channel never learns its variants and false-alarms). Off
+        # by default keeps KUMA trustworthy; enable only with a tuned baseline.
+        self.fp_enabled = fingerprint_enabled
         self.good_fps: dict[str, set[str]] = collections.defaultdict(set)
         self.first_seen: dict[str, float] = {}
         self.fp_count: dict[str, collections.Counter] = collections.defaultdict(
@@ -266,8 +271,8 @@ class EvilTwinTracker:
 
         # --- trusted BSSID: learn fingerprint set, flag spoof --------------
         if bssid in self.trusted[ssid]:
-            if not fp:
-                return None
+            if not self.fp_enabled or not fp:
+                return None   # fingerprint-spoof detection is opt-in
             self.first_seen.setdefault(bssid, now)
             self.fp_count[bssid][fp] += 1
             # During the learning window, add every recurring fingerprint to the
@@ -437,7 +442,9 @@ def run(iface: str, channel: int, channels: list[int] | None,
     deauth = BurstTracker("deauth_burst", "deauth")
     disassoc = BurstTracker("disassoc_burst", "disassoc")
     beacons = BeaconFloodTracker()
-    eviltwin = EvilTwinTracker(settings.trusted_networks())
+    eviltwin = EvilTwinTracker(
+        settings.trusted_networks(),
+        bool(settings.settings.get("fingerprint_detection", False)))
     karma = KarmaTracker()
     harvest = HandshakeHarvestTracker()
 

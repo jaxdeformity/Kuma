@@ -42,7 +42,7 @@ KUMA learns the good fingerprint of each trusted BSSID, then flags a **fingerpri
 
 > Methodology inspired by [nzyme](https://github.com/nzymedefense/nzyme) (which is SSPL-licensed — KUMA uses the *technique*, not its code; our implementation is clean-room and MIT).
 >
-> **Lesson learned the hard way:** the fingerprint must use only *stable* fields. An early version included capability flags / beacon interval / the full IE set, which toggle on real APs and produced a false-positive "BSSID-spoof" storm against the owner's own router. Fix: stable fields only, plus a recurrence requirement before alerting.
+> **Lesson learned the hard way:** the fingerprint must use only *stable* fields (an early version included capability flags / beacon interval / the full IE set, which toggle on real APs and produced a false-positive storm). And even stable-field exact-hash fingerprinting is **too noisy on a real multi-radio router** — a radio that beacons rarely on the watched channel never learns its variants and false-alarms (in red-vs-blue testing it caught the real spoof but buried it 13:2 under false positives on a legit router radio). So **fingerprint-spoof detection is OPT-IN, off by default** (`fingerprint_detection` in `kuma_settings.json`). Robust clone detection really wants signal-track scoring (nzyme's approach), not exact hashes. The reliable detectors — deauth, beacon flood, rogue-AP, evil-twin-via-downgrade, karma, handshake — stay on and trustworthy.
 
 ## Apex Mode — automated active **defense**
 

@@ -8,6 +8,7 @@
   "api_host": "0.0.0.0",
   "api_port": 8080,
   "event_retention_days": 30,
+  "fingerprint_detection": false,
   "threat_thresholds": {
     "low": 25,
     "medium": 50,
