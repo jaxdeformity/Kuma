@@ -139,6 +139,7 @@ const KST={SENTINEL:'03_sentinel',ALERT:'06_alert',INVESTIGATING:'07_investigati
   DEFENDING:'08_defending',APEX:'05_apex',ATTACKING:'09_attacking',VICTORY:'10_victory',
   HONEY:'04_honey',HIBERNATING:'01_hibernating',FORAGING:'02_foraging'};
 const KS='sprites/states/', ES='sprites/enemies/';
+let CUR_SET='states';  // active form's sprite pack (states / evo1..evo5), from /api/status
 for(const k in KST){const i=new Image();i.src=KS+KST[k]+'.png'+SPV;}
 // bear_state (from API) -> state sprite
 const FACE={sleeping:'01_hibernating',foraging:'02_foraging',honey_trap:'04_honey',honey:'04_honey',
@@ -209,11 +210,11 @@ const M=(typeof MUSIC!=='undefined')?MUSIC:{};
 const $=id=>document.getElementById(id);
 const ksp=$('ksp'),esp=$('esp');
 let kumaClipTimer=null;
-function setKuma(state){ksp.src=KS+(KST[state]||KST.SENTINEL)+'.png'+SPV;}
+function setKuma(state){ksp.src='sprites/'+CUR_SET+'/'+(KST[state]||KST.SENTINEL)+'.png'+SPV;}
 function setFace(st){const f=FACE[st]||FACE.error;if(!(ksp.getAttribute('src')||'').includes(f))ksp.src=KS+f+'.png'+SPV;}
 // monitoring stance by activity: calm -> wander (hibernate/forage/honey); anomaly -> sentinel
 // -> investigating (sustained) -> alert (about to encounter). Drives the dashboard face.
-function setMon(name){const f=KST[name]||KST.SENTINEL;if(!(ksp.getAttribute('src')||'').includes(f))ksp.src=KS+f+'.png'+SPV;}
+function setMon(name){const f=KST[name]||KST.SENTINEL,want=CUR_SET+'/'+f;if(!(ksp.getAttribute('src')||'').includes(want))ksp.src='sprites/'+want+'.png'+SPV;}
 function monState(s){const tl=s.threat_level,ev=s.events_last_10m||0;
   if(tl==='high'||tl==='critical')return 'ALERT';
   if(tl==='medium')return 'INVESTIGATING';
@@ -270,6 +271,7 @@ async function tick(){
 }
 function updateFace(s,events){
   if(!s){$('dot').className='dot off';$('dtx').textContent='OFFLINE';msg('backend unreachable.');return;}
+  if(s.sprite_set)CUR_SET=s.sprite_set;
   const ms=monState(s);
   setMon(ms||['HIBERNATING','FORAGING','HONEY'][Math.floor(Date.now()/9000)%3]);
   $('dot').className='dot';$('dtx').textContent='ONLINE';$('lv').textContent='Lv '+(s.level||1);
@@ -342,8 +344,9 @@ function checkEnd(){
     playClip(['DEFENDING','VICTORY'],300);AUD.playScore(M.victory,false);
     fetch('/api/progress/battle-win',{method:'POST'}).catch(()=>{});
     msg('<b>'+S.en.name+'</b> was contained.','');
+    const VLEN=(M.victory&&M.victory.loopMs)||15000;  // hold victory until the victory audio ends
     setTimeout(()=>{center('THREAT CONTAINED');setKuma('VICTORY');
-      setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.','');setTimeout(showFace,60000);},1400);},700);return true;}  // victory holds ~1 min
+      setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.','');setTimeout(showFace,Math.max(1200,VLEN-2100));},1400);},700);return true;}
   if(S.k.cur<=0){busy=false;S.phase='lose';AUD.stop();clearTurnTimer();setKuma('ALERT');
     msg('The link dropped... <span class="jp">クマ</span> regroups.','');setTimeout(showFace,2000);return true;}
   return false;}

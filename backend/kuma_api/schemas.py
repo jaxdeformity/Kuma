@@ -21,6 +21,7 @@ class StatusResponse(BaseModel):
     level: int = 1
     xp: int = 0
     network_count: int = 0
+    sprite_set: str = "states"
 
 
 class EventModel(BaseModel):

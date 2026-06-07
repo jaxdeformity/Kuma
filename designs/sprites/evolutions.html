@@ -1,0 +1,44 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>クマ // evolutions</title>
+<style>
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--cy:#25d0ff}
+  body{margin:0;background:#000;color:var(--ink);
+    font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;padding:30px;letter-spacing:.04em}
+  h1{font-weight:400;font-size:16px;letter-spacing:.2em;color:var(--grn);margin:0 0 4px}
+  .sub{color:var(--dim);margin-bottom:24px;max-width:680px}
+  .row{margin-bottom:14px}
+  .rh{display:flex;align-items:baseline;gap:10px;margin-bottom:6px}
+  .rh .n{color:var(--cy);letter-spacing:.18em;text-transform:uppercase;font-size:13px}
+  .rh .lv{color:var(--dim);font-size:10px}
+  .strip{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;
+    border:1px solid var(--faint);padding:10px;background:
+    radial-gradient(120% 100% at 50% 20%,rgba(37,208,255,.04),transparent 60%),#0a0f0c;position:relative}
+  .strip::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.14) 2px 3px)}
+  .cell{text-align:center}
+  .cell img{height:96px;width:auto;image-rendering:pixelated;display:block}
+  .cell .l{font-size:8px;color:var(--dim);letter-spacing:.1em;margin-top:3px;text-transform:uppercase}
+  .arrow{color:var(--dim);text-align:center;margin:2px 0;font-size:11px}
+</style></head><body>
+<h1>クマ // EVOLUTIONS</h1>
+<div class="sub">6 forms, prestige order. Hit level 99 on a form and KUMA evolves to the
+next (new form starts at level 1). One battles at a time; the user picks which unlocked
+form to run. Same 10 states as the base, so every form drops into the dashboard + battle.</div>
+<div id="rows"></div>
+<script>
+const STATES=['01_hibernating','02_foraging','03_sentinel','04_honey','05_apex','06_alert','07_investigating','08_defending','09_attacking','10_victory'];
+const LBL=['hibernate','forage','sentinel','honey','apex','alert','investigate','defend','attack','victory'];
+const FORMS=[['states','KUMA','base'],['evo1','GUARDIAN','evo 1'],['evo2','SENTINEL','evo 2'],
+  ['evo3','APEX','evo 3'],['evo4','OVERCLOCK','evo 4'],['evo5','KUMA.EXE','evo 5 / final']];
+const r=document.getElementById('rows');
+FORMS.forEach(([dir,name,tag],i)=>{
+  const row=document.createElement('div');row.className='row';
+  row.innerHTML='<div class="rh"><span class="n">'+name+'</span><span class="lv">'+tag+'</span></div>';
+  const strip=document.createElement('div');strip.className='strip';
+  STATES.forEach((st,k)=>{const c=document.createElement('div');c.className='cell';
+    c.innerHTML='<img src="'+dir+'/'+st+'.png" alt="'+LBL[k]+'"><div class="l">'+LBL[k]+'</div>';strip.appendChild(c);});
+  row.appendChild(strip);r.appendChild(row);
+  if(i<FORMS.length-1){const a=document.createElement('div');a.className='arrow';a.textContent='↓  evolves at Lv 99';r.appendChild(a);}
+});
+</script></body></html>

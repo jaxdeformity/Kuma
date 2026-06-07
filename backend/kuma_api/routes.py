@@ -50,6 +50,7 @@ def get_status() -> schemas.StatusResponse:
         level=prog["level"],
         xp=prog["xp"],
         network_count=database.count_networks(),
+        sprite_set=prog["sprite_set"],
     )
 
 
