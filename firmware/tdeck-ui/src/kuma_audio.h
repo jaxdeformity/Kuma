@@ -10,5 +10,7 @@ namespace audio {
   void playTrack(Track t, bool loop);   // start/replace the music bed
   void stopMusic();                     // silence the music bed
   void sfx(SfxId s);                    // fire a one-shot attack sound over the music
+  void setVolume(uint8_t pct);          // 0..100 master volume
+  uint8_t volume();
   bool ok();                            // true if I2S came up
 }

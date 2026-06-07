@@ -31,6 +31,8 @@ volatile uint32_t g_sfxPos = 0;
 volatile bool     g_sfxOn  = false;
 
 uint32_t g_global = 0;                   // free-running sample counter (phase clock)
+volatile float g_volF = 0.22f;           // master volume (0..1), default low
+volatile uint8_t g_volPct = 22;
 
 const float WVOL[4] = {0.20f, 0.24f, 0.15f, 0.16f};
 
@@ -70,6 +72,7 @@ void mixerTask(void*) {
         s += (float)g_sfx[g_sfxPos++] * 0.9f;
         if (g_sfxPos >= g_sfxLen) g_sfxOn = false;
       }
+      s *= g_volF;                                   // master volume
       if (s > 32767) s = 32767; else if (s < -32768) s = -32768;
       out[i] = (int16_t)s;
     }
@@ -124,6 +127,9 @@ void playTrack(Track t, bool loop) {
 }
 
 void stopMusic() { g_musicOn = false; }
+
+void setVolume(uint8_t pct) { if (pct > 100) pct = 100; g_volPct = pct; g_volF = pct / 100.0f; }
+uint8_t volume() { return g_volPct; }
 
 void sfx(SfxId s) {
   if (!g_ok) return;

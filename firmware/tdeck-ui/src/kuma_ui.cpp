@@ -221,4 +221,31 @@ void drawEventList(const KumaEvent* ev, int n) {
   }
 }
 
+void drawSettings(int volPct, int brightPct, int sel) {
+  lgfx::LovyanGFX* g = fbReady ? static_cast<lgfx::LovyanGFX*>(&fb)
+                               : static_cast<lgfx::LovyanGFX*>(D);
+  g->fillScreen(BG);
+  g->setFont(&fonts::Font0);
+  g->setTextSize(2); g->setTextColor(CYAN, BG); g->setCursor(10, 10); g->print("SETTINGS");
+
+  const char* labels[2] = {"Volume", "Brightness"};
+  const int   vals[2]   = {volPct, brightPct};
+  for (int i = 0; i < 2; ++i) {
+    int y = 70 + i * 60;
+    bool s = (i == sel);
+    if (s) { g->fillRect(6, y - 8, 308, 46, 0x10A2); g->drawRect(6, y - 8, 308, 46, CYAN); }
+    g->setTextSize(2); g->setTextColor(s ? CYAN : FG, s ? 0x10A2 : BG);
+    g->setCursor(16, y - 2); g->print(labels[i]);
+    // bar
+    int bx = 16, by = y + 22, bw = 240;
+    g->drawRect(bx, by, bw, 12, GREY);
+    g->fillRect(bx + 1, by + 1, (bw - 2) * vals[i] / 100, 10, s ? CYAN : GREEN);
+    g->setTextSize(1); g->setTextColor(FG, s ? 0x10A2 : BG);
+    g->setCursor(bx + bw + 12, by + 2); g->printf("%d%%", vals[i]);
+  }
+  g->setTextSize(1); g->setTextColor(GREY, BG); g->setCursor(10, 224);
+  g->print("up/down: row   left/right: adjust   back: save");
+  if (fbReady) fb.pushSprite(D, 0, 0);
+}
+
 }  // namespace kuma_ui

@@ -3,7 +3,7 @@
 #include "display.h"
 #include "kuma_api_client.h"
 
-enum class Screen { Home, ModeSelect, EventList };
+enum class Screen { Home, ModeSelect, EventList, Settings };
 
 namespace kuma_ui {
   void begin(LGFX_TDeck* d);
@@ -11,5 +11,6 @@ namespace kuma_ui {
   void drawHome(const KumaStatus& s);
   void drawModeSelect(int selectedIndex, KumaMode current);
   void drawEventList(const KumaEvent* ev, int n);
+  void drawSettings(int volPct, int brightPct, int sel);
   void drawBear(lgfx::LovyanGFX* g, BearState st, int cx, int cy, int r);
 }

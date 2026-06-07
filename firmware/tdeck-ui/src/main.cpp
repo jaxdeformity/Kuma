@@ -8,6 +8,7 @@
 //   EventList   : recent events from /api/events. Back -> Home.
 #include <Arduino.h>
 #include <Wire.h>
+#include <Preferences.h>
 
 #include "tdeck_pins.h"
 #include "config.h"
@@ -28,6 +29,13 @@ static int    g_modeIndex = 3;             // default highlight: Sentinel
 static uint32_t g_lastStatusPoll = 0;
 static uint8_t  g_statusFails = 0;         // tolerate transient poll failures
 
+static Preferences g_prefs;
+static int g_setVol = 22;                  // %
+static int g_setBright = 80;               // %
+static int g_setSel = 0;                   // selected settings row
+
+static uint8_t brightRaw(int pct) { return (uint8_t)(30 + pct * 225 / 100); }  // never fully dark
+
 void setup() {
   Serial.begin(115200);
 
@@ -39,10 +47,15 @@ void setup() {
   Wire.begin(TDECK_I2C_SDA, TDECK_I2C_SCL);
 
   display.init();
-  display.setBrightness(200);
+  // load saved settings (volume + brightness)
+  g_prefs.begin("kuma", false);
+  g_setVol = g_prefs.getUChar("vol", 22);
+  g_setBright = g_prefs.getUChar("bright", 80);
+  display.setBrightness(brightRaw(g_setBright));
   kuma_ui::begin(&display);
   battle::begin(&display);
   audio::begin();
+  audio::setVolume(g_setVol);
   kuma_ui::splash();
 
   input::begin();
@@ -59,6 +72,9 @@ static void enterScreen(Screen s) {
     case Screen::EventList:
       g_eventCount = kuma_api::fetchEvents(g_events, 8);
       kuma_ui::drawEventList(g_events, g_eventCount);
+      break;
+    case Screen::Settings:
+      kuma_ui::drawSettings(g_setVol, g_setBright, g_setSel);
       break;
   }
 }
@@ -90,6 +106,7 @@ void loop() {
     case Screen::Home:
       if (ev == InputEvent::Select) enterScreen(Screen::ModeSelect);
       else if (ev == InputEvent::Right) enterScreen(Screen::EventList);
+      else if (ev == InputEvent::Left) { g_setSel = 0; enterScreen(Screen::Settings); }
       break;
 
     case Screen::ModeSelect:
@@ -112,5 +129,23 @@ void loop() {
       if (ev == InputEvent::Back || ev == InputEvent::Left)
         enterScreen(Screen::Home);
       break;
+
+    case Screen::Settings: {
+      int* val = (g_setSel == 0) ? &g_setVol : &g_setBright;
+      if (ev == InputEvent::Up)        { g_setSel = (g_setSel + 1) % 2; }
+      else if (ev == InputEvent::Down) { g_setSel = (g_setSel + 1) % 2; }
+      else if (ev == InputEvent::Right){ *val = min(100, *val + 5); }
+      else if (ev == InputEvent::Left) { *val = max(0,   *val - 5); }
+      else if (ev == InputEvent::Back || ev == InputEvent::Select) {
+        g_prefs.putUChar("vol", g_setVol);
+        g_prefs.putUChar("bright", g_setBright);
+        enterScreen(Screen::Home);
+        break;
+      }
+      audio::setVolume(g_setVol);                 // apply live
+      display.setBrightness(brightRaw(g_setBright));
+      kuma_ui::drawSettings(g_setVol, g_setBright, g_setSel);
+      break;
+    }
   }
 }
