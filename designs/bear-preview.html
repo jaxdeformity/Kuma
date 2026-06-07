@@ -1,60 +1,39 @@
-<!doctype html><html><head><meta charset="utf-8"><title>kuma cub</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>クマ // bear states</title>
 <style>
-  body{background:#cfe3ef;margin:0;padding:30px;font:12px ui-monospace,monospace;color:#456;
-    display:flex;gap:24px;flex-wrap:wrap;align-items:flex-end}
-  .cell{text-align:center}
-  canvas{image-rendering:pixelated;width:256px;height:256px;background:#dfeef6;border:1px solid #9bb}
-  .lbl{margin-top:8px;letter-spacing:.18em;text-transform:uppercase;font-size:11px}
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30}
+  body{margin:0;background:#000;color:var(--ink);
+    font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;padding:32px;letter-spacing:.04em}
+  h1{font-weight:400;font-size:16px;letter-spacing:.2em;color:var(--grn);margin:0 0 4px}
+  .sub{color:var(--dim);margin-bottom:28px}
+  .grid{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end}
+  .cell{border:1px solid var(--faint);background:var(--bg);padding:16px;text-align:center;position:relative}
+  .cell::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.15) 2px 3px)}
+  canvas{image-rendering:pixelated;width:208px;height:208px;display:block;background:#0a0f0c}
+  .lbl{margin-top:12px;letter-spacing:.18em;text-transform:uppercase;font-size:11px}
 </style></head><body>
+<h1>クマ // bear threat states</h1>
+<div class="sub">one fierce bear, fur shifts with threat level. same sprite the dashboard + battle use.</div>
+<div class="grid" id="grid"></div>
+<script src="sprites/sprites.gen.js"></script>
 <script>
-// full-body sitting chibi cub, Pokemon/kawaii style. hand-authored sprite grid.
-// .=empty o=outline B=fur b=fur-shadow T=belly/muzzle e=eye n=nose p=cheek w=shine
-const ART=[
-"................................",
-".....oooo..........oooo.........",
-"....oBBBBo........oBBBBo........",
-"....oBbbBo........oBbbBo........",
-"...oBBBBBBoo....ooBBBBBBo.......",
-"..oBBBBBBBBBooooBBBBBBBBBo......",
-".oBBBBBBBBBBBBBBBBBBBBBBBBo.....",
-".oBBBBBBBBBBBBBBBBBBBBBBBBo.....",
-"oBBBBBBBBBBBBBBBBBBBBBBBBBBo....",
-"oBBBBBBBBBBBBBBBBBBBBBBBBBBo....",
-"oBBBBBBweBBBBBBBBBBweBBBBBBo....",
-"oBBBBBBeeBBBBBBBBBBeeBBBBBBo....",
-"oBBBBppBBBBTTTTBBBBBppBBBBBo....",
-"oBBBBppBBBTTnnTTBBBBppBBBBBo....",
-".oBBBBBBBBTTnnTTBBBBBBBBBBo.....",
-".oBBBBBBBBBTTTTBBBBBBBBBBo......",
-"..oBBBBBBBBBBBBBBBBBBBBBBo......",
-"...oBBBBBBBBBBBBBBBBBBBo........",
-"....oBBBBBBBBBBBBBBBBBo.........",
-".....oBBBBBBBBBBBBBBBo.........",
-"....oBBBBBBBBBBBBBBBBBBo........",
-"...oBBBBoTTTTTTTTooBBBBBo.......",
-"..oBBBBoTTTTTTTTTToBBBBBBo......",
-"..oBBBBoTTTTTTTTTToBBBBBBo......",
-"..oBBBBoTTTTTTTTTToBBBBBBo......",
-"..oBBBBBoTTTTTTTToBBBBBBBo......",
-"..oBBBBBBoTTTTTToBBBBBBBBo......",
-"...oBBBBBBBBBBBBBBBBBBBBo.......",
-"..ooBBBoooBBBBBBoooBBBBoo.......",
-".oBBBBBBoTToBBBBoTToBBBBBBo.....",
-".oBBbbBBoTToBBBBoTToBBbbBBo.....",
-"..oooooo..oooooo..oooooo......."
-];
-let CTX;const W=ART[0].length,H=ART.length;
-function draw(threat,scale){
-  const hi=(threat==='high'||threat==='critical'),med=(threat==='medium');
-  const C={'.':null,o:'#3a2418',
-    B:hi?'#a5552f':med?'#9c6f3c':'#9a6a3e',
-    b:hi?'#7d3a20':med?'#6f4c28':'#754d2c',
-    T:'#e6c89a', e:'#1a120c', n:'#1a120c', p:'#f0a0a8', w:'#fff'};
-  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const c=C[ART[y][x]];if(c){CTX.fillStyle=c;CTX.fillRect(x,y,1,1);}}
+// recolor the shared KUMA sprite per threat level (fur base + shadow shift)
+const TINT={
+  calm  :{B:'#8a5a30',b:'#5e3c1f',H:'#ab7a46',name:'sentinel / calm',col:'var(--grn)'},
+  alert :{B:'#9c6a2e',b:'#6f4720',H:'#c08a3e',name:'foraging / alert',col:'var(--amb)'},
+  alarm :{B:'#b0552a',b:'#7a3418',H:'#d07038',name:'apex / alarm',col:'var(--red)'},
+};
+function draw(ctx,tint){const sp=SPRITES.kuma,P=Object.assign({},sp.pal,{B:tint.B,b:tint.b,H:tint.H});
+  ctx.clearRect(0,0,32,32);
+  for(let y=0;y<sp.grid.length;y++)for(let x=0;x<sp.grid[y].length;x++){
+    const c=P[sp.grid[y][x]];if(c){ctx.fillStyle=c;ctx.fillRect(x,y,1,1);}}}
+const g=document.getElementById('grid');
+for(const k of ['calm','alert','alarm']){
+  const t=TINT[k];const cell=document.createElement('div');cell.className='cell';
+  const cv=document.createElement('canvas');cv.width=32;cv.height=32;draw(cv.getContext('2d'),t);
+  const l=document.createElement('div');l.className='lbl';l.style.color=t.col;l.textContent=t.name;
+  cell.appendChild(cv);cell.appendChild(l);g.appendChild(cell);
 }
-const cv=document.createElement('canvas');cv.width=W;cv.height=H;
-CTX=cv.getContext('2d');draw('low');
-const cell=document.createElement('div');cell.className='cell';
-cell.appendChild(cv);const l=document.createElement('div');l.className='lbl';l.textContent='cub / calm';cell.appendChild(l);
-document.body.appendChild(cell);
 </script></body></html>
