@@ -131,19 +131,29 @@ const DEFENSES=[
   ["handshake","handshake harvest"],["apex","apex defense"]
 ];
 
-// ---- KUMA state face (Jax's generated state sprites) ------------------
-// bear_state from /api/status maps to a mode portrait in static/sprites/states/.
+// ---- KUMA animated face (Jax's animation frames) ---------------------
+// bear_state from /api/status picks a looping animation; motion escalates
+// with the threat (calm idle -> walk -> guard -> special).
 const BEAR_IMG=document.getElementById("bear");
-const STATE_SPRITE={
-  sleeping:'01_hibernating', foraging:'02_foraging', honey_trap:'04_honey',
-  suspicious:'03_sentinel', alert:'06_alert', apex_ready:'05_apex',
-  investigating:'07_investigating', defending:'08_defending',
-  attacking:'09_attacking', victory:'10_victory', error:'03_sentinel'};
+const ANIM={idle:5,walk:5,run:5,attack:5,special:5,hurt:5,guard:5,victory:5,ko:5,turn:5};
+function aframes(act){return Array.from({length:ANIM[act]},(_,i)=>'sprites/anim/'+act+'/'+i+'.png');}
+for(const a in ANIM)aframes(a).forEach(u=>{const im=new Image();im.src=u;});  // preload
+// bear_state -> [action, fps]
+const STATE_ANIM={
+  sleeping:['idle',3], foraging:['walk',6], honey_trap:['idle',5],
+  suspicious:['idle',6], alert:['guard',8], apex_ready:['special',7],
+  investigating:['walk',6], defending:['guard',8], attacking:['attack',9],
+  victory:['victory',6], error:['idle',3]};
+let _curAct=null,_timer=null,_fi=0;
 function tint(t){return getComputedStyle(document.documentElement).getPropertyValue(({low:'--grn',medium:'--amb',high:'--red',critical:'--red'})[t]||'--cyn').trim();}
 function drawBear(state,threat){
-  const key=STATE_SPRITE[state]||STATE_SPRITE.error;
-  const src='sprites/states/'+key+'.png';
-  if(!BEAR_IMG.getAttribute('src')||!BEAR_IMG.getAttribute('src').endsWith(src))BEAR_IMG.src=src;
+  const [act,fps]=STATE_ANIM[state]||STATE_ANIM.error;
+  if(act===_curAct)return;                 // already looping this action
+  _curAct=act; _fi=0;
+  if(_timer)clearInterval(_timer);
+  const f=aframes(act);
+  const step=()=>{BEAR_IMG.src=f[_fi];_fi=(_fi+1)%f.length;};
+  step(); _timer=setInterval(step,1000/fps);
 }
 
 const lvl={low:1,medium:2,high:3,critical:4};
