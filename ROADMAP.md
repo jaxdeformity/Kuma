@@ -19,6 +19,9 @@ Mock end-to-end so the architecture is demonstrable on a desk with no Wi-Fi hard
 
 ## Sprint 2 — Make it real
 
+> **Status 2026-06-07: mostly shipped.** Live on a Pi (systemd) with real monitor-mode capture and a full detector suite — deauth/disassoc, beacon flood, rogue-AP, evil-twin + AP fingerprinting, karma/PineAP, EAPOL handshake-harvest — plus Apex active defense and an overhauled dashboard with a real pixel bear. Verified against a live WiFi-Pineapple deauth. Remaining: flash the T-Deck face, DHCP reservation, wire real controller-containment. See [build-log.md](docs/build-log.md).
+
+
 1. **Real Foraging** — `wifi_forager` wraps `iw`/`nmcli`; populate `observations` + `known_aps`.
 2. **Trusted baseline** — promote observations to `trusted_networks.json` via explicit confirm.
 3. **Rogue-AP detection** — baseline comparison → `new_bssid_for_known_ssid`, `ssid_drift`.

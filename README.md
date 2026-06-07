@@ -11,22 +11,24 @@ It is deliberately a reproducible build from purchasable parts. **No custom PCB.
 
 ---
 
-## Status: v0.0 (Sprint 1) — mock pipeline
+## Status: v0.0 — live on hardware
 
-The current build proves the architecture end-to-end **with zero Wi-Fi hardware** using a mock detector:
+KUMA runs as a real, autonomous blue-team sensor on a Raspberry Pi (systemd-managed, auto-arming). The full pipeline works on **live attack traffic** — verified by catching a real WiFi-Pineapple deauth flood (`deauth_burst` HIGH, bear → ALERT, on the dashboard).
 
 ```
-mock detector → event → scoring → SQLite + JSONL → HTTP API → M5Core bear face
+802.11 frame (monitor mode) → detector → scoring → SQLite → HTTP API → dashboard / handheld face
 ```
 
-Real packet capture (rogue-AP / evil-twin / deauth detection on a monitor-mode dongle) is **Sprint 2** — see [ROADMAP.md](ROADMAP.md). The detector skeletons are already in place and documented.
+**Live detectors** ([docs/detection-logic.md](docs/detection-logic.md)): deauth/disassoc burst · beacon/SSID flood · rogue-AP · evil-twin (incl. nzyme-style AP fingerprinting that survives BSSID spoofing) · karma/PineAP · EAPOL handshake-harvest. Plus **Apex Mode** automated active *defense* (detect → harden-PMF / redirect / controller-containment) — defensive only, KUMA never transmits attack frames.
+
+A `KUMA_MOCK=1` mode still runs the whole pipeline with **zero Wi-Fi hardware** for development.
 
 ## Hardware (v0.0 prototype)
 
 | Part | Role |
 |------|------|
 | **Raspberry Pi 4 Model B** | Brain — runs the backend, capture, detection, scoring, SQLite, API |
-| **USB Wi-Fi dongle (monitor-mode capable)** | Ears — packet capture (Sprint 2) |
+| **USB Wi-Fi dongle (monitor-mode capable)** | Ears — live monitor-mode packet capture |
 | **M5Stack M5Core + battery** | Face — pixel bear UI, polls the Pi API. *Does no capture.* |
 
 See [docs/hardware-current.md](docs/hardware-current.md).
@@ -40,7 +42,7 @@ See [docs/hardware-current.md](docs/hardware-current.md).
 [ Raspberry Pi 4 ]                   the BRAIN (Python / FastAPI / SQLite)
   mode engine · detectors · scoring · event log · API
         ⇅
-[ USB Wi-Fi dongle, monitor mode ]   the EARS (Sprint 2)
+[ USB Wi-Fi dongle, monitor mode ]   the EARS (live capture)
 ```
 
 Full detail in [docs/architecture.md](docs/architecture.md).
