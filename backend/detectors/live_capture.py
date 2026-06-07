@@ -30,8 +30,37 @@ from detectors.responder import ApexResponder
 # Updated by the channel-hopper thread; used to label events with where we were.
 _current_channel = 0
 
-from kuma_core import database, events, scoring
+from kuma_core import database, events, progress, scoring
 from kuma_core.config import settings
+
+# Passive network mapping: record observed APs (WiGLE-style) and award discover
+# XP on first sighting. Throttled per BSSID so dense beacon traffic doesn't hammer
+# the DB inside the sniff callback.
+_net_cache: dict[str, float] = {}
+_NET_REFRESH = 60.0
+
+
+def _rssi(pkt) -> int | None:
+    try:
+        rt = pkt.getlayer("RadioTap")
+        return int(rt.dBm_AntSignal) if rt is not None else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _record_net(bssid: str, ssid: str, security: str | None, channel, rssi) -> None:
+    if not bssid or bssid == "?":
+        return
+    b = bssid.upper()
+    now = time.time()
+    if b in _net_cache and now - _net_cache[b] < _NET_REFRESH:
+        return
+    _net_cache[b] = now
+    try:
+        if database.record_network(b, ssid or None, security, channel, rssi):
+            progress.award("discover")
+    except Exception:  # noqa: BLE001 - mapping must never break capture
+        pass
 
 # Subtype 12 = deauthentication, 10 = disassociation.
 WINDOW_SECONDS = 10
@@ -473,6 +502,7 @@ def run(iface: str, channel: int, channels: list[int] | None,
             _emit(beacons.add(bssid, ssid))
             _emit(eviltwin.add(ssid, bssid, ch, beacon_security(pkt),
                                beacon_fingerprint(pkt)))
+            _record_net(bssid, ssid, beacon_security(pkt), ch, _rssi(pkt))
             return
         # --- probe responses: karma / PineAP ------------------------------
         if pkt.haslayer(Dot11ProbeResp):
@@ -484,6 +514,8 @@ def run(iface: str, channel: int, channels: list[int] | None,
                 except Exception:  # noqa: BLE001
                     pssid = ""
             _emit(karma.add(pkt[Dot11].addr2 or "?", pssid))
+            _record_net(pkt[Dot11].addr2 or "?", pssid, None,
+                        _current_channel or channel, _rssi(pkt))
             return
         # --- EAPOL: WPA handshake harvest ---------------------------------
         if pkt.haslayer(EAPOL):

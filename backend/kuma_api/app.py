@@ -39,14 +39,26 @@ async def _mock_loop() -> None:
             database.insert_event(event)
 
 
+async def _netmap_loop() -> None:
+    """Poll the host's Wi-Fi connection; log new networks + award connect XP."""
+    from kuma_core import netmap
+    while True:
+        try:
+            await asyncio.to_thread(netmap.poll_once)
+        except Exception:  # noqa: BLE001
+            pass
+        await asyncio.sleep(60)
+
+
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
     database.init_db()
-    task: asyncio.Task | None = None
+    tasks: list[asyncio.Task] = []
     if MOCK_ENABLED:
-        task = asyncio.create_task(_mock_loop())
+        tasks.append(asyncio.create_task(_mock_loop()))
+    tasks.append(asyncio.create_task(_netmap_loop()))
     yield
-    if task:
+    for task in tasks:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError):
             await task
