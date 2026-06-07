@@ -198,49 +198,37 @@ def beacon_security(pkt) -> str:
     return "WEP" if privacy else "OPEN"
 
 
-_VOLATILE_IE = {0, 5, 11, 35, 37, 42}   # ssid, tim, qbss-load, tpc, csa, erp
-
-
 def beacon_fingerprint(pkt) -> str:
-    """A stable hash of a beacon's 'shape' — capability flags, beacon interval,
-    supported rates, the set of (non-volatile) IE IDs present, and vendor OUIs.
+    """A STABLE hash of an AP's identity from its beacon: supported rates,
+    extended rates, the RSN (security) element, and vendor OUIs. These are
+    fixed by the AP's config/hardware and don't vary beacon-to-beacon, so a
+    real AP produces ONE fingerprint while a clone (different driver/hostapd)
+    produces a different one. We deliberately exclude volatile fields
+    (capability flags, beacon interval, the full IE set) that toggle on a real
+    AP and would otherwise cause false 'spoof' alerts.
 
-    Inspired by nzyme's AP fingerprinting (clean-room): a real AP and a clone
-    spoofing its SSID/BSSID still produce different beacons (different rates,
-    vendor elements, capabilities), so a fingerprint change on a trusted BSSID
-    betrays impersonation that plain BSSID matching misses.
+    Methodology inspired by nzyme (SSPL); implementation is our own.
     """
-    parts: list[str] = []
-    try:
-        parts.append("bi" + str(pkt[Dot11Beacon].beacon_interval))
-    except Exception:  # noqa: BLE001
-        pass
-    try:
-        parts.append("cap" + str(int(pkt[Dot11Beacon].cap)))
-    except Exception:  # noqa: BLE001
-        pass
-    rates = ext = b""
-    ie_ids: list[int] = []
+    rates = ext = rsn = b""
     vendors: list[str] = []
     el = pkt.getlayer(Dot11Elt)
     while el is not None:
         eid = getattr(el, "ID", None)
-        if eid is not None and eid not in _VOLATILE_IE:
-            ie_ids.append(eid)
         try:
             if eid == 1:
                 rates = bytes(el.info)
             elif eid == 50:
                 ext = bytes(el.info)
+            elif eid == 48:
+                rsn = bytes(el.info)
             elif eid == 221:
                 vendors.append(bytes(el.info)[:5].hex())
         except Exception:  # noqa: BLE001
             pass
         el = el.payload.getlayer(Dot11Elt)
-    parts.append("ie" + ",".join(str(i) for i in sorted(set(ie_ids))))
-    parts.append("r" + rates.hex() + ext.hex())
-    parts.append("v" + ",".join(sorted(set(vendors))))
-    return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
+    s = ("r" + rates.hex() + "|e" + ext.hex() + "|s" + rsn.hex()
+         + "|v" + ",".join(sorted(set(vendors))))
+    return hashlib.sha1(s.encode()).hexdigest()[:12]
 
 
 class EvilTwinTracker:
@@ -283,6 +271,10 @@ class EvilTwinTracker:
                     self.good_fp[bssid] = fp   # established baseline
                 return None
             if fp == self.good_fp[bssid]:
+                return None
+            # require the mismatching fingerprint to RECUR (a clone beacons
+            # persistently; a one-off odd beacon shouldn't fire).
+            if self.fp_count[bssid][fp] < 3:
                 return None
             key = (bssid, fp)
             if now - self.alerted.get(key, 0) < self.COOLDOWN:
