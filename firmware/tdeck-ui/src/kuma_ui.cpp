@@ -142,13 +142,15 @@ void drawHome(const KumaStatus& s) {
 
   // --- bear, centered (real sprite, algorithmic fallback) ----------------
   BearState bs = s.online ? s.bearState : BearState::Error;
+  static const int BOB[4] = {0, -3, -4, -3};
+  int bob = BOB[(millis() / 240) % 4];           // gentle idle bob, like the web
   int si = bearSpriteIndex(bs);
   if (si >= 0) {
     const BearSprite& sp = BEAR_SPRITES[si];
-    if (!g->drawPng(sp.data, sp.len, 160 - sp.w / 2, 112 - sp.h / 2))
-      drawBear(g, bs, 160, 112, 58);   // decode hiccup -> algorithmic fallback
+    if (!g->drawPng(sp.data, sp.len, 160 - sp.w / 2, 112 - sp.h / 2 + bob))
+      drawBear(g, bs, 160, 112 + bob, 58);   // decode hiccup -> algorithmic fallback
   } else {
-    drawBear(g, bs, 160, 112, 58);
+    drawBear(g, bs, 160, 112 + bob, 58);
   }
 
   // (no mood/threat text - the bear's state conveys what's going on)
@@ -237,6 +239,32 @@ void drawSettings(int volPct, int brightPct, int sel) {
   }
   g->setTextSize(1); g->setTextColor(GREY, BG); g->setCursor(10, 224);
   g->print("up/down: row   left/right: adjust   back: save");
+  if (fbReady) fb.pushSprite(D, 0, 0);
+}
+
+void drawNetworks(const KumaNetwork* nv, int n, int total, int scroll) {
+  lgfx::LovyanGFX* g = fbReady ? static_cast<lgfx::LovyanGFX*>(&fb)
+                               : static_cast<lgfx::LovyanGFX*>(D);
+  g->fillScreen(BG);
+  g->setFont(&fonts::Font0); g->setTextSize(1);
+  g->setTextColor(CYAN, BG); g->setCursor(8, 6); g->printf("NETWORKS  %d observed", total);
+  g->drawFastHLine(0, 18, 320, 0x2945);
+  const int rowH = 22, top = 22, visible = 9;
+  if (n == 0) { g->setTextColor(GREY, BG); g->setCursor(8, 40); g->print("(none mapped yet)"); }
+  for (int i = 0; i < visible; ++i) {
+    int idx = scroll + i; if (idx >= n) break;
+    const KumaNetwork& w = nv[idx];
+    int y = top + i * rowH;
+    String ss = w.ssid; if (ss.length() > 30) ss = ss.substring(0, 30);
+    g->setTextColor(FG, BG); g->setCursor(6, y); g->print(ss);
+    uint16_t rc = w.rssi > -60 ? GREEN : (w.rssi > -75 ? AMBER : RED);
+    g->setTextColor(rc, BG); g->setCursor(264, y); g->printf("%ddBm", w.rssi);
+    g->setTextColor(GREY, BG); g->setCursor(6, y + 9);
+    g->printf("%s  ch%d %s  x%d", w.bssid.c_str(), w.channel, w.security.c_str(), w.timesSeen);
+  }
+  g->setTextColor(GREY, BG); g->setCursor(6, 230);
+  int lo = n ? scroll + 1 : 0, hi = min(scroll + visible, n);
+  g->printf("up/down scroll  back home   [%d-%d/%d]", lo, hi, n);
   if (fbReady) fb.pushSprite(D, 0, 0);
 }
 

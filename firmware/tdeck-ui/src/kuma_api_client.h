@@ -25,11 +25,21 @@ struct KumaEvent {
   String ssid;
 };
 
+struct KumaNetwork {
+  String   ssid;
+  String   bssid;
+  String   security;
+  int      channel = 0;
+  int      rssi = 0;
+  int      timesSeen = 0;
+};
+
 namespace kuma_api {
   void begin();                                   // Wi-Fi STA connect
   bool wifiConnected();
   bool fetchStatus(KumaStatus& out);              // GET /api/status
   int  fetchEvents(KumaEvent* out, int maxN);     // GET /api/events -> count
+  int  fetchNetworks(KumaNetwork* out, int maxN); // GET /api/networks -> count
   bool setMode(KumaMode mode);                    // POST /api/mode
   bool postBattleWin();                           // POST /api/progress/battle-win
   String get(const String& path);                 // raw GET (for the terminal)

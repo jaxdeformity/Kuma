@@ -24,6 +24,9 @@ static LGFX_TDeck display;
 static KumaStatus g_status;
 static KumaEvent  g_events[8];
 static int        g_eventCount = 0;
+static KumaNetwork g_nets[40];
+static int        g_netCount = 0;
+static int        g_netScroll = 0;
 
 static Screen g_screen = Screen::Home;
 static int    g_modeIndex = 3;             // default highlight: Sentinel
@@ -75,6 +78,11 @@ static void enterScreen(Screen s) {
       g_eventCount = kuma_api::fetchEvents(g_events, 8);
       kuma_ui::drawEventList(g_events, g_eventCount);
       break;
+    case Screen::Networks:
+      g_netScroll = 0;
+      g_netCount = kuma_api::fetchNetworks(g_nets, 40);
+      kuma_ui::drawNetworks(g_nets, g_netCount, g_netCount, g_netScroll);
+      break;
     case Screen::Settings:
       kuma_ui::drawSettings(g_setVol, g_setBright, g_setSel);
       break;
@@ -100,6 +108,13 @@ void loop() {
     }
   }
 
+  // --- idle bob: redraw the home bear a few times/sec so it gently moves ---
+  static uint32_t g_lastBob = 0;
+  if (g_screen == Screen::Home && now - g_lastBob >= 240) {
+    g_lastBob = now;
+    kuma_ui::drawHome(g_status);
+  }
+
   // --- input -------------------------------------------------------------
   InputEvent ev = input::poll();
   if (ev == InputEvent::None) { delay(15); return; }
@@ -110,6 +125,7 @@ void loop() {
       else if (ev == InputEvent::Right) enterScreen(Screen::EventList);
       else if (ev == InputEvent::Left) { g_setSel = 0; enterScreen(Screen::Settings); }
       else if (ev == InputEvent::Down) { terminal::run(); enterScreen(Screen::Home); }
+      else if (ev == InputEvent::Up) enterScreen(Screen::Networks);
       break;
 
     case Screen::ModeSelect:
@@ -131,6 +147,16 @@ void loop() {
     case Screen::EventList:
       if (ev == InputEvent::Back || ev == InputEvent::Left)
         enterScreen(Screen::Home);
+      break;
+
+    case Screen::Networks:
+      if (ev == InputEvent::Down && g_netScroll + 9 < g_netCount) {
+        g_netScroll++; kuma_ui::drawNetworks(g_nets, g_netCount, g_netCount, g_netScroll);
+      } else if (ev == InputEvent::Up && g_netScroll > 0) {
+        g_netScroll--; kuma_ui::drawNetworks(g_nets, g_netCount, g_netCount, g_netScroll);
+      } else if (ev == InputEvent::Back || ev == InputEvent::Left) {
+        enterScreen(Screen::Home);
+      }
       break;
 
     case Screen::Settings: {

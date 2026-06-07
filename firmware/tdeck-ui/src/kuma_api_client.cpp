@@ -78,6 +78,31 @@ int fetchEvents(KumaEvent* out, int maxN) {
   return n;
 }
 
+int fetchNetworks(KumaNetwork* out, int maxN) {
+  if (!wifiConnected()) return 0;
+  HTTPClient http;
+  http.setTimeout(5000);
+  if (!http.begin(baseUrl() + "/api/networks?limit=" + String(maxN))) return 0;
+  if (http.GET() != 200) { http.end(); return 0; }
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, http.getStream());
+  http.end();
+  if (err) return 0;
+  int n = 0;
+  for (JsonObject e : doc["networks"].as<JsonArray>()) {
+    if (n >= maxN) break;
+    out[n].bssid = e["bssid"] | "??";
+    const char* ss = e["ssid"] | "";
+    out[n].ssid = (ss && ss[0]) ? String(ss) : String("<hidden>");
+    out[n].security = e["security"] | "?";
+    out[n].channel = e["channel"] | 0;
+    out[n].rssi = e["best_rssi"] | 0;
+    out[n].timesSeen = e["times_seen"] | 0;
+    ++n;
+  }
+  return n;
+}
+
 bool setMode(KumaMode mode) {
   if (!wifiConnected()) return false;
   HTTPClient http;
