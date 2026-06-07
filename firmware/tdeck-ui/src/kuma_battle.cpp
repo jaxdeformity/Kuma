@@ -26,6 +26,9 @@ const char* AB_NAME[4] = {"SIGNAL MAUL","HONEY SNARE","CHANNEL ROAR","PAWLOCK"};
 const char* AB_SUB[4]  = {"disrupt","bait+mark","break flood","contain"};
 const uint8_t AB_MIN[4]={20,8,20,22}, AB_MAX[4]={26,12,26,30};
 const audio::SfxId AB_SFX[4]={audio::SFX_CLAW_ID,audio::SFX_FULL_ID,audio::SFX_CHARGED_ID,audio::SFX_FULL_ID};
+const char* AB_TYPE[4] = {"DISRUPT","LURE","RF","CONTAIN"};   // move types
+const char* CMD_OPT[4] = {"FIGHT","BAG","RUN","AUTO"};        // top-level command menu
+enum { MENU_NONE = 0, MENU_CMD = 1, MENU_ABIL = 2 };
 
 int eventToEnemy(const String& etRaw) {
   String e = etRaw; e.toLowerCase();
@@ -53,8 +56,8 @@ void hpbar(int x, int y, int w, int cur, int mx) {
   G()->fillRect(x+1, y+1, (int)((w-2)*p), 4, c);
 }
 
-// full battle scene
-void scene(const char* msg, bool menu, int sel, const BearSprite& kuma,
+// full battle scene. menuMode: 0 none, 1 command (Fight/Bag/Run/Auto), 2 abilities
+void scene(const char* msg, int menuMode, int sel, const BearSprite& kuma,
            int kHp, int kMax, int eHp, int eMax, int en, uint16_t lvl) {
   lgfx::LovyanGFX* g = G();
   g->fillScreen(BG);
@@ -75,19 +78,23 @@ void scene(const char* msg, bool menu, int sel, const BearSprite& kuma,
   g->setTextColor(GREEN, BG); g->setCursor(150 + KUMA_LOGO_W + 8, 122);
   g->printf("Lv %u", lvl);
   hpbar(152, 134, 160, kHp, kMax);
-  // ability menu (2x2, bottom-right)
-  if (menu) {
+  // menu (2x2, bottom-right)
+  if (menuMode) {
     const int cx[4]={150,234,150,234}, cy[4]={146,146,192,192};
     for (int i=0;i<4;i++){
       bool s = (i==sel);
-      bool weak = EN_WEAK[en] & (1<<i);
       uint16_t bgc = s ? 0x13E6 : BOX;
       g->fillRect(cx[i], cy[i], 82, 44, bgc);
       g->drawRect(cx[i], cy[i], 82, 44, s?CYAN:DIM);
-      // super-effective abilities tinted amber (no separate marker glyph)
-      g->setTextColor(s ? CYAN : (weak ? AMBER : FG), bgc);
-      g->setCursor(cx[i]+4, cy[i]+6); g->print(AB_NAME[i]);
-      g->setTextColor(GREY, bgc); g->setCursor(cx[i]+4, cy[i]+24); g->print(AB_SUB[i]);
+      if (menuMode == MENU_CMD) {
+        g->setTextSize(2); g->setTextColor(s?CYAN:FG, bgc);
+        g->setCursor(cx[i]+8, cy[i]+14); g->print(CMD_OPT[i]); g->setTextSize(1);
+      } else {
+        bool weak = EN_WEAK[en] & (1<<i);          // super-effective -> amber
+        g->setTextColor(s ? CYAN : (weak ? AMBER : FG), bgc);
+        g->setCursor(cx[i]+4, cy[i]+6); g->print(AB_NAME[i]);
+        g->setTextColor(GREY, bgc); g->setCursor(cx[i]+4, cy[i]+24); g->print(AB_TYPE[i]);
+      }
     }
   }
   push();
@@ -98,6 +105,30 @@ void flashScreen(uint16_t c) { G()->fillScreen(c); push(); delay(70); }
 int autoPick(int en) {
   for (int i=0;i<4;i++) if (EN_WEAK[en] & (1<<i)) return i;
   return 0;
+}
+
+// YES/NO over the battlefield; returns true on YES
+bool confirmDialog(const char* prompt, int kHp, int kMax, int eHp, int eMax, int en, uint16_t lvl) {
+  int sel = 0; bool dirty = true; unsigned long t0 = millis();
+  for (;;) {
+    if (dirty) {
+      scene(prompt, MENU_NONE, 0, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
+      lgfx::LovyanGFX* g = G();
+      const char* yn[2] = {"YES", "NO"};
+      for (int i=0;i<2;i++){ bool s=(i==sel); int x=158+i*78, y=150;
+        g->fillRect(x,y,72,40,s?0x13E6:BOX); g->drawRect(x,y,72,40,s?CYAN:DIM);
+        g->setTextSize(2); g->setTextColor(s?CYAN:FG,s?0x13E6:BOX); g->setCursor(x+16,y+12);
+        g->print(yn[i]); g->setTextSize(1); }
+      push(); dirty = false;
+    }
+    InputEvent e = input::poll();
+    if (e==InputEvent::Left||e==InputEvent::Up)        { sel=0; dirty=true; }
+    else if (e==InputEvent::Right||e==InputEvent::Down){ sel=1; dirty=true; }
+    else if (e==InputEvent::Select)                    return sel==0;
+    else if (e==InputEvent::Back)                      return false;
+    if (millis()-t0 >= 20000) return false;
+    delay(20);
+  }
 }
 
 void run(int en, uint16_t lvl) {
@@ -118,54 +149,85 @@ void run(int en, uint16_t lvl) {
   audio::playTrack(audio::TRK_BATTLE, true);
 
   String introMsg = String("HOSTILE ") + EN_NAME[en] + " DETECTED";
-  scene(introMsg.c_str(), false, 0, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
+  scene(introMsg.c_str(), MENU_NONE, 0, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
   delay(1500);
 
-  // --- turn loop ---
+  // --- turn loop: Fight / Bag / Run / Auto ---
+  bool autoMode = false;
   while (true) {
-    // player turn: menu + input, 30s auto
-    int sel = autoPick(en);
-    scene("WHAT WILL KUMA DO?", true, sel, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
-    unsigned long t0 = millis(); unsigned long lastDraw = t0; bool chosen = false;
-    while (millis() - t0 < 30000) {
-      InputEvent e = input::poll();
-      if (e == InputEvent::Up || e == InputEvent::Left)  { sel=(sel+3)&3; scene("WHAT WILL KUMA DO?", true, sel, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl); }
-      else if (e == InputEvent::Down || e == InputEvent::Right) { sel=(sel+1)&3; scene("WHAT WILL KUMA DO?", true, sel, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl); }
-      else if (e == InputEvent::Select) { chosen = true; break; }
-      delay(20);
+    int act = 0;                                    // default: Fight
+    if (!autoMode) {
+      int sel = 0; bool dirty = true; unsigned long t0 = millis(); act = -1;
+      while (act < 0 && millis() - t0 < 30000) {
+        if (dirty) { scene("WHAT WILL KUMA DO?", MENU_CMD, sel, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
+        InputEvent e = input::poll();
+        if (e==InputEvent::Up||e==InputEvent::Left){sel=(sel+3)&3;dirty=true;}
+        else if(e==InputEvent::Down||e==InputEvent::Right){sel=(sel+1)&3;dirty=true;}
+        else if(e==InputEvent::Select){act=sel;}
+        delay(20);
+      }
+      if (act < 0) act = 0;                          // timeout -> Fight
     }
-    (void)chosen;  // timeout uses the pre-selected weak ability
+    if (act == 1) {                                  // BAG (future)
+      scene("Bag empty -- no items yet.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
+      delay(1400); continue;
+    }
+    if (act == 2) {                                  // RUN
+      if (confirmDialog("Attempt to flee?", kHp,kMax,eHp,eMax,en,lvl)) {
+        audio::stopMusic();
+        scene("KUMA broke contact.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
+        delay(1500); return;
+      }
+      continue;
+    }
+    if (act == 3) {                                  // AUTO
+      if (confirmDialog("Engage auto-protocol?", kHp,kMax,eHp,eMax,en,lvl)) autoMode = true;
+      continue;
+    }
 
-    // --- do move ---
-    const BearSprite& clip = (sel==3) ? BEAR_SPRITES[4] /*apex*/ : KB_ATTACK_S;
+    // --- FIGHT: pick an attack ---
+    int sel = autoPick(en);
+    if (!autoMode) {
+      bool dirty = true; unsigned long t0 = millis(); int ab = -1;
+      while (ab == -1 && millis() - t0 < 30000) {
+        if (dirty) { scene("CHOOSE AN ATTACK", MENU_ABIL, sel, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
+        InputEvent e = input::poll();
+        if (e==InputEvent::Up||e==InputEvent::Left){sel=(sel+3)&3;dirty=true;}
+        else if(e==InputEvent::Down||e==InputEvent::Right){sel=(sel+1)&3;dirty=true;}
+        else if(e==InputEvent::Select){ab=sel;}
+        else if(e==InputEvent::Back){ab=-2;}          // back to command menu
+        delay(20);
+      }
+      if (ab == -2) continue;                         // backed out
+      if (ab >= 0) sel = ab;                          // else timeout keeps autoPick
+    }
+
+    // --- resolve the move ---
+    const BearSprite& clip = (sel==3) ? BEAR_SPRITES[4] : KB_ATTACK_S;
     audio::sfx(AB_SFX[sel]);
     String m1 = String("KUMA used ") + AB_NAME[sel] + "!";
-    scene(m1.c_str(), false, 0, clip, kHp, kMax, eHp, eMax, en, lvl);
-    delay(500);
+    scene(m1.c_str(), MENU_NONE, 0, clip, kHp,kMax,eHp,eMax,en,lvl); delay(500);
     bool weak = EN_WEAK[en] & (1<<sel);
-    if (sel == 1) {                       // HONEY SNARE -> mark, little damage
-      marked = true;
-      int dmg = random(AB_MIN[1], AB_MAX[1]+1);
-      eHp = max(0, eHp - dmg);
-      scene("Threat took the bait. MARKED.", false, 0, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
+    if (sel == 1) {
+      marked = true; int dmg = random(AB_MIN[1], AB_MAX[1]+1); eHp = max(0, eHp-dmg);
+      scene("Threat took the bait. MARKED.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
     } else {
       int dmg = random(AB_MIN[sel], AB_MAX[sel]+1);
-      if (weak) dmg = (int)(dmg * 1.7f);
-      if (marked) { dmg = (int)(dmg * 1.5f); marked = false; }
-      eHp = max(0, eHp - dmg);
-      const char* line = weak ? "Super effective!" : "Hit.";
-      scene(line, false, 0, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
+      if (weak) dmg = (int)(dmg*1.7f);
+      if (marked) { dmg = (int)(dmg*1.5f); marked = false; }
+      eHp = max(0, eHp-dmg);
+      scene(weak ? "Super effective!" : "Hit.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
     }
     delay(900);
     if (eHp <= 0) break;
 
     // --- enemy turn ---
-    int edmg = random(8, 17);
-    kHp = max(0, kHp - edmg);
+    int edmg = random(8, 17); kHp = max(0, kHp-edmg);
     String em = String(EN_NAME[en]) + " strikes back!";
-    scene(em.c_str(), false, 0, BEAR_SPRITES[5] /*alert*/, kHp, kMax, eHp, eMax, en, lvl);
+    scene(em.c_str(), MENU_NONE, 0, BEAR_SPRITES[5], kHp,kMax,eHp,eMax,en,lvl);
     delay(900);
     if (kHp <= 0) break;
+    if (autoMode) delay(400);
   }
 
   // --- resolve ---
@@ -173,12 +235,13 @@ void run(int en, uint16_t lvl) {
   if (eHp <= 0) {
     audio::playTrack(audio::TRK_VICTORY, false);
     kuma_api::postBattleWin();
-    String w = String(EN_NAME[en]) + " contained.";
-    scene(w.c_str(), false, 0, KB_VICTORY_S, kHp, kMax, 0, eMax, en, lvl);
+    String w = String("KUMA decrypted the ") + EN_NAME[en] + ".";
+    scene(w.c_str(), MENU_NONE, 0, KB_VICTORY_S, kHp, kMax, 0, eMax, en, lvl);
     delay(1500);
     lgfx::LovyanGFX* g2 = G(); g2->fillScreen(BG);
-    g2->setTextSize(2); g2->setTextColor(GREEN, BG); g2->setCursor(34, 50); g2->print("THREAT CONTAINED");
-    spr(KB_VICTORY_S, 110, 100); push();
+    g2->setTextSize(3); g2->setTextColor(GREEN, BG); g2->setCursor(70, 40); g2->print("VICTORY!");
+    g2->setTextSize(1); g2->setTextColor(CYAN, BG); g2->setCursor(96, 76); g2->print("DATA SECURED");
+    spr(KB_VICTORY_S, 110, 96); push();
     delay(13000);                          // hold through the victory track
   } else {
     lgfx::LovyanGFX* g2 = G(); g2->fillScreen(BG);

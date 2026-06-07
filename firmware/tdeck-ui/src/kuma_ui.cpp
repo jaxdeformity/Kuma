@@ -151,20 +151,7 @@ void drawHome(const KumaStatus& s) {
     drawBear(g, bs, 160, 112, 58);
   }
 
-  // --- mood line (the bear's state conveys the threat, no "HIGH" label) ---
-  const char* mood; uint16_t mc;
-  if (!s.online) { mood = "OFFLINE"; mc = GREY; }
-  else switch (s.bearState) {
-    case BearState::Alert:      mood = "! THREAT DETECTED"; mc = RED;   break;
-    case BearState::Logging:    mood = "INVESTIGATING";     mc = AMBER; break;
-    case BearState::Suspicious: mood = "ON WATCH";          mc = AMBER; break;
-    case BearState::HoneyTrap:  mood = "LURING";            mc = CYAN;  break;
-    case BearState::Foraging:   mood = "FORAGING";          mc = GREEN; break;
-    case BearState::Sleeping:   mood = "RESTING";           mc = GREEN; break;
-    default:                    mood = "MONITORING";        mc = GREEN; break;
-  }
-  g->setTextSize(2); g->setTextColor(mc, BG);
-  g->setCursor(160 - (int)strlen(mood) * 6, 178); g->print(mood);
+  // (no mood/threat text - the bear's state conveys what's going on)
 
   // --- stat bar (no threat readout) --------------------------------------
   g->drawFastHLine(0, 206, 320, 0x2945);
