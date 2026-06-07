@@ -1,3 +1,30 @@
+# KUMA Chiptune / VGM Audio System
+
+## Integration decisions (2026-06-07)
+
+- **Web Audio first, firmware port later.** Build the chiptune engine in the battle UI
+  using the Web Audio API (oscillators: square / pulse via duty, triangle bass, noise
+  buffer). Jax hears the real music in the browser battle demo now; the T-Deck (the
+  eventual speaker target) isn't flashed yet (still has Bruce).
+- **Shared, portable note data.** Songs/SFX are plain `SongPattern` / `NoteEvent` data
+  (note name or Hz, durationMs, channel, volume, waveform, optional effect) in a JS module
+  that mirrors the C++ struct in the spec below, so the ESP32 `AudioEngine` (LEDC/PWM) can
+  consume the same patterns when the T-Deck is flashed. The web engine is the reference
+  implementation; the firmware engine is the future port.
+- **Scope (MVP):** the cues in "MINIMUM VIABLE IMPLEMENTATION" below: one original battle
+  loop + the threat / lock-on / intro / victory stings + the 4 ability SFX + select/cancel,
+  wired to the battle UI event hooks (encounter -> stings, ability menu -> loop, ability
+  tap -> SFX + status cue, resolve -> stop loop + victory). Mute + volume control. Audio is
+  non-blocking (Web Audio scheduler) and the battle UI never depends on audio working.
+- **Original only.** Compose from the original E-minor note vocabulary in this doc; no
+  copyrighted melodies, no Pokemon motifs. Syncs to the visual side in
+  `battle-intro-animation.md`.
+
+The rest of this document is the full audio context/spec (firmware-oriented; the web
+engine implements the same cue set and note data).
+
+---
+
 # KUMA Chiptune / VGM Audio Context for Claude CLI
 
 You are working on KUMA, an open-source DIY blue-team Wi-Fi defense gadget with a LilyGo T-Deck / ESP32-style handheld face.
