@@ -32,5 +32,6 @@ namespace kuma_api {
   int  fetchEvents(KumaEvent* out, int maxN);     // GET /api/events -> count
   bool setMode(KumaMode mode);                    // POST /api/mode
   bool postBattleWin();                           // POST /api/progress/battle-win
+  String get(const String& path);                 // raw GET (for the terminal)
   bool sendAction(const char* action, bool confirm);  // POST /api/action
 }

@@ -100,6 +100,17 @@ bool postBattleWin() {
   return code == 200;
 }
 
+String get(const String& path) {
+  if (!wifiConnected()) return "(offline)";
+  HTTPClient http;
+  http.setTimeout(3000);
+  if (!http.begin(baseUrl() + path)) return "(begin failed)";
+  int code = http.GET();
+  String body = (code == 200) ? http.getString() : (String("HTTP ") + code);
+  http.end();
+  return body;
+}
+
 bool sendAction(const char* action, bool confirm) {
   if (!wifiConnected()) return false;
   HTTPClient http;

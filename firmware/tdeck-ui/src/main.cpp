@@ -18,6 +18,7 @@
 #include "kuma_ui.h"
 #include "kuma_battle.h"
 #include "kuma_audio.h"
+#include "kuma_terminal.h"
 
 static LGFX_TDeck display;
 static KumaStatus g_status;
@@ -54,6 +55,7 @@ void setup() {
   display.setBrightness(brightRaw(g_setBright));
   kuma_ui::begin(&display);
   battle::begin(&display);
+  terminal::begin(&display);
   audio::begin();
   audio::setVolume(g_setVol);
   kuma_ui::splash();
@@ -107,6 +109,7 @@ void loop() {
       if (ev == InputEvent::Select) enterScreen(Screen::ModeSelect);
       else if (ev == InputEvent::Right) enterScreen(Screen::EventList);
       else if (ev == InputEvent::Left) { g_setSel = 0; enterScreen(Screen::Settings); }
+      else if (ev == InputEvent::Down) { terminal::run(); enterScreen(Screen::Home); }
       break;
 
     case Screen::ModeSelect:
