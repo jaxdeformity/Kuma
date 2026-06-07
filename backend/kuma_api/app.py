@@ -18,6 +18,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from kuma_core import database
 from kuma_core.config import settings
@@ -59,8 +60,11 @@ app = FastAPI(
 )
 app.include_router(routes.router)
 
+_STATIC = Path(__file__).parent / "static"
+# serve the bear state sprites (and any other static assets) for the dashboard
+app.mount("/sprites", StaticFiles(directory=_STATIC / "sprites"), name="sprites")
 
-_DASHBOARD = Path(__file__).parent / "static" / "dashboard.html"
+_DASHBOARD = _STATIC / "dashboard.html"
 
 
 @app.get("/", response_class=HTMLResponse)
