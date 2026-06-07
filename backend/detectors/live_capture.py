@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import subprocess
 import threading
 import time
@@ -197,31 +198,108 @@ def beacon_security(pkt) -> str:
     return "WEP" if privacy else "OPEN"
 
 
-class EvilTwinTracker:
-    """Rogue-AP / evil-twin detection against the trusted baseline.
+_VOLATILE_IE = {0, 5, 11, 35, 37, 42}   # ssid, tim, qbss-load, tpc, csa, erp
 
-    A trusted SSID seen from a BSSID not in its trusted set is suspicious; if it
-    also shows a security downgrade vs the expected, it escalates to evil-twin.
-    This is the passive, defensive inverse of the Pineapple's PineAP/karma.
+
+def beacon_fingerprint(pkt) -> str:
+    """A stable hash of a beacon's 'shape' — capability flags, beacon interval,
+    supported rates, the set of (non-volatile) IE IDs present, and vendor OUIs.
+
+    Inspired by nzyme's AP fingerprinting (clean-room): a real AP and a clone
+    spoofing its SSID/BSSID still produce different beacons (different rates,
+    vendor elements, capabilities), so a fingerprint change on a trusted BSSID
+    betrays impersonation that plain BSSID matching misses.
+    """
+    parts: list[str] = []
+    try:
+        parts.append("bi" + str(pkt[Dot11Beacon].beacon_interval))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        parts.append("cap" + str(int(pkt[Dot11Beacon].cap)))
+    except Exception:  # noqa: BLE001
+        pass
+    rates = ext = b""
+    ie_ids: list[int] = []
+    vendors: list[str] = []
+    el = pkt.getlayer(Dot11Elt)
+    while el is not None:
+        eid = getattr(el, "ID", None)
+        if eid is not None and eid not in _VOLATILE_IE:
+            ie_ids.append(eid)
+        try:
+            if eid == 1:
+                rates = bytes(el.info)
+            elif eid == 50:
+                ext = bytes(el.info)
+            elif eid == 221:
+                vendors.append(bytes(el.info)[:5].hex())
+        except Exception:  # noqa: BLE001
+            pass
+        el = el.payload.getlayer(Dot11Elt)
+    parts.append("ie" + ",".join(str(i) for i in sorted(set(ie_ids))))
+    parts.append("r" + rates.hex() + ext.hex())
+    parts.append("v" + ",".join(sorted(set(vendors))))
+    return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
+
+
+class EvilTwinTracker:
+    """Rogue-AP / evil-twin detection with nzyme-style AP fingerprinting.
+
+    Three signals against the trusted baseline:
+      - trusted SSID from a BSSID not in its set -> rogue (new_bssid)
+      - + a security downgrade -> evil_twin
+      - + (the strong one) a TRUSTED BSSID whose beacon FINGERPRINT changes ->
+        BSSID-spoof / impersonation that survives BSSID matching.
+    The good fingerprint per trusted BSSID is learned from the first stable
+    observations (assumes a clean baseline environment).
     """
 
     COOLDOWN = 30
+    LEARN_HITS = 5
 
     def __init__(self, trusted: list[dict]) -> None:
         self.trusted = {n["ssid"]: {b.upper() for b in n.get("bssids", [])}
                         for n in trusted}
         self.expected = {n["ssid"]: n.get("expected_security") for n in trusted}
         self.alerted: dict[tuple[str, str], float] = {}
+        self.good_fp: dict[str, str] = {}
+        self.fp_count: dict[str, collections.Counter] = collections.defaultdict(
+            collections.Counter)
 
-    def add(self, ssid: str, bssid: str, channel, security: str) -> dict | None:
+    def add(self, ssid, bssid, channel, security, fp="") -> dict | None:
         if not ssid or ssid not in self.trusted:
             return None
         bssid = (bssid or "").upper()
-        if not bssid or bssid in self.trusted[ssid]:
-            return None
-        key = (ssid, bssid)
         now = time.time()
-        if now - self.alerted.get(key, 0) < self.COOLDOWN:
+
+        # --- trusted BSSID: learn fingerprint, flag spoof ------------------
+        if bssid in self.trusted[ssid]:
+            if not fp:
+                return None
+            self.fp_count[bssid][fp] += 1
+            if bssid not in self.good_fp:
+                if self.fp_count[bssid][fp] >= self.LEARN_HITS:
+                    self.good_fp[bssid] = fp   # established baseline
+                return None
+            if fp == self.good_fp[bssid]:
+                return None
+            key = (bssid, fp)
+            if now - self.alerted.get(key, 0) < self.COOLDOWN:
+                return None
+            self.alerted[key] = now
+            return events.make_event(
+                mode="sentinel", event_type="evil_twin_suspected",
+                confidence=88, severity="high",
+                message=f"BSSID-SPOOF suspected: trusted AP {bssid} ('{ssid}') "
+                        f"beacon fingerprint changed — impersonation",
+                ssid=ssid, bssid=bssid, channel=channel, source=bssid,
+                raw_json={"good_fp": self.good_fp[bssid], "seen_fp": fp,
+                          "detector": "fingerprint"})
+
+        # --- unknown BSSID for a trusted SSID ------------------------------
+        key = (ssid, bssid)
+        if not bssid or now - self.alerted.get(key, 0) < self.COOLDOWN:
             return None
         self.alerted[key] = now
         exp = self.expected.get(ssid)
@@ -238,8 +316,7 @@ class EvilTwinTracker:
             mode="sentinel", event_type=etype, confidence=conf, severity=sev,
             message=msg, ssid=ssid, bssid=bssid, channel=channel, source=bssid,
             raw_json={"security_seen": security, "security_expected": exp,
-                      "trusted_bssids": sorted(self.trusted[ssid]),
-                      "detector": "evil_twin"})
+                      "fingerprint": fp, "detector": "evil_twin"})
 
 
 class KarmaTracker:
@@ -390,7 +467,8 @@ def run(iface: str, channel: int, channels: list[int] | None,
             bssid = pkt[Dot11].addr2 or "?"
             ch = _current_channel or channel
             _emit(beacons.add(bssid, ssid))
-            _emit(eviltwin.add(ssid, bssid, ch, beacon_security(pkt)))
+            _emit(eviltwin.add(ssid, bssid, ch, beacon_security(pkt),
+                               beacon_fingerprint(pkt)))
             return
         # --- probe responses: karma / PineAP ------------------------------
         if pkt.haslayer(Dot11ProbeResp):
