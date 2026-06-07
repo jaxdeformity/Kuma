@@ -85,10 +85,15 @@ CRT touch: a faint `repeating-linear-gradient` scanline overlay at ~50% opacity,
 
 ## 7. The bear (shared spec)
 
-The bear is **algorithmic pixel art**, drawn the same way on the web canvas and
-the T-Deck display so they match. Built from primitives (head disk, two ear
-disks, snout ellipse, nose), a 1px outline traced around the fur mask, then
-mood-specific eyes:
+The bear is **Akakabuto** — a battle-scarred guardian, not a teddy. Fierce by
+design: a broad heavy head, small pinned ears, a permanent angled scowling brow,
+a grizzled muzzle, a red **"helmet" crown** marking and a diagonal **battle scar**
+across the left brow (the Silver Fang nod). It is **algorithmic pixel art** on a
+32×32 grid, drawn identically on the web canvas and the T-Deck so they match:
+primitive disks (head, ears, muzzle) → traced 1px outline → crown + scar →
+mood-specific eyes and mouth. Fur grizzles grey→warm as threat rises.
+
+Mood by state:
 
 | `bear_state` | Eyes | When |
 |--------------|------|------|
@@ -100,8 +105,9 @@ mood-specific eyes:
 | `apex_ready` | dots | Apex |
 | `error` | grey X | backend unreachable |
 
-Crude-but-charming is the target. The pipeline matters more than the art, but
-the art must never be a thing of nightmares.
+Fierce-but-readable is the target — menacing in `alert`, watchful when calm.
+Preview every state at once with `designs/bear-preview.html`. The art must never
+be a thing of nightmares (we've been there).
 
 ## 8. Cross-surface
 

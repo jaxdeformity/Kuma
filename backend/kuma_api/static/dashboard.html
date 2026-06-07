@@ -99,7 +99,7 @@
 
   <div class="core">
     <div class="viewport">
-      <canvas id="bear" width="24" height="24"></canvas>
+      <canvas id="bear" width="32" height="32"></canvas>
       <div class="vp-tag" id="bstate">--</div>
     </div>
     <div class="readout">
@@ -133,59 +133,77 @@ const DEFENSES=[
 
 // ---- pixel bear (algorithmic, 24x24) ----------------------------------
 const bc=document.getElementById("bear").getContext("2d");
-const W=24;
+const W=32;
 function tint(t){return getComputedStyle(document.documentElement).getPropertyValue(({low:'--grn',medium:'--amb',high:'--red',critical:'--red'})[t]||'--cyn').trim();}
-function px(x,y,c){bc.fillStyle=c;bc.fillRect(x|0,y|0,1,1);}
+function px(x,y,c){if(x<0||y<0||x>=W||y>=W)return;bc.fillStyle=c;bc.fillRect(x|0,y|0,1,1);}
 function disk(cx,cy,r,fn){const r2=r*r;
   for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){
     const dx=x-cx,dy=y-cy; if(dx*dx+dy*dy<=r2&&x>=0&&y>=0&&x<W&&y<W)fn(x,y);}}
+function line(x0,y0,x1,y1,c){x0|=0;y0|=0;x1|=0;y1|=0;
+  const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;
+  let err=dx-dy,x=x0,y=y0;
+  for(;;){px(x,y,c);if(x===x1&&y===y1)break;const e2=2*err;
+    if(e2>-dy){err-=dy;x+=sx;}if(e2<dx){err+=dx;y+=sy;}}}
+
+// ---- AKAKABUTO: a battle-scarred guardian bear (32x32) ----------------
 function drawBear(state,threat){
   bc.clearRect(0,0,W,W);
-  const fur = (threat==='high'||threat==='critical')?'#bf563a'
-            : (threat==='medium')?'#b0793b':'#9b7c52';
-  const earIn='#6f5538', dark='#33271a', snout='#e7e0cb', nose='#19140f';
+  const hi=(threat==='high'||threat==='critical'), med=(threat==='medium');
+  const alert=(state==='alert');
+  const fur  = hi?'#9d5f47':med?'#8f7748':'#7e7160';   // grizzled, warms with threat
+  const furD = hi?'#6f3d2d':med?'#5f4b2d':'#52483c';   // shadow fur (jaw/underside)
+  const crown= hi?'#c83a28':'#9c4a36';                 // red "helmet" marking
+  const dark='#221b13', red='#d83a2a';
+  const muz='#d9d0b9', nose='#15110c', fang='#f4f0e3';
+  const eyeC = alert?'#ff5340':(hi?'#ff8a55':med?'#ffd24a':'#cdd5c6');
+  const earY = alert?9:7;                               // ears pin back when alert
+
   const mask=[]; for(let y=0;y<W;y++)mask[y]=new Array(W).fill(false);
-  const set=(x,y)=>{mask[y][x]=true;};
-  disk(12,13.5,8.6,set);          // head
-  disk(6,5.5,3.2,set);            // left ear
-  disk(18,5.5,3.2,set);           // right ear
-  // outline = empty pixels touching fur
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){
-    if(mask[y][x])continue; let adj=false;
-    for(const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){
-      const ny=y+d[1],nx=x+d[0]; if(ny>=0&&ny<W&&nx>=0&&nx<W&&mask[ny][nx]){adj=true;break;}}
-    if(adj)px(x,y,dark);
+  const set=(x,y)=>{if(x>=0&&y>=0&&x<W&&y<W)mask[y][x]=true;};
+  disk(16,18,11,set);                 // broad head
+  disk(7,earY,3.5,set); disk(25,earY,3.5,set);   // ears
+  disk(16,24,7.6,set);                // heavy muzzle/jaw
+
+  // outline (empty pixel touching fur)
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++){if(mask[y][x])continue;let adj=false;
+    for(const d of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){
+      const ny=y+d[1],nx=x+d[0];if(ny>=0&&ny<W&&nx>=0&&nx<W&&mask[ny][nx]){adj=true;break;}}
+    if(adj)px(x,y,dark);}
+  // fur + underside shadow
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x])px(x,y,y>21?furD:fur);
+  // red helmet crown (Akakabuto signature)
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x]&&y>=7&&y<=13){
+    const dx=(x-16)/9,dy=(y-7)/6.5; if(dx*dx+dy*dy<=1)px(x,y,crown);}
+  // ear interiors
+  disk(7,earY,1.4,(x,y)=>px(x,y,dark)); disk(25,earY,1.4,(x,y)=>px(x,y,dark));
+  // muzzle (lighter mask)
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++){const ex=(x-16)/6,ey=(y-24)/4.3;
+    if(ex*ex+ey*ey<=1&&mask[y][x])px(x,y,muz);}
+  // nose (blunt triangle)
+  for(let x=14;x<=18;x++)px(x,20,nose); for(let x=15;x<=17;x++)px(x,21,nose); px(16,22,nose);
+
+  // heavy angled brow (always scowling) — outer high, inner low
+  for(let t=0;t<2;t++){line(8,13+t,14,16+t,dark); line(24,13+t,18,16+t,dark);}
+
+  if(state==='sleeping'){ line(10,18,13,18,dark); line(19,18,22,18,dark); }
+  else if(state==='error'){ line(10,16,13,19,'#888');line(13,16,10,19,'#888');
+                            line(19,16,22,19,'#888');line(22,16,19,19,'#888'); }
+  else {
+    const slit=alert?17:(state==='suspicious'?18:17);   // narrowed when calm
+    for(let x=10;x<=13;x++){px(x,slit,eyeC);px(x,slit+1,eyeC);}
+    for(let x=19;x<=22;x++){px(x,slit,eyeC);px(x,slit+1,eyeC);}
+    px(12,slit,nose);px(12,slit+1,nose); px(20,slit,nose);px(20,slit+1,nose);  // pupils
+    if(alert){px(11,slit,'#fff');px(21,slit,'#fff');}                          // glint
+    if(state==='suspicious'){for(let x=10;x<=13;x++)px(x,slit,fur);for(let x=19;x<=22;x++)px(x,slit,fur);} // half-lid
   }
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x])px(x,y,fur);
-  disk(6,5.5,1.5,(x,y)=>px(x,y,earIn));
-  disk(18,5.5,1.5,(x,y)=>px(x,y,earIn));
-  // snout (ellipse, clipped to head)
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){
-    const ex=(x-12)/5.2, ey=(y-16.8)/3.4;
-    if(ex*ex+ey*ey<=1 && mask[y][x]) px(x,y,snout);
-  }
-  disk(12,15.2,1.4,(x,y)=>px(x,y,nose)); px(12,16.5,nose);
-  // eyes by mood
-  const lx=8, rx=15, ey=11;
-  const eye=(x,c)=>{px(x,ey,c);px(x+1,ey,c);px(x,ey+1,c);px(x+1,ey+1,c);};
-  if(state==='sleeping'){
-    for(let i=-1;i<=2;i++){px(lx+i,ey+1,dark);px(rx+i,ey+1,dark);}
-  } else if(state==='error'){
-    px(lx,ey,'#8a8a8a');px(lx+1,ey+1,'#8a8a8a');px(lx+1,ey,'#8a8a8a');px(lx,ey+1,'#8a8a8a');
-    px(rx,ey,'#8a8a8a');px(rx+1,ey+1,'#8a8a8a');px(rx+1,ey,'#8a8a8a');px(rx,ey+1,'#8a8a8a');
-  } else if(state==='alert'){
-    eye(lx,nose);eye(rx,nose);
-    px(lx,ey,'#ff5b5b');px(rx+1,ey,'#ff5b5b');
-    px(lx-1,ey-2,dark);px(lx,ey-1,dark);
-    px(rx+2,ey-2,dark);px(rx+1,ey-1,dark);
-  } else if(state==='suspicious'){
-    eye(lx,nose);eye(rx,nose);
-    px(lx,ey,fur);px(lx+1,ey,fur);px(rx,ey,fur);px(rx+1,ey,fur);
-    px(lx-1,ey-1,dark);px(rx+2,ey-1,dark);
-  } else {
-    eye(lx,nose);eye(rx,nose);
-    px(lx+1,ey,'#ffffff');px(rx+1,ey,'#ffffff');
-  }
+
+  if(alert){                                   // open snarl + fangs
+    for(let x=13;x<=19;x++)px(x,25,dark);
+    for(let x=14;x<=18;x++)px(x,26,nose); px(15,27,nose);px(17,27,nose);
+    px(14,25,fang);px(15,26,fang); px(18,25,fang);px(17,26,fang);
+  } else { line(13,25,16,26,dark); line(19,25,16,26,dark); }   // grim line
+
+  line(8,11,13,18,red);          // diagonal battle scar across the left brow/eye
 }
 
 const lvl={low:1,medium:2,high:3,critical:4};
