@@ -40,14 +40,13 @@
   #ksp.hurt{animation:shake .4s linear}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 
-  /* threat placeholder until Jax generates enemy art */
-  .ph{top:34px;right:48px;width:140px;height:140px;border:1px dashed rgba(37,208,255,.5);
-    background:repeating-linear-gradient(45deg,rgba(37,208,255,.05) 0 6px,transparent 6px 12px);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--cy)}
-  .ph .qm{font-size:52px;line-height:1;text-shadow:0 0 12px var(--cy);animation:p 1.4s infinite}
-  .ph .pl{font-size:8px;letter-spacing:.14em;color:var(--dim);text-align:center;padding:0 8px}
-  .ph.lunge{animation:lungeE .4s ease-in-out}
+  #esp{top:40px;right:30px;max-width:220px;max-height:160px;width:auto;height:auto;
+    filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
+  #esp.lunge{animation:lungeE .4s ease-in-out}
   @keyframes lungeE{50%{transform:translate(-26px,34px)}}
+  #esp.hit{animation:ehit .4s linear}
+  @keyframes ehit{0%,100%{transform:translateX(0)}25%{transform:translateX(7px);filter:brightness(2.2)}50%{transform:translateX(-5px)}75%{transform:translateX(4px);filter:brightness(2.2)}}
+  #esp.faint{transition:opacity .8s,transform .8s;opacity:0;transform:translateY(26px) scale(.85)}
 
   .info{position:absolute;background:var(--box);border:1px solid var(--faint);padding:6px 10px;min-width:206px;z-index:5}
   .info.e{top:22px;left:22px}.info.k{bottom:96px;right:22px}
@@ -86,7 +85,7 @@
   <div id="battle">
     <div class="scene">
       <div class="plat e"></div><div class="plat k"></div>
-      <div class="spr ph" id="esp"><div class="qm">?</div><div class="pl">UNIDENTIFIED HOSTILE<br>sprite pending</div></div>
+      <img class="spr" id="esp" alt="threat">
       <img class="spr" id="ksp" src="sprites/sheet/37.png" alt="KUMA">
       <div class="info e"><div class="nm"><span id="enm">ROGUE AP</span><b id="elv">Lv —</b></div>
         <div class="hp"><i id="ehp" style="width:100%"></i></div></div>
@@ -101,13 +100,21 @@
 </div>
 <div id="flash"></div>
 <script>
-// KUMA art = Jax's sprite sheet, frames extracted to sprites/sheet/. Threats are
-// placeholders until enemy art exists.
+// KUMA art = Jax's sprite sheet (sprites/sheet/); enemies = Jax's threat sheet
+// (sprites/enemies/). All art is generated, sliced, and keyed transparent.
 const F={idle:'sprites/sheet/37.png',special:'sprites/sheet/05.png',attack:'sprites/sheet/04.png',hurt:'sprites/sheet/35.png'};
+const EP='sprites/enemies/';
 const THREATS=[
- {name:'ROGUE AP',lv:14,hp:120,attacks:[{n:'EVIL TWIN',m:'It spins up a fake DemoNet_2G!',d:18},{n:'BEACON FLOOD',m:'It spams fake SSIDs!',d:14}]},
- {name:'DEAUTHER',lv:16,hp:135,attacks:[{n:'DEAUTH FLOOD',m:'It floods 1600 deauth frames!',d:22},{n:'DISASSOC',m:'It blasts disassoc frames!',d:16}]},
- {name:'PINEAPPLE',lv:18,hp:150,attacks:[{n:'KARMA',m:'It lures clients with fake SSIDs!',d:17},{n:'HANDSHAKE HARVEST',m:'It rips a handshake from the air!',d:21}]}];
+ {name:'ROGUE AP',sprite:'01_rogue_ap.png',lv:14,hp:120,attacks:[{n:'EVIL TWIN',m:'It spins up a fake DemoNet_2G!',d:18},{n:'BEACON SPOOF',m:'It forges a trusted BSSID!',d:14}]},
+ {name:'EVIL TWIN',sprite:'02_evil_twin.png',lv:15,hp:125,attacks:[{n:'CLONE',m:'It mirrors your AP perfectly!',d:18},{n:'DOWNGRADE',m:'It forces the link to open auth!',d:16}]},
+ {name:'DEAUTHER',sprite:'03_deauther.png',lv:16,hp:135,attacks:[{n:'DEAUTH FLOOD',m:'It floods 1600 deauth frames!',d:22},{n:'DISASSOC',m:'It blasts disassoc frames!',d:16}]},
+ {name:'WIFI PINEAPPLE',sprite:'04_pineapple.png',lv:18,hp:150,attacks:[{n:'KARMA',m:'It lures clients with fake SSIDs!',d:17},{n:'HANDSHAKE HARVEST',m:'It rips a handshake from the air!',d:21}]},
+ {name:'BEACON FLOODER',sprite:'05_beacon_flooder.png',lv:13,hp:115,attacks:[{n:'SSID SPAM',m:'It spews hundreds of fake networks!',d:14},{n:'AIRTIME CHOKE',m:'It floods the channel with beacons!',d:12}]},
+ {name:'KARMA LURE',sprite:'06_karma_lure.png',lv:16,hp:130,attacks:[{n:'FREE WIFI',m:'It dangles a fake open network!',d:17},{n:'PROBE REPLY',m:'It answers every probe request!',d:15}]},
+ {name:'HANDSHAKE HARVESTER',sprite:'07_handshake_harvester.png',lv:19,hp:145,attacks:[{n:'EAPOL GRAB',m:'It snatches the 4-way handshake!',d:21},{n:'PMKID STEAL',m:'It rips the PMKID off the AP!',d:19}]},
+ {name:'SNIFFER',sprite:'08_sniffer.png',lv:12,hp:110,attacks:[{n:'PACKET CAPTURE',m:'It silently logs your traffic!',d:12},{n:'EAVESDROP',m:'It listens on the channel!',d:14}]},
+ {name:'RF JAMMER',sprite:'09_rf_jammer.png',lv:17,hp:140,attacks:[{n:'NOISE BLAST',m:'It drowns the band in RF noise!',d:20},{n:'SIGNAL FLOOD',m:'It saturates every channel!',d:16}]},
+ {name:'BOTNET WORM',sprite:'10_botnet_worm.png',lv:20,hp:160,attacks:[{n:'INFECT',m:'It compromises a client device!',d:16},{n:'SWARM',m:'It pulls in the whole botnet!',d:19}]}];
 const MOVES=[
  {n:'HARDEN PMF',s:'block forged deauth',d:[20,26],m:'<span class="jp">クマ</span> hardened the link. Forged frames bounce off!'},
  {n:'REDIRECT',s:'fail to a clean band',d:[12,18],m:'<span class="jp">クマ</span> slipped the link to a clean channel!'},
@@ -127,9 +134,10 @@ function trigger(){if($('battle').style.display==='block')return;
 function startBattle(){const t=THREATS[Math.floor(Math.random()*THREATS.length)];
   S={enemy:{...t,max:t.hp},kuma:{hp:120,max:120},mark:false};
   $('pill').textContent='ENGAGED';$('flash').className='go';kuma('idle');
+  $('esp').src=EP+t.sprite;
   setTimeout(()=>{
     $('idle').style.display='none';$('battle').style.display='block';
-    $('esp').style.opacity=1;
+    $('esp').className='spr';$('esp').style.opacity=1;
     $('enm').textContent=t.name;$('elv').textContent='Lv '+t.lv;
     setHP($('ehp'),t.hp,t.hp);setHP($('khp'),120,120);$('khpn').textContent='120 / 120';
     $('menu').classList.add('hidden');
@@ -143,7 +151,8 @@ function doMove(i){if(busy)return;busy=true;$('menu').classList.add('hidden');
   const mv=MOVES[i];let dmg=rnd(mv.d);if(S.mark){dmg=Math.round(dmg*1.5);}
   msg('<span class="jp">クマ</span> used <b>'+mv.n+'</b>!');kuma('special');
   setTimeout(()=>{lunge($('ksp'));
-    setTimeout(()=>{S.enemy.hp-=dmg;setHP($('ehp'),S.enemy.hp,S.enemy.max);if(mv.mark)S.mark=true;
+    setTimeout(()=>{const e=$('esp');e.classList.remove('hit');void e.offsetWidth;e.classList.add('hit');
+      S.enemy.hp-=dmg;setHP($('ehp'),S.enemy.hp,S.enemy.max);if(mv.mark)S.mark=true;
       setTimeout(()=>{msg(mv.m,'next');kuma('idle');
         if(S.enemy.hp<=0)return setTimeout(victory,800);
         setTimeout(enemyTurn,1100);},700);},170);},350);}
@@ -154,7 +163,7 @@ function enemyTurn(){const a=S.enemy.attacks[Math.floor(Math.random()*S.enemy.at
       S.kuma.hp-=a.d;if(S.kuma.hp<0)S.kuma.hp=0;
       setHP($('khp'),S.kuma.hp,S.kuma.max);$('khpn').textContent=S.kuma.hp+' / '+S.kuma.max;
       setTimeout(()=>{msg(a.m,'next');kuma('idle');if(S.kuma.hp<=0)return setTimeout(faint,800);busy=false;setTimeout(playerTurn,850);},700);},170);},350);}
-function victory(){$('esp').style.opacity=.15;msg('<b>'+S.enemy.name+'</b> was contained!');
+function victory(){$('esp').classList.add('faint');msg('<b>'+S.enemy.name+'</b> was contained!');
   setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.');setTimeout(toIdle,1500);},1500);}
 function faint(){msg('The link dropped... <span class="jp">クマ</span> regroups.');setTimeout(toIdle,1800);}
 function toIdle(){busy=false;$('battle').style.display='none';$('idle').style.display='flex';kuma('idle');

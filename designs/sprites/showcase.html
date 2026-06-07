@@ -23,8 +23,18 @@
 <div class="sub">Jax's generated cyber-bear. A sentinel built for watching the grid:
 calm, unwavering, always on guard. Protects, detects, endures.</div>
 <div id="rows"></div>
+<h1 style="margin-top:34px">クマ // THREATS</h1>
+<div class="sub">The 10 hostiles KUMA hunts. Each maps to a real wireless/network attack and a detector.</div>
+<div class="strip" id="enemies"></div>
 <script>
 const P='sheet/';
+const ENEMIES=[['01_rogue_ap','rogue ap'],['02_evil_twin','evil twin'],['03_deauther','deauther'],
+ ['04_pineapple','pineapple'],['05_beacon_flooder','beacon flooder'],['06_karma_lure','karma lure'],
+ ['07_handshake_harvester','handshake harvester'],['08_sniffer','sniffer'],['09_rf_jammer','rf jammer'],
+ ['10_botnet_worm','botnet worm']];
+{const e=document.getElementById('enemies');
+ for(const [id,name] of ENEMIES){const c=document.createElement('div');c.className='cell';
+   c.innerHTML='<img src="enemies/'+id+'.png" alt="'+name+'"><div class="lbl">'+name+'</div>';e.appendChild(c);}}
 const ROWS=[
   {lbl:'core',sm:false,items:[['00','portrait'],['37','idle'],['04','attack'],['05','special']]},
   {lbl:'move',sm:false,items:[['01','front'],['06','up'],['08','left'],['09','right']]},
