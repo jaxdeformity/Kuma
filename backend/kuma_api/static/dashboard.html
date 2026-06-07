@@ -6,134 +6,234 @@
 <title>KUMA GUARD</title>
 <style>
   :root{
-    --bg:#0a0c0b; --ink:#c8d0cc; --dim:#5d6b64; --line:#1c2420;
-    --green:#3fe07a; --cyan:#39d6e0; --amber:#f2a23c; --red:#ff4d4d; --grid:#101512;
+    --bg:#070a09; --panel:#0c110f; --ink:#bfcabf; --dim:#566; --faint:#2a322d;
+    --grn:#46e07a; --cyn:#3fd0d8; --amb:#f2a23c; --red:#ff4747; --wht:#e8f0e8;
+    --scan:rgba(0,0,0,.22);
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%}
+  html,body{margin:0;height:100%;background:var(--bg)}
   body{
-    background:var(--bg); color:var(--ink);
-    font:14px/1.5 "JetBrains Mono","SF Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
-    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-    background-size:22px 22px; letter-spacing:.02em;
-    padding:18px; max-width:780px; margin:0 auto;
+    color:var(--ink);
+    font:13px/1.45 "JetBrains Mono","Cascadia Mono","SF Mono",ui-monospace,Consolas,monospace;
+    letter-spacing:.04em; padding:14px; max-width:860px; margin:0 auto;
+    text-shadow:0 0 1px rgba(120,255,170,.08);
   }
-  a{color:var(--cyan)}
-  .topbar{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:8px}
-  .brand{font-weight:700;letter-spacing:.35em;color:var(--ink)}
-  .brand b{color:var(--green)}
-  .ver{color:var(--dim);font-size:12px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
-  @media(max-width:620px){.grid{grid-template-columns:1fr}}
-  /* corner-bracket panel, no rounded card slop */
-  .panel{position:relative;border:1px solid var(--line);padding:16px;background:rgba(0,0,0,.25)}
-  .panel::before,.panel::after{content:"";position:absolute;width:9px;height:9px;border:2px solid var(--dim)}
-  .panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
-  .panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
-  .label{color:var(--dim);font-size:11px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:6px}
-  .bear{font-size:30px;line-height:1.1;white-space:pre;text-align:center;margin:6px 0 10px}
-  .mode{font-size:22px;font-weight:700;letter-spacing:.1em}
-  .threat{font-size:40px;font-weight:700;letter-spacing:.05em;margin:2px 0}
-  .kv{display:flex;justify-content:space-between;border-top:1px dotted var(--line);padding:5px 0}
-  .kv span:first-child{color:var(--dim)}
-  .pill{display:inline-block;padding:1px 7px;border:1px solid currentColor;font-size:11px;letter-spacing:.15em}
-  .events{margin-top:14px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{color:var(--dim);text-align:left;font-weight:400;font-size:11px;letter-spacing:.2em;border-bottom:1px solid var(--line);padding:4px 6px}
-  td{padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .sev{font-weight:700;letter-spacing:.1em}
-  .lo{color:var(--green)} .me{color:var(--amber)} .hi{color:var(--red)} .cr{color:var(--red)}
-  .foot{color:var(--dim);font-size:11px;margin-top:14px;display:flex;justify-content:space-between}
-  .dot{width:7px;height:7px;display:inline-block;border-radius:50%;background:var(--red);margin-right:6px;vertical-align:middle}
-  .live .dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+  /* CRT scanlines + flicker, hardware feel */
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,var(--scan) 2px 3px);
+    mix-blend-mode:multiply;opacity:.5}
+  a{color:var(--cyn);text-decoration:none}
+  .rule{border:0;border-top:1px solid var(--faint);margin:0}
+
+  /* header strip */
+  header{display:flex;justify-content:space-between;align-items:center;
+    border:1px solid var(--faint);border-bottom-width:2px;padding:7px 11px;background:var(--panel)}
+  .wordmark{font-weight:700;letter-spacing:.42em;color:var(--wht)}
+  .wordmark .g{color:var(--grn)}
+  .hdr-r{color:var(--dim);font-size:11px;display:flex;gap:14px;align-items:center}
+  .live{display:inline-flex;align-items:center;gap:6px}
+  .blip{width:7px;height:7px;background:var(--red);border-radius:1px}
+  .ok .blip{background:var(--grn);box-shadow:0 0 7px var(--grn);animation:pulse 1.6s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+
+  .core{display:grid;grid-template-columns:200px 1fr;gap:0;border:1px solid var(--faint);border-top:0}
+  @media(max-width:600px){.core{grid-template-columns:1fr}}
+  .viewport{position:relative;
+    background:radial-gradient(120% 120% at 50% 30%,rgba(70,224,122,.06),transparent 60%);
+    background-color:#050807;display:flex;align-items:center;justify-content:center;
+    padding:16px;border-right:1px solid var(--faint);min-height:200px}
+  @media(max-width:600px){.viewport{border-right:0;border-bottom:1px solid var(--faint)}}
+  #bear{image-rendering:pixelated;width:160px;height:160px}
+  .vp-tag{position:absolute;bottom:6px;left:8px;font-size:10px;color:var(--dim);letter-spacing:.2em}
+
+  .readout{padding:13px 15px;display:flex;flex-direction:column;gap:9px}
+  .mode{font-size:13px;letter-spacing:.34em;color:var(--cyn)}
+  .threat-l{font-size:10px;letter-spacing:.3em;color:var(--dim)}
+  .threat{font-size:34px;font-weight:700;letter-spacing:.04em;line-height:1;margin-top:-3px}
+  .gauge{display:flex;gap:3px;margin-top:2px}
+  .seg{height:7px;flex:1;background:var(--faint)}
+  .kv{display:flex;justify-content:space-between;font-size:12px;border-top:1px dotted var(--faint);padding:3px 0}
+  .kv b{color:var(--wht);font-weight:400}
+  .kv span{color:var(--dim)}
+
+  /* defenses strip */
+  .defenses{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--faint);border-top:0}
+  .def{flex:1 0 33%;display:flex;align-items:center;gap:7px;padding:6px 10px;
+    border-right:1px solid var(--faint);border-top:1px solid var(--faint);font-size:11px;color:var(--dim)}
+  .def .led{width:6px;height:6px;background:var(--grn);box-shadow:0 0 5px var(--grn)}
+  .def.armed{color:var(--ink)}
+  .def.hot{color:var(--amb)} .def.hot .led{background:var(--amb);box-shadow:0 0 6px var(--amb)}
+
+  /* apex banner */
+  #apex{display:none;border:1px solid var(--red);border-top:0;background:rgba(255,71,71,.08);
+    color:var(--red);padding:7px 11px;font-size:12px;letter-spacing:.1em;animation:flash 1s steps(2) infinite}
+  #apex.on{display:block}
+  @keyframes flash{50%{background:rgba(255,71,71,.02)}}
+
+  /* event console */
+  .console{border:1px solid var(--faint);border-top:0;background:var(--panel)}
+  .ctitle{font-size:10px;letter-spacing:.3em;color:var(--dim);padding:6px 11px;border-bottom:1px solid var(--faint)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  td{padding:4px 11px;border-bottom:1px solid var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  td.t{color:var(--dim);width:64px}
+  td.s{width:54px;font-weight:700}
+  td.ty{color:var(--cyn);width:170px}
+  td.m{color:var(--ink)}
+  .lo{color:var(--grn)} .me{color:var(--amb)} .hi,.cr{color:var(--red)}
+  .apexrow td{color:var(--red)!important;background:rgba(255,71,71,.05)}
+  .foot{display:flex;justify-content:space-between;color:var(--dim);font-size:10px;padding:6px 2px}
+  .cur::after{content:"\2588";color:var(--grn);animation:pulse 1s steps(2) infinite}
 </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand">K U M A &nbsp;<b>GUARD</b></div>
-    <div class="ver" id="ver">v0.0.1</div>
-  </div>
+  <header>
+    <div class="wordmark">KUMA<span class="g">·</span>GUARD</div>
+    <div class="hdr-r">
+      <span id="ver">v0.0.1</span>
+      <span id="chan">ch--</span>
+      <span class="live" id="live"><span class="blip"></span><span id="livetxt">LINK</span></span>
+    </div>
+  </header>
 
-  <div class="grid">
-    <div class="panel">
-      <div class="label">Status</div>
-      <div class="bear" id="bear">ʕ –ᴥ– ʔ</div>
-      <div class="mode" id="mode">—</div>
+  <div class="core">
+    <div class="viewport">
+      <canvas id="bear" width="32" height="32"></canvas>
+      <div class="vp-tag" id="bstate">--</div>
+    </div>
+    <div class="readout">
+      <div class="mode" id="mode">— MODE</div>
+      <div class="threat-l">THREAT LEVEL</div>
       <div class="threat" id="threat">—</div>
-      <div class="label" style="margin-top:8px">Threat level</div>
-    </div>
-
-    <div class="panel">
-      <div class="label">Telemetry</div>
-      <div class="kv"><span>device</span><span id="device">—</span></div>
-      <div class="kv"><span>interface</span><span id="iface">—</span></div>
-      <div class="kv"><span>events / 10m</span><span id="ev10">—</span></div>
-      <div class="kv"><span>uptime</span><span id="uptime">—</span></div>
-      <div class="kv"><span>bear_state</span><span id="bs">—</span></div>
-      <div style="margin-top:10px"><span class="pill" id="conn">CONNECTING</span></div>
+      <div class="gauge" id="gauge"></div>
+      <div class="kv"><span>events / 10m</span><b id="ev10">—</b></div>
+      <div class="kv"><span>uptime</span><b id="uptime">—</b></div>
+      <div class="kv"><span>sensor</span><b id="iface">—</b></div>
     </div>
   </div>
 
-  <div class="panel events">
-    <div class="label">Recent events</div>
-    <table>
-      <thead><tr><th style="width:64px">SEV</th><th style="width:46px">CONF</th><th>TYPE</th><th>SSID</th><th style="width:70px">CH</th></tr></thead>
-      <tbody id="events"><tr><td colspan="5" style="color:var(--dim)">waiting for backend…</td></tr></tbody>
-    </table>
-  </div>
+  <div class="defenses" id="defenses"></div>
+  <div id="apex">⚠ APEX ENGAGED — <span id="apexmsg"></span></div>
 
-  <div class="foot">
-    <span><span class="dot"></span><span id="poll">offline</span></span>
-    <span>read-only · <a href="/docs">API</a></span>
+  <div class="console">
+    <div class="ctitle">EVENT LOG <span class="cur"></span></div>
+    <table><tbody id="events"><tr><td class="m" style="color:var(--dim)">awaiting backend…</td></tr></tbody></table>
   </div>
+  <div class="foot"><span id="footstat">connecting</span><span>KUMA Guard · read-only · <a href="/docs">api</a></span></div>
 
 <script>
-const BEARS = {
-  sleeping:"ʕ –ᴥ– ʔ", foraging:"ʕ •ᴥ• ʔ", honey_trap:"ʕ •ᴥ• ʔ️",
-  suspicious:"ʕ ◑ᴥ◐ ʔ", alert:"ʕ ⊙ᴥ⊙ ʔ", apex_ready:"ʕ╬•ᴥ•╬ʔ",
-  logging:"ʕ •ᴥ• ʔ", error:"ʕ ✕ᴥ✕ ʔ"
-};
-const THREAT_COLOR = {low:"var(--green)",medium:"var(--amber)",high:"var(--red)",critical:"var(--red)"};
-const SEV_CLASS = {low:"lo",medium:"me",high:"hi",critical:"cr"};
-function hms(s){s=s||0;const p=n=>String(n).padStart(2,"0");return p(s/3600|0)+":"+p((s%3600)/60|0)+":"+p(s%60);}
-function setConn(ok){
-  const c=document.getElementById("conn"); const f=document.querySelector(".foot");
-  document.getElementById("poll").textContent = ok?"live · polling 2s":"backend offline";
-  f.classList.toggle("live",ok);
-  c.textContent = ok?"ONLINE":"OFFLINE"; c.style.color = ok?"var(--green)":"var(--red)";
+const TC={low:"var(--grn)",medium:"var(--amb)",high:"var(--red)",critical:"var(--red)"};
+const SEG=4, BEAR_PX=32, SCALE=5;
+const DEFENSES=[
+  ["deauth","deauth flood"],["beacon_flood","beacon spam"],
+  ["evil_twin","evil twin"],["karma","karma/pineap"],
+  ["handshake","handshake harvest"],["apex","apex defense"]
+];
+// --- pixel bear ---------------------------------------------------------
+// 1=fur 2=dark 3=snout 4=nose  (eyes drawn per-state)
+const B=[
+"................................",
+".....22..............22.........",
+"....2112............2112........",
+"....1111............1111........",
+".....11111111111111111..........",
+"....111111111111111111..........",
+"...11111111111111111111.........",
+"...11111111111111111111.........",
+"...11111111111111111111.........",
+"...11111111111111111111.........",
+"...11111133333333331111.........",
+"...11111333333333331111.........",
+"...11113333333333333111.........",
+"...11113333334433333111.........",
+"...11113333344443333111.........",
+"...11113333333333333111.........",
+"....1111333333333331111.........",
+"....11111333333333311111........",
+".....111111333333111111.........",
+"......1111111111111111..........",
+".......11111111111111...........",
+"........111111111111............",
+"..........11111111..............",
+"................................"];
+const bc=document.getElementById("bear").getContext("2d");
+function tint(t){return getComputedStyle(document.documentElement).getPropertyValue(({low:'--grn',medium:'--amb',high:'--red',critical:'--red'})[t]||'--cyn').trim();}
+function drawBear(state,threat){
+  const fur = (threat==='high'||threat==='critical')?'#c43a3a':(threat==='medium'?'#b9772e':'#8c6a3f');
+  const furL='#a98a5a', dark='#4a3826', snout='#d8d2c0', nose='#1a1a1a';
+  bc.clearRect(0,0,BEAR_PX,BEAR_PX);
+  for(let y=0;y<B.length;y++)for(let x=0;x<B[y].length;x++){
+    const c=B[y][x]; if(c===".")continue;
+    bc.fillStyle = c==="1"?fur : c==="2"?dark : c==="3"?snout : nose;
+    bc.fillRect(x,y,1,1);
+  }
+  // eyes by mood (positions ~ x 8-9 and 21-22, y 8)
+  const L=8,R=21,EY=8;
+  const eye=(x,c)=>{bc.fillStyle=c;bc.fillRect(x,EY,2,2);};
+  if(state==='sleeping'){bc.fillStyle='#3a2e20';bc.fillRect(L,EY+1,3,1);bc.fillRect(R,EY+1,3,1);}
+  else if(state==='alert'){bc.fillStyle='#fff';bc.fillRect(L-1,EY-1,4,4);bc.fillRect(R-1,EY-1,4,4);eye(L,'#ff3030');eye(R,'#ff3030');}
+  else if(state==='suspicious'){bc.fillStyle='#111';bc.fillRect(L,EY,3,2);bc.fillRect(R,EY,3,2);bc.fillStyle=fur;bc.fillRect(L,EY,3,1);bc.fillRect(R,EY,3,1);}
+  else if(state==='honey_trap'){eye(L,'#111');eye(R,'#111');bc.fillStyle='#f2a23c';bc.fillRect(15,EY-2,2,1);}
+  else if(state==='error'){bc.fillStyle='#777';bc.fillRect(L,EY,1,1);bc.fillRect(L+1,EY+1,1,1);bc.fillRect(R,EY,1,1);bc.fillRect(R+1,EY+1,1,1);}
+  else {eye(L,'#111');eye(R,'#111');}
 }
+// --- gauge --------------------------------------------------------------
+const lvl={low:1,medium:2,high:3,critical:4};
+function gauge(t){const n=lvl[t]||0,g=document.getElementById('gauge');g.innerHTML='';
+  for(let i=0;i<SEG;i++){const s=document.createElement('div');s.className='seg';
+    if(i<n)s.style.background=tint(t);g.appendChild(s);}}
+function hms(s){s=s||0;const p=n=>String(n).padStart(2,'0');return p(s/3600|0)+':'+p((s%3600)/60|0)+':'+p(s%60);}
+function defenses(active){const d=document.getElementById('defenses');d.innerHTML='';
+  DEFENSES.forEach(([k,label])=>{const el=document.createElement('div');
+    el.className='def'+(active[k]?' hot':' armed');
+    el.innerHTML='<span class="led"></span>'+label;d.appendChild(el);});}
+let lastApex=0;
 async function tick(){
   try{
-    const s = await (await fetch("/api/status",{cache:"no-store"})).json();
-    document.getElementById("ver").textContent  = "v"+s.version;
-    document.getElementById("device").textContent= s.device;
-    document.getElementById("iface").textContent = s.wifi_interface;
-    document.getElementById("ev10").textContent  = s.events_last_10m;
-    document.getElementById("uptime").textContent= hms(s.uptime_seconds);
-    document.getElementById("bs").textContent    = s.bear_state;
-    document.getElementById("mode").textContent  = (s.mode||"—").toUpperCase()+" MODE";
-    const t=document.getElementById("threat");
-    t.textContent=(s.threat_level||"—").toUpperCase();
-    t.style.color=THREAT_COLOR[s.threat_level]||"var(--ink)";
-    const b=document.getElementById("bear");
-    b.textContent=BEARS[s.bear_state]||BEARS.error;
-    b.style.color=THREAT_COLOR[s.threat_level]||"var(--cyan)";
-    setConn(true);
+    const s=await(await fetch('/api/status',{cache:'no-store'})).json();
+    document.getElementById('ver').textContent='v'+s.version;
+    document.getElementById('chan').textContent=(s.wifi_interface||'wlan');
+    document.getElementById('mode').textContent=(s.mode||'—').toUpperCase()+' MODE';
+    document.getElementById('ev10').textContent=s.events_last_10m;
+    document.getElementById('uptime').textContent=hms(s.uptime_seconds);
+    document.getElementById('iface').textContent=s.wifi_interface;
+    document.getElementById('bstate').textContent=(s.bear_state||'--').toUpperCase();
+    const t=document.getElementById('threat');t.textContent=(s.threat_level||'—').toUpperCase();t.style.color=TC[s.threat_level]||'var(--ink)';
+    gauge(s.threat_level); drawBear(s.bear_state,s.threat_level);
+    document.getElementById('live').className='live ok';document.getElementById('livetxt').textContent='ONLINE';
+    document.getElementById('footstat').textContent='live · 2s poll';
 
-    const ev = await (await fetch("/api/events?limit=10",{cache:"no-store"})).json();
-    const tb=document.getElementById("events");
-    tb.innerHTML = ev.length ? ev.map(e=>{
-      const sc=SEV_CLASS[e.severity]||"lo";
-      return `<tr>
-        <td class="sev ${sc}">${(e.severity||"").toUpperCase().slice(0,4)}</td>
-        <td>${e.confidence??""}</td>
-        <td>${e.event_type||""}</td>
-        <td>${e.ssid||"—"}</td>
-        <td>${e.channel??"—"}</td></tr>`;
-    }).join("") : `<tr><td colspan="5" style="color:var(--dim)">no events</td></tr>`;
-  }catch(err){ setConn(false); document.getElementById("bear").textContent=BEARS.error; }
+    const ev=await(await fetch('/api/events?limit=14',{cache:'no-store'})).json();
+    const active={}; let apexHot=false, apexMsg='';
+    ev.forEach(e=>{const tp=e.event_type||'';
+      if(tp.includes('deauth'))active.deauth=1;
+      if(tp.includes('beacon'))active.beacon_flood=1;
+      if(tp.includes('twin')||tp.includes('bssid')||tp.includes('rogue'))active.evil_twin=1;
+      if(tp.includes('karma'))active.karma=1;
+      if(tp.includes('handshake'))active.handshake=1;
+      if(tp==='apex_response'){active.apex=1;apexHot=true;apexMsg=e.message;}
+    });
+    defenses(active);
+    const ab=document.getElementById('apex');
+    if(apexHot){ab.classList.add('on');document.getElementById('apexmsg').textContent=apexMsg;}
+    else ab.classList.remove('on');
+
+    const tb=document.getElementById('events');
+    tb.innerHTML = ev.length? ev.map(e=>{
+      const sc={low:'lo',medium:'me',high:'hi',critical:'cr'}[e.severity]||'lo';
+      const apex=e.event_type==='apex_response'?' apexrow':'';
+      const tm=(e.timestamp||'').slice(11,19);
+      return `<tr class="${apex}"><td class="t">${tm}</td>`+
+        `<td class="s ${sc}">${(e.severity||'').toUpperCase().slice(0,4)}</td>`+
+        `<td class="ty">${e.event_type||''}</td>`+
+        `<td class="m">${e.message||((e.bssid||'')+' '+(e.ssid||''))}</td></tr>`;
+    }).join(''):'<tr><td class="m" style="color:var(--dim)">no events — all quiet</td></tr>';
+  }catch(err){
+    document.getElementById('live').className='live';document.getElementById('livetxt').textContent='OFFLINE';
+    document.getElementById('footstat').textContent='backend unreachable';
+    drawBear('error','low');document.getElementById('bstate').textContent='ERROR';
+  }
 }
-tick(); setInterval(tick,2000);
+tick();setInterval(tick,2000);
 </script>
 </body>
 </html>
