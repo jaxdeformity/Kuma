@@ -2,7 +2,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>クマ // battle</title>
 <style>
-  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec;--box:#0c1410}
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec;--box:#0c1410;--cy:#25d0ff}
   *{box-sizing:border-box}html,body{margin:0;height:100%;background:#000}
   body{color:var(--ink);font:14px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
     display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;letter-spacing:.04em}
@@ -15,9 +15,11 @@
   .pill{font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px}
   .pill i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:p 1.7s infinite}
   @keyframes p{50%{opacity:.4}}
+  img{image-rendering:pixelated}
 
   #idle{padding:22px 18px 0;display:flex;flex-direction:column;align-items:center;gap:12px}
-  #idle canvas{image-rendering:pixelated;width:200px;height:200px}
+  #idle img{height:170px;width:auto;animation:bob 2.4s ease-in-out infinite}
+  @keyframes bob{50%{transform:translateY(-6px)}}
   .say{font-size:15px;min-height:20px}.hint{font-size:11px;color:var(--dim);letter-spacing:.1em}
   .strip{display:flex;width:100%;border-top:1px solid var(--faint);font-size:11px;margin-top:6px}
   .strip div{flex:1;padding:7px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
@@ -25,19 +27,28 @@
 
   #battle{display:none}
   .scene{position:relative;height:280px;overflow:hidden;background:
-    radial-gradient(140% 90% at 70% 18%,rgba(255,59,48,.07),transparent 55%),
+    radial-gradient(140% 90% at 70% 18%,rgba(37,208,255,.08),transparent 55%),
     radial-gradient(120% 90% at 30% 86%,rgba(70,224,122,.06),transparent 55%),
     linear-gradient(180deg,#0a0f0c,#06090a)}
   .plat{position:absolute;width:150px;height:34px;border-radius:50%;
     background:radial-gradient(closest-side,rgba(120,150,130,.18),transparent)}
-  .plat.e{top:96px;right:34px}.plat.k{bottom:24px;left:34px}
-  .spr{position:absolute;image-rendering:pixelated}
-  .spr.e{top:24px;right:54px;width:124px;height:124px}
-  .spr.k{bottom:14px;left:42px;width:158px;height:158px;transform:scaleX(-1)}
-  .spr.e.lunge{animation:lungeE .4s ease-in-out}
-  .spr.k.lunge{animation:lungeK .4s ease-in-out}
-  @keyframes lungeE{50%{transform:translate(-26px,40px)}}
-  @keyframes lungeK{50%{transform:scaleX(-1) translate(-26px,-40px)}}
+  .plat.e{top:120px;right:34px}.plat.k{bottom:24px;left:34px}
+  .spr{position:absolute}
+  #ksp{bottom:18px;left:48px;height:150px;width:auto;filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
+  #ksp.lunge{animation:lungeK .4s ease-in-out}
+  @keyframes lungeK{50%{transform:translate(40px,-26px)}}
+  #ksp.hurt{animation:shake .4s linear}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+
+  /* threat placeholder until Jax generates enemy art */
+  .ph{top:34px;right:48px;width:140px;height:140px;border:1px dashed rgba(37,208,255,.5);
+    background:repeating-linear-gradient(45deg,rgba(37,208,255,.05) 0 6px,transparent 6px 12px);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--cy)}
+  .ph .qm{font-size:52px;line-height:1;text-shadow:0 0 12px var(--cy);animation:p 1.4s infinite}
+  .ph .pl{font-size:8px;letter-spacing:.14em;color:var(--dim);text-align:center;padding:0 8px}
+  .ph.lunge{animation:lungeE .4s ease-in-out}
+  @keyframes lungeE{50%{transform:translate(-26px,34px)}}
+
   .info{position:absolute;background:var(--box);border:1px solid var(--faint);padding:6px 10px;min-width:206px;z-index:5}
   .info.e{top:22px;left:22px}.info.k{bottom:96px;right:22px}
   .info .nm{display:flex;justify-content:space-between;font-size:12px;color:var(--wht)}
@@ -63,7 +74,7 @@
     <div class="pill"><i></i><span id="pill">SENTINEL</span></div></div>
 
   <div id="idle">
-    <canvas id="cub" width="32" height="32"></canvas>
+    <img id="cub" src="sprites/sheet/37.png" alt="KUMA">
     <div class="say" id="isay">all quiet</div>
     <div class="hint">[ space ] simulate an attack</div>
     <div class="strip">
@@ -75,8 +86,8 @@
   <div id="battle">
     <div class="scene">
       <div class="plat e"></div><div class="plat k"></div>
-      <canvas class="spr e" id="esp" width="32" height="32"></canvas>
-      <canvas class="spr k" id="ksp" width="32" height="32"></canvas>
+      <div class="spr ph" id="esp"><div class="qm">?</div><div class="pl">UNIDENTIFIED HOSTILE<br>sprite pending</div></div>
+      <img class="spr" id="ksp" src="sprites/sheet/37.png" alt="KUMA">
       <div class="info e"><div class="nm"><span id="enm">ROGUE AP</span><b id="elv">Lv —</b></div>
         <div class="hp"><i id="ehp" style="width:100%"></i></div></div>
       <div class="info k"><div class="nm"><span class="jp">クマ</span><b>Lv 12</b></div>
@@ -90,56 +101,13 @@
 </div>
 <div id="flash"></div>
 <script>
-// ---------- sprite data (generated by designs/sprites/build_sprites.py) ----------
-const SPRITES = {
-  kuma: {grid:["................................",".......oo..............oo.......","......oHHo............oHHo......","......oBBo............oBBo......",".....oBBBBBBBBBBBBBBBBBBBBo.....","....oBBBBBBBBBBBBBBBBBBBBBBo....","....oBBBBBBBBBBBBBBBBBBBBBBo....","...oBBBBooobBBBBBBBBboooBBBBo...","...oBBBBBwEEBBBBBBBBEEwBBBBBo...","...oBBBBBEEEBBBBBBBBEEEBBBBBo...","...oBBBBBBBBBoTTTToBBBBBBBBBo...","..oBBBBBBBBoTTTTTTTToBBBBBBBBo..","..oBBBBBBBoTTTEEEETTToBBBBBBBo..","..oBBBBBBoTTrrrrrrrrTToBBBBBBo..","..oBBBBBBoTfTTfTTfTTfToBBBBBBo..","...oBBBBBBoTTTTooTTTToBBBBBBo...","...oBBBBBBBooooooooooBBBBBBBo...","....oBBBBBBBBBBBBBBBBBBBBBBo....","...oBBBBBBBBBBBBBBBBBBBBBBBBo...","..oBBBBBBBBBBBBBBBBBBBBBBBBBBo..",".oBBBBoTTTTTTTTTTTTTTTTTToBBBBo.","oBBBBoTTTTTTTTTTTTTTTTTTTToBBBBo","oBBBoTTTTTTTTTTTTTTTTTTTTTToBBBo","oBBBBoTTTTTTTTTTTTTTTTTTTToBBBBo","oBBBBBoTTTTTTTTTTTTTTTTTToBBBBBo","boBBBBBBoTTTTBBBBBBTTTToBBBBBBob","cboBBBBBBBBBBBBBBBBBBBBBBBBBBobc","ccboBBBBBBBBBBBBBBBBBBBBBBBBobcc","cccboBBBBBBBBBBBBBBBBBBBBBBobccc","ccccboBBBBBBBBBBBBBBBBBBBBobcccc",".cccboBBBBBBBBBBBBBBBBBBBBobccc.","..ccboBBBBBBBBBBBBBBBBBBBBobcc.."],pal:{".":null,"o":"#241405","B":"#8a5a30","b":"#5e3c1f","H":"#ab7a46","T":"#e8cd9a","t":"#c7a874","E":"#0d0805","w":"#fdf7e6","f":"#fdf7e6","c":"#f2ead2","r":"#7a1f12"},eyeRows:[8,9]},
-  pineapple: {grid:["..........g..........g..........","....g.....G.t......t.G.....g....","...gGg...gGGA......AGGg...gGg...","..gGGGg.gGGGA......AGGGg.gGGGg..","..gGGGGgGGGGGg....gGGGGGgGGGGg..","...gGGGGGGGGGGg..gGGGGGGGGGGg...","....ggGGGGGGGGGggGGGGGGGGGgg....",".....oggGGGGGGGGGGGGGGGGggo.....","....oyYYYYYYYYYYYYYYYYYYYYyo....","...oYYhYYYYYYhYYYYhYYYYYYhYYo...","..oYYYYYYhYYYYYYYYYYYYhYYYYYYo..","..oYYhYYYYYYYYhYYhYYYYYYYYhYYo..",".oYYYYYRRYYYYYYYYYYYYYYRRYYYYYo.",".oYYhYYRRYYYYYhYYhYYYYYRRYYhYYo.","oYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYo","oYYhYYYYYYYhYYYYYYYYhYYYYYYYhYYo","oYYYYYmmmmmmmmmmmmmmmmmmmmYYYYYo","oYYhYYmwmwmwmwmwwmwmwmwmwmYYhYYo","oYYYYYmmmmmmmmmmmmmmmmmmmmYYYYYo","oYYYYhYYYYYYhYYYYYYhYYYYYYhYYYYo","oYYhYYYYYhYYYYYYYYYYYYhYYYYYhYYo",".oYYYYhYYYYYYhYYYYhYYYYYYhYYYYo.",".oYYhYYYYhYYYYYYYYYYYYhYYYYhYYo.","..oYYYYhYYYYYhYYYYhYYYYYhYYYYo..","..oYYhYYYYhYYYYYYYYYYhYYYYhYYo..","...oYYYYhYYYYhYYYYhYYYYhYYYYo...","....oYYhYYYYYYYYYYYYYYYYhYYo....",".....oYYYYhYYYYYYYYYYhYYYYo.....","......ooYYYYYYYYYYYYYYYYoo......","........ooYYYYYYYYYYYYoo........","..........oooooooooooo..........","................................"],pal:{".":null,"o":"#26200a","Y":"#e0a82e","y":"#b07d1c","h":"#f6d36a","G":"#3f8a2e","g":"#1f4a14","R":"#ff3b30","m":"#4a140c","w":"#fff6df","A":"#9aa0a6","t":"#ff3b30"}},
-  rogue_ap: {grid:[".....A....................A.....",".....A....................A.....","....cAc..................cAc....","...c.A.c................c.A.c...","...oAAo..................oAAo...","..oBBBBBBBBBBBBBBBBBBBBBBBBBBo..",".oHBBBBBBBBBBBBBBBBBBBBBBBBBBHo.","oBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBo","oBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBo","oBBBBBBBooooooooooooooooBBBBBBBo","oBBBBBBBrRRRRRRRRRRRRRRrBBBBBBBo","oBBBBBBBrRRRREEwwEERRRRrBBBBBBBo","oBBBBBBBrRRRREEwwEERRRRrBBBBBBBo","oBBBBBBBrRRRRRRRRRRRRRRrBBBBBBBo","oBBBBBBBBrrrrrrrrrrrrrrBBBBBBBBo","oBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBo","oBBBBoommmmmmmmmmmmmmmmmmooBBBBo","oBBBBomcmcmcmcmccmcmcmcmcmoBBBBo","oBBBBoommmmmmmmmmmmmmmmmmooBBBBo","oBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBo","oBcBcBBBBBBBBBBBBBBBBBBBBBBcBcBo",".oBBBBBBBBBBBBBBBBBBBBBBBBBBBBo.",".oBBBBBBBBBBBBBBBBBBBBBBBBBBBBo.","..oooooooooooooooooooooooooooo..","...a....a...a......a...a....a...","...a....a...a......a...a....a...","................................","................................","................................","................................","................................","................................"],pal:{".":null,"o":"#0a0812","B":"#3c3660","b":"#241d3e","H":"#5a5288","A":"#9aa0b4","a":"#5a5d6c","R":"#ff2a2a","r":"#8a1414","w":"#ffe0e0","E":"#1a0606","c":"#25d0ff","m":"#0d0a1a"}},
-  deauther: {grid:["................................",".......Y................Y.......","......Y.....b......b.....Y......","..b..Y....bBBb....bBBb....Y..b..",".bBb.Y...bBBBBb..bBBBBb...Y.bBb.",".bBBb...bBBBBBBbbBBBBBBb...bBBb.","..bBBboBBBBBBBBBBBBBBBBBBobBBb..","...bBBBBBBBBBBBBBBBBBBBBBBBBb...","...bBBBBBBBBBBBBBBBBBBBBBBBBb...","..bBBBwEEBBBBBBBBBBBBBBEEwBBBb..","..bBBBwEEBBBBBBBBBBBBBBEEwBBBb..","...bBBBBBBoTTTTTTTTTToBBBBBBb...","...bBBBBBBmmmmmmmmmmmmBBBBBBb...","...bBBBBBmwmwmwwwwmwmwmBBBBBb...","....bBBBBmmmmmmmmmmmmmmBBBBb....","....bBBBBBBBBBBBBBBBBBBBBBBb....",".....bBBBBBBBBBBBBBBBBBBBBb.....","..Y..bBBBBBBBBBBBBBBBBBBBBb..Y..",".Y..bBBBBBBBBBBBBBBBBBBBBBBb..Y.","Y..bBBBBBBBBBBBBBBBBBBBBBBBBb..Y","Y.bBBBBBBBBBBBBBBBBBBBBBBBBBBb.Y",".bBBBBBBBBBBBBBBBBBBBBBBBBBBBBb.",".bBBBBBBBBBBBBBBBBBBBBBBBBBBBBb.","..bBBBBoBBBBBBBBBBBBBBBBoBBBBb..","..bBBBo.oBBBBBBBBBBBBBBo.oBBBb..",".bBBBo...oBBBBBBBBBBBBo...oBBBb.",".bBBo.....oBBBBBBBBBBo.....oBBb.","bBBo.......oBBBBBBBBo.......oBBb","bBo.........oBBBBBBo.........oBb","Yo...........oBBBBo...........oY","..............oBBo..............","................................"],pal:{".":null,"o":"#240606","B":"#c0392b","b":"#7a1710","H":"#e8604a","Y":"#ffcc1f","y":"#c99500","E":"#0d0303","w":"#ffffff","m":"#3a0606"}}
-};
-
-// ---------- renderer ----------
-function drawSprite(ctx,sp,o){o=o||{};ctx.clearRect(0,0,32,32);const P=sp.pal,dy=o.dy||0;
-  const shut=o.eyes==='shut'&&sp.eyeRows;
-  for(let y=0;y<sp.grid.length;y++){const row=sp.grid[y];
-    const blinkRow=shut&&sp.eyeRows.indexOf(y)>=0;
-    for(let x=0;x<row.length;x++){let ch=row[x];
-      if(blinkRow&&(ch==='E'||ch==='w'))ch='B';
-      const c=P[ch];if(c){ctx.fillStyle=c;ctx.fillRect(x,y+dy,1,1);}}}
-  if(o.flash){ctx.globalAlpha=.5;ctx.fillStyle=o.flash;
-    for(let y=0;y<sp.grid.length;y++){const row=sp.grid[y];
-      for(let x=0;x<row.length;x++)if(P[row[x]])ctx.fillRect(x,y+dy,1,1);}
-    ctx.globalAlpha=1;}}
-
-// ---------- animation engine ----------
-function Animator(canvas,spriteKey){const ctx=canvas.getContext('2d');let sp=SPRITES[spriteKey];
-  let state='idle',t=0,blink=1200+Math.random()*1500;
-  return {el:canvas,
-    setSprite(k){sp=SPRITES[k];},
-    set(s){state=s;t=0;},
-    get state(){return state;},
-    tick(dt){t+=dt;let dy=0,eyes='open',flash=null;
-      if(state==='idle'){dy=Math.round(Math.sin(performance.now()/360)*1.4);
-        blink-=dt;if(blink<0){eyes='shut';if(blink<-150)blink=1400+Math.random()*2200;}}
-      else if(state==='menace'){dy=Math.round(Math.sin(performance.now()/300)*1.2);}
-      else if(state==='hurt'){eyes='shut';const k=Math.max(0,1-t/420);dy=Math.round(Math.sin(t/45)*4*k);flash=(Math.floor(t/70)%2)?'#fff':null;if(t>420)this.set(state2||'idle');}
-      else if(state==='faint'){eyes='shut';dy=Math.min(34,t/12);}
-      drawSprite(ctx,sp,{dy,eyes,flash});}};
-}
-let state2=null;
-const A=[];
-const cubA=Animator(document.getElementById('cub'),'kuma');A.push(cubA);
-const kA=Animator(document.getElementById('ksp'),'kuma');
-const eA=Animator(document.getElementById('esp'),'rogue_ap');
-let last=performance.now();
-function loop(now){const dt=Math.min(60,now-last);last=now;for(const a of A)a.tick(dt);requestAnimationFrame(loop);}
-requestAnimationFrame(loop);
-
-// ---------- battle data ----------
+// KUMA art = Jax's sprite sheet, frames extracted to sprites/sheet/. Threats are
+// placeholders until enemy art exists.
+const F={idle:'sprites/sheet/37.png',special:'sprites/sheet/05.png',attack:'sprites/sheet/04.png',hurt:'sprites/sheet/35.png'};
 const THREATS=[
- {name:'ROGUE AP',sprite:'rogue_ap',lv:14,hp:120,attacks:[{n:'EVIL TWIN',m:'It spins up a fake DemoNet_2G!',d:18},{n:'BEACON FLOOD',m:'It spams fake SSIDs!',d:14}]},
- {name:'DEAUTHER',sprite:'deauther',lv:16,hp:135,attacks:[{n:'DEAUTH FLOOD',m:'It floods 1600 deauth frames!',d:22},{n:'DISASSOC',m:'It blasts disassoc frames!',d:16}]},
- {name:'PINEAPPLE',sprite:'pineapple',lv:18,hp:150,attacks:[{n:'KARMA',m:'It lures clients with fake SSIDs!',d:17},{n:'HANDSHAKE HARVEST',m:'It rips a handshake from the air!',d:21}]}];
+ {name:'ROGUE AP',lv:14,hp:120,attacks:[{n:'EVIL TWIN',m:'It spins up a fake DemoNet_2G!',d:18},{n:'BEACON FLOOD',m:'It spams fake SSIDs!',d:14}]},
+ {name:'DEAUTHER',lv:16,hp:135,attacks:[{n:'DEAUTH FLOOD',m:'It floods 1600 deauth frames!',d:22},{n:'DISASSOC',m:'It blasts disassoc frames!',d:16}]},
+ {name:'PINEAPPLE',lv:18,hp:150,attacks:[{n:'KARMA',m:'It lures clients with fake SSIDs!',d:17},{n:'HANDSHAKE HARVEST',m:'It rips a handshake from the air!',d:21}]}];
 const MOVES=[
  {n:'HARDEN PMF',s:'block forged deauth',d:[20,26],m:'<span class="jp">クマ</span> hardened the link. Forged frames bounce off!'},
  {n:'REDIRECT',s:'fail to a clean band',d:[12,18],m:'<span class="jp">クマ</span> slipped the link to a clean channel!'},
@@ -151,17 +119,16 @@ function setHP(el,cur,max){const pct=Math.max(0,cur/max*100);el.style.width=pct+
 function msg(t,n){$('msg').innerHTML=t+(n?' <span class="nxt">'+n+'</span>':'');}
 function rnd(a){return a[0]+Math.floor(Math.random()*(a[1]-a[0]+1));}
 function lunge(el){el.classList.remove('lunge');void el.offsetWidth;el.classList.add('lunge');}
+function kuma(state){$('ksp').src=F[state];}
 
 function trigger(){if($('battle').style.display==='block')return;
   $('isay').textContent='! incoming...';$('ith').textContent='HIGH';$('ith').style.color='var(--red)';$('iev').textContent=1;
   setTimeout(startBattle,450);}
 function startBattle(){const t=THREATS[Math.floor(Math.random()*THREATS.length)];
   S={enemy:{...t,max:t.hp},kuma:{hp:120,max:120},mark:false};
-  $('pill').textContent='ENGAGED';$('flash').className='go';
-  eA.setSprite(t.sprite);
+  $('pill').textContent='ENGAGED';$('flash').className='go';kuma('idle');
   setTimeout(()=>{
     $('idle').style.display='none';$('battle').style.display='block';
-    A.length=0;A.push(kA,eA);kA.set('idle');eA.set('menace');
     $('esp').style.opacity=1;
     $('enm').textContent=t.name;$('elv').textContent='Lv '+t.lv;
     setHP($('ehp'),t.hp,t.hp);setHP($('khp'),120,120);$('khpn').textContent='120 / 120';
@@ -174,23 +141,23 @@ function buildMenu(){const m=$('menu');m.innerHTML='';
 function playerTurn(){msg('What will <span class="jp">クマ</span> do?');buildMenu();}
 function doMove(i){if(busy)return;busy=true;$('menu').classList.add('hidden');
   const mv=MOVES[i];let dmg=rnd(mv.d);if(S.mark){dmg=Math.round(dmg*1.5);}
-  msg('<span class="jp">クマ</span> used <b>'+mv.n+'</b>!');
+  msg('<span class="jp">クマ</span> used <b>'+mv.n+'</b>!');kuma('special');
   setTimeout(()=>{lunge($('ksp'));
-    setTimeout(()=>{eA.set('hurt');state2='menace';S.enemy.hp-=dmg;setHP($('ehp'),S.enemy.hp,S.enemy.max);if(mv.mark)S.mark=true;
-      setTimeout(()=>{msg(mv.m,'next');
+    setTimeout(()=>{S.enemy.hp-=dmg;setHP($('ehp'),S.enemy.hp,S.enemy.max);if(mv.mark)S.mark=true;
+      setTimeout(()=>{msg(mv.m,'next');kuma('idle');
         if(S.enemy.hp<=0)return setTimeout(victory,800);
         setTimeout(enemyTurn,1100);},700);},170);},350);}
 function enemyTurn(){const a=S.enemy.attacks[Math.floor(Math.random()*S.enemy.attacks.length)];S.mark=false;
   msg('<b>'+S.enemy.name+'</b> used <b>'+a.n+'</b>!');
   setTimeout(()=>{lunge($('esp'));
-    setTimeout(()=>{kA.set('hurt');state2='idle';S.kuma.hp-=a.d;if(S.kuma.hp<0)S.kuma.hp=0;
+    setTimeout(()=>{kuma('hurt');const k=$('ksp');k.classList.remove('hurt');void k.offsetWidth;k.classList.add('hurt');
+      S.kuma.hp-=a.d;if(S.kuma.hp<0)S.kuma.hp=0;
       setHP($('khp'),S.kuma.hp,S.kuma.max);$('khpn').textContent=S.kuma.hp+' / '+S.kuma.max;
-      setTimeout(()=>{msg(a.m,'next');if(S.kuma.hp<=0)return setTimeout(faint,800);busy=false;setTimeout(playerTurn,850);},700);},170);},350);}
-function victory(){eA.set('faint');msg('<b>'+S.enemy.name+'</b> was contained!');
+      setTimeout(()=>{msg(a.m,'next');kuma('idle');if(S.kuma.hp<=0)return setTimeout(faint,800);busy=false;setTimeout(playerTurn,850);},700);},170);},350);}
+function victory(){$('esp').style.opacity=.15;msg('<b>'+S.enemy.name+'</b> was contained!');
   setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.');setTimeout(toIdle,1500);},1500);}
 function faint(){msg('The link dropped... <span class="jp">クマ</span> regroups.');setTimeout(toIdle,1800);}
-function toIdle(){busy=false;$('battle').style.display='none';$('idle').style.display='flex';
-  A.length=0;A.push(cubA);cubA.set('idle');
+function toIdle(){busy=false;$('battle').style.display='none';$('idle').style.display='flex';kuma('idle');
   $('pill').textContent='SENTINEL';$('isay').textContent='all quiet';$('ith').textContent='LOW';$('ith').style.color='var(--grn)';$('iev').textContent=0;}
 
 document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();trigger();}});

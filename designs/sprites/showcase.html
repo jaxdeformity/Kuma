@@ -2,41 +2,45 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>クマ // sprite sheet</title>
 <style>
-  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a}
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--cy:#25d0ff}
   body{margin:0;background:#000;color:var(--ink);
-    font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
-    padding:32px;letter-spacing:.04em}
+    font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;padding:32px;letter-spacing:.04em}
   h1{font-weight:400;font-size:16px;letter-spacing:.2em;color:var(--grn);margin:0 0 4px}
-  .sub{color:var(--dim);margin-bottom:28px}
-  .grid{display:flex;gap:28px;flex-wrap:wrap}
-  .cell{border:1px solid var(--faint);background:var(--bg);padding:16px;text-align:center;position:relative}
+  .sub{color:var(--dim);margin-bottom:28px;max-width:640px}
+  .row{margin-bottom:30px}
+  .rlbl{color:var(--cy);letter-spacing:.18em;font-size:11px;text-transform:uppercase;margin-bottom:10px}
+  .strip{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end}
+  .cell{border:1px solid var(--faint);background:
+    radial-gradient(120% 100% at 50% 30%,rgba(37,208,255,.05),transparent 60%),#0a0f0c;
+    padding:14px;text-align:center;position:relative}
   .cell::after{content:"";position:absolute;inset:0;pointer-events:none;
     background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.15) 2px 3px)}
-  canvas{image-rendering:pixelated;width:192px;height:192px;display:block;background:
-    radial-gradient(120% 100% at 50% 30%,rgba(70,224,122,.05),transparent 60%),#0a0f0c}
-  .lbl{margin-top:12px;letter-spacing:.18em;text-transform:uppercase;font-size:11px}
-  .lbl.bad{color:#ff6a5e}.lbl.good{color:var(--grn)}
+  .cell img{height:120px;width:auto;image-rendering:pixelated;display:block}
+  .cell.sm img{height:74px}
+  .lbl{margin-top:10px;letter-spacing:.16em;text-transform:uppercase;font-size:10px;color:var(--dim)}
 </style></head><body>
 <h1>クマ // KUMA sprite sheet</h1>
-<div class="sub">32x32 hand-designed. left: the guardian. right: the threats it hunts.</div>
-<div class="grid" id="grid"></div>
-<script src="sprites.gen.js"></script>
+<div class="sub">Jax's generated cyber-bear. A sentinel built for watching the grid:
+calm, unwavering, always on guard. Protects, detects, endures.</div>
+<div id="rows"></div>
 <script>
-const ROSTER=[
-  {key:'kuma',label:'KUMA / guardian',cls:'good'},
-  {key:'rogue_ap',label:'ROGUE AP',cls:'bad'},
-  {key:'deauther',label:'DEAUTHER',cls:'bad'},
-  {key:'pineapple',label:'PINEAPPLE',cls:'bad'},
+const P='sheet/';
+const ROWS=[
+  {lbl:'core',sm:false,items:[['00','portrait'],['37','idle'],['04','attack'],['05','special']]},
+  {lbl:'move',sm:false,items:[['01','front'],['06','up'],['08','left'],['09','right']]},
+  {lbl:'emote / action',sm:false,items:[['10','spark'],['11','query'],['12','alert'],['34','scan']]},
+  {lbl:'states',sm:true,items:[['35','hurt'],['36','hurt 2'],['22','icon']]},
 ];
-function draw(ctx,sp){ctx.clearRect(0,0,32,32);const P=sp.pal;
-  for(let y=0;y<sp.grid.length;y++)for(let x=0;x<sp.grid[y].length;x++){
-    const c=P[sp.grid[y][x]];if(c){ctx.fillStyle=c;ctx.fillRect(x,y,1,1);}}}
-const g=document.getElementById('grid');
-for(const r of ROSTER){
-  const cell=document.createElement('div');cell.className='cell';
-  const cv=document.createElement('canvas');cv.width=32;cv.height=32;
-  draw(cv.getContext('2d'),SPRITES[r.key]);
-  const l=document.createElement('div');l.className='lbl '+r.cls;l.textContent=r.label;
-  cell.appendChild(cv);cell.appendChild(l);g.appendChild(cell);
+const r=document.getElementById('rows');
+for(const row of ROWS){
+  const sec=document.createElement('div');sec.className='row';
+  sec.innerHTML='<div class="rlbl">'+row.lbl+'</div>';
+  const strip=document.createElement('div');strip.className='strip';
+  for(const [id,name] of row.items){
+    const c=document.createElement('div');c.className='cell'+(row.sm?' sm':'');
+    c.innerHTML='<img src="'+P+id+'.png" alt="'+name+'"><div class="lbl">'+name+'</div>';
+    strip.appendChild(c);
+  }
+  sec.appendChild(strip);r.appendChild(sec);
 }
 </script></body></html>

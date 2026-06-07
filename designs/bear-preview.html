@@ -1,39 +1,36 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>クマ // bear states</title>
+<title>クマ // KUMA</title>
 <style>
-  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30}
-  body{margin:0;background:#000;color:var(--ink);
-    font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;padding:32px;letter-spacing:.04em}
-  h1{font-weight:400;font-size:16px;letter-spacing:.2em;color:var(--grn);margin:0 0 4px}
-  .sub{color:var(--dim);margin-bottom:28px}
-  .grid{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end}
-  .cell{border:1px solid var(--faint);background:var(--bg);padding:16px;text-align:center;position:relative}
-  .cell::after{content:"";position:absolute;inset:0;pointer-events:none;
-    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.15) 2px 3px)}
-  canvas{image-rendering:pixelated;width:208px;height:208px;display:block;background:#0a0f0c}
-  .lbl{margin-top:12px;letter-spacing:.18em;text-transform:uppercase;font-size:11px}
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--cy:#25d0ff}
+  body{margin:0;background:#000;color:var(--ink);min-height:100vh;
+    font:13px/1.6 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
+    display:flex;align-items:center;justify-content:center;padding:32px;letter-spacing:.04em}
+  .hero{display:flex;gap:40px;align-items:center;flex-wrap:wrap;max-width:760px}
+  .stage{border:1px solid var(--faint);position:relative;
+    background:radial-gradient(120% 100% at 50% 25%,rgba(37,208,255,.07),transparent 60%),#0a0f0c;
+    padding:30px 40px}
+  .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.16) 2px 3px)}
+  .stage img{height:240px;width:auto;image-rendering:pixelated;display:block;
+    animation:bob 2.6s ease-in-out infinite;filter:drop-shadow(0 8px 8px rgba(0,0,0,.5))}
+  @keyframes bob{50%{transform:translateY(-7px)}}
+  h1{font-weight:400;font-size:22px;letter-spacing:.2em;margin:0 0 2px}
+  h1 .jp{color:var(--cy)}
+  .tag{color:var(--grn);font-size:11px;letter-spacing:.18em;text-transform:uppercase;margin-bottom:16px}
+  p{color:var(--dim);max-width:300px}
+  .links{margin-top:18px;font-size:11px}
+  .links a{color:var(--cy);text-decoration:none;border-bottom:1px dotted var(--cy)}
 </style></head><body>
-<h1>クマ // bear threat states</h1>
-<div class="sub">one fierce bear, fur shifts with threat level. same sprite the dashboard + battle use.</div>
-<div class="grid" id="grid"></div>
-<script src="sprites/sprites.gen.js"></script>
-<script>
-// recolor the shared KUMA sprite per threat level (fur base + shadow shift)
-const TINT={
-  calm  :{B:'#8a5a30',b:'#5e3c1f',H:'#ab7a46',name:'sentinel / calm',col:'var(--grn)'},
-  alert :{B:'#9c6a2e',b:'#6f4720',H:'#c08a3e',name:'foraging / alert',col:'var(--amb)'},
-  alarm :{B:'#b0552a',b:'#7a3418',H:'#d07038',name:'apex / alarm',col:'var(--red)'},
-};
-function draw(ctx,tint){const sp=SPRITES.kuma,P=Object.assign({},sp.pal,{B:tint.B,b:tint.b,H:tint.H});
-  ctx.clearRect(0,0,32,32);
-  for(let y=0;y<sp.grid.length;y++)for(let x=0;x<sp.grid[y].length;x++){
-    const c=P[sp.grid[y][x]];if(c){ctx.fillStyle=c;ctx.fillRect(x,y,1,1);}}}
-const g=document.getElementById('grid');
-for(const k of ['calm','alert','alarm']){
-  const t=TINT[k];const cell=document.createElement('div');cell.className='cell';
-  const cv=document.createElement('canvas');cv.width=32;cv.height=32;draw(cv.getContext('2d'),t);
-  const l=document.createElement('div');l.className='lbl';l.style.color=t.col;l.textContent=t.name;
-  cell.appendChild(cv);cell.appendChild(l);g.appendChild(cell);
-}
-</script></body></html>
+<div class="hero">
+  <div class="stage"><img src="sprites/sheet/00.png" alt="KUMA"></div>
+  <div>
+    <h1><span class="jp">クマ</span> KUMA</h1>
+    <div class="tag">sentinel // always on guard</div>
+    <p>A sentinel built for watching the grid. Calm, unwavering, always on guard.
+    Protects, detects, endures.</p>
+    <div class="links"><a href="sprites/showcase.html">full sprite sheet &rarr;</a>
+    &nbsp;&nbsp;<a href="kuma-battle.html">battle demo &rarr;</a></div>
+  </div>
+</div>
+</body></html>
