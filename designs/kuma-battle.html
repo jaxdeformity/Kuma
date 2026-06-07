@@ -3,189 +3,412 @@
 <title>クマ // battle</title>
 <style>
   :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec;--box:#0c1410;--cy:#25d0ff}
-  *{box-sizing:border-box}html,body{margin:0;height:100%;background:#000}
-  body{color:var(--ink);font:14px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
-    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;letter-spacing:.04em}
+  *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000}
+  body{color:var(--ink);font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
+    display:flex;flex-direction:column;align-items:center;gap:12px;min-height:100vh;padding:18px;letter-spacing:.04em}
   .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif}
-  .unit{width:560px;max-width:100%;border:2px solid var(--faint);background:var(--bg);position:relative;overflow:hidden}
-  .unit::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:30;
-    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.16) 2px 3px)}
-  .top{display:flex;justify-content:space-between;align-items:center;padding:8px 13px;border-bottom:1px solid var(--faint)}
-  .mark{font-size:18px;color:var(--wht);letter-spacing:.1em}
-  .pill{font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px}
-  .pill i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:p 1.7s infinite}
-  @keyframes p{50%{opacity:.4}}
   img{image-rendering:pixelated}
+  /* T-Deck-sized console */
+  .unit{width:440px;max-width:100%;border:1px solid var(--faint);background:#0a0e0c;position:relative;overflow:hidden}
+  .unit::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:40;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.17) 2px 3px)}
+  .top{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid var(--faint);font-size:11px}
+  .mark{font-size:16px;letter-spacing:.1em;color:var(--wht)}
+  .dot{color:var(--dim);display:flex;align-items:center;gap:6px}
+  .dot i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:pulse 1.7s infinite}
+  .dot.engaged i{background:var(--red);box-shadow:0 0 7px var(--red)}
+  @keyframes pulse{50%{opacity:.4}}
 
-  #idle{padding:22px 18px 0;display:flex;flex-direction:column;align-items:center;gap:12px}
-  #idle img{height:175px;width:auto}
-  .say{font-size:15px;min-height:20px}.hint{font-size:11px;color:var(--dim);letter-spacing:.1em}
-  .strip{display:flex;width:100%;border-top:1px solid var(--faint);font-size:11px;margin-top:6px}
-  .strip div{flex:1;padding:7px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
-  .strip div:last-child{border-right:0}.strip b{display:block;color:var(--ink);font-size:13px;margin-top:2px}
-
-  #battle{display:none}
-  .scene{position:relative;height:280px;overflow:hidden;background:
-    radial-gradient(140% 90% at 70% 18%,rgba(37,208,255,.08),transparent 55%),
-    radial-gradient(120% 90% at 30% 86%,rgba(70,224,122,.06),transparent 55%),
+  /* scene */
+  .scene{position:relative;height:230px;overflow:hidden;background:
+    radial-gradient(140% 90% at 72% 22%,rgba(255,59,48,.06),transparent 55%),
+    radial-gradient(120% 90% at 28% 86%,rgba(37,208,255,.06),transparent 55%),
     linear-gradient(180deg,#0a0f0c,#06090a)}
-  .plat{position:absolute;width:150px;height:34px;border-radius:50%;
-    background:radial-gradient(closest-side,rgba(120,150,130,.18),transparent)}
-  .plat.e{top:120px;right:34px}.plat.k{bottom:24px;left:34px}
-  .spr{position:absolute}
-  #ksp{bottom:18px;left:48px;height:150px;width:auto;filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
-  #ksp.lunge{animation:lungeK .4s ease-in-out}
-  @keyframes lungeK{50%{transform:translate(40px,-26px)}}
-  #ksp.hurt{animation:shake .4s linear}
-  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+  .grid{position:absolute;inset:0;opacity:.12;pointer-events:none;
+    background:linear-gradient(var(--faint) 1px,transparent 1px) 0 0/100% 22px,
+               linear-gradient(90deg,var(--faint) 1px,transparent 1px) 0 0/22px 100%}
+  .plat{position:absolute;width:140px;height:30px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(120,150,130,.16),transparent)}
+  .plat.e{top:96px;right:30px}.plat.k{bottom:18px;left:28px}
+  .spr{position:absolute;transition:opacity .25s}
+  #ksp{bottom:8px;left:34px;height:150px;width:auto;transform-origin:bottom center;filter:drop-shadow(0 5px 5px rgba(0,0,0,.55))}
+  #esp{top:18px;right:30px;max-width:150px;max-height:128px;width:auto;height:auto;filter:drop-shadow(0 5px 5px rgba(0,0,0,.55))}
+  /* clip / status motion */
+  .bob{animation:bob 2.2s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-5px)}}
+  .ebob{animation:ebob 2.6s ease-in-out infinite}@keyframes ebob{50%{transform:translateY(4px)}}
+  .lungeK{animation:lungeK .42s ease-in-out}@keyframes lungeK{45%{transform:translate(34px,-22px) scale(1.05)}}
+  .lungeE{animation:lungeE .42s ease-in-out}@keyframes lungeE{45%{transform:translate(-24px,28px)}}
+  .hit{animation:hit .4s linear}@keyframes hit{0%,100%{transform:translateX(0);filter:none}25%{transform:translateX(6px);filter:brightness(2.6) saturate(.4)}50%{transform:translateX(-5px)}75%{transform:translateX(4px);filter:brightness(2.6) saturate(.4)}}
+  .reveal{animation:reveal 1.1s steps(1) }@keyframes reveal{0%,40%{filter:brightness(0) drop-shadow(0 0 6px var(--cy));opacity:.85}45%{transform:translateX(3px)}55%{transform:translateX(-3px);filter:brightness(0) drop-shadow(0 0 9px var(--cy))}70%{filter:brightness(.4)}100%{filter:none;opacity:1}}
+  .faint{transition:opacity .9s,transform .9s;opacity:0;transform:translateY(22px) scale(.82)}
 
-  #esp{top:40px;right:30px;max-width:220px;max-height:160px;width:auto;height:auto;
-    filter:drop-shadow(0 6px 6px rgba(0,0,0,.5))}
-  #esp.lunge{animation:lungeE .4s ease-in-out}
-  @keyframes lungeE{50%{transform:translate(-26px,34px)}}
-  #esp.hit{animation:ehit .4s linear}
-  @keyframes ehit{0%,100%{transform:translateX(0)}25%{transform:translateX(7px);filter:brightness(2.2)}50%{transform:translateX(-5px)}75%{transform:translateX(4px);filter:brightness(2.2)}}
-  #esp.faint{transition:opacity .8s,transform .8s;opacity:0;transform:translateY(26px) scale(.85)}
+  /* fx overlay */
+  #fx{position:absolute;inset:0;pointer-events:none;z-index:25}
+  .slash{position:absolute;height:3px;background:linear-gradient(90deg,transparent,var(--cy),#fff,var(--cy),transparent);
+    box-shadow:0 0 8px var(--cy);opacity:0}
+  .wave{position:absolute;border:2px solid var(--cy);border-radius:50%;opacity:0;box-shadow:0 0 10px var(--cy)}
+  .lock{position:absolute;border:2px solid var(--cy);opacity:0}
+  .mark{position:absolute;color:var(--amb);font-size:18px;text-shadow:0 0 8px var(--amb);opacity:0}
+  @keyframes slashGo{0%{opacity:0;transform:translateX(-30px) scaleX(.2)}30%{opacity:1}100%{opacity:0;transform:translateX(30px) scaleX(1.4)}}
+  @keyframes waveGo{0%{opacity:.9;transform:scale(.2)}100%{opacity:0;transform:scale(2.4)}}
+  @keyframes lockGo{0%{opacity:0;transform:scale(1.6) rotate(8deg)}40%{opacity:1}100%{opacity:.9;transform:scale(1) rotate(0)}}
+  @keyframes markGo{0%{opacity:0;transform:translateY(6px) scale(.6)}40%{opacity:1;transform:translateY(-4px) scale(1.1)}100%{opacity:0;transform:translateY(-10px)}}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:30}
+  #flash.go{animation:flash .5s ease-out}@keyframes flash{0%{opacity:0}20%{opacity:.85}100%{opacity:0}}
+  #flash.red.go{background:var(--red)}
+  .scan{position:absolute;left:0;right:0;height:60px;z-index:28;pointer-events:none;opacity:0;
+    background:linear-gradient(transparent,rgba(37,208,255,.22),transparent)}
+  #flash.scan-on .scan{animation:scan .7s linear}@keyframes scan{0%{top:-60px;opacity:.9}100%{top:230px;opacity:0}}
 
-  .info{position:absolute;background:var(--box);border:1px solid var(--faint);padding:6px 10px;min-width:206px;z-index:5}
-  .info.e{top:22px;left:22px}.info.k{bottom:96px;right:22px}
-  .info .nm{display:flex;justify-content:space-between;font-size:12px;color:var(--wht)}
-  .info .nm b{color:var(--dim);font-weight:400;font-size:10px}
-  .hp{height:7px;background:#1c241e;border:1px solid var(--faint);margin-top:5px}
+  /* hud */
+  .info{position:absolute;background:var(--box);border:1px solid var(--faint);padding:5px 8px;min-width:172px;z-index:20;font-size:11px}
+  .info.e{top:14px;left:14px}.info.k{bottom:62px;right:14px}
+  .info .nm{display:flex;justify-content:space-between;color:var(--wht)}
+  .info .nm b{color:var(--dim);font-weight:400;font-size:9px}
+  .hp{height:6px;background:#1c241e;border:1px solid var(--faint);margin-top:4px}
   .hp i{display:block;height:100%;background:var(--grn);transition:width .45s,background .3s}
-  .info .hpn{font-size:10px;color:var(--dim);text-align:right;margin-top:2px}
-  .console{display:grid;grid-template-columns:1fr 240px;border-top:2px solid var(--faint);min-height:96px}
-  .msg{padding:14px 16px;font-size:14px;align-self:center}
-  .msg .nxt{color:var(--dim);font-size:11px;float:right;animation:p 1s infinite}
-  .menu{display:grid;grid-template-columns:1fr 1fr;border-left:2px solid var(--faint)}
-  .menu button{background:var(--box);border:1px solid var(--faint);color:var(--ink);font:inherit;font-size:12px;
-    padding:9px 7px;cursor:pointer;text-align:left}
-  .menu button:hover{background:#13201a;color:var(--grn)}
-  .menu.hidden{display:none}
-  .menu .sub{display:block;font-size:9px;color:var(--dim);margin-top:2px}
-  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:60}
-  #flash.go{animation:fl 1.1s ease-out forwards}
-  @keyframes fl{0%{opacity:0}8%{opacity:1}16%{opacity:0}24%{opacity:1}32%{opacity:0}55%{opacity:1}100%{opacity:0}}
-</style></head><body>
-<div class="unit">
-  <div class="top"><div class="mark"><span class="jp">クマ</span></div>
-    <div class="pill"><i></i><span id="pill">SENTINEL</span></div></div>
+  .badge{display:inline-block;font-size:8px;letter-spacing:.1em;color:var(--cy);border:1px solid var(--cy);
+    padding:0 3px;margin-top:3px;text-shadow:0 0 5px var(--cy)}
 
-  <div id="idle">
-    <img id="cub" src="sprites/anim/idle/0.png" alt="KUMA">
-    <div class="say" id="isay">all quiet</div>
-    <div class="hint">[ space ] simulate an attack</div>
-    <div class="strip">
-      <div>THREAT<b id="ith" style="color:var(--grn)">LOW</b></div>
-      <div>UPTIME<b>02:31</b></div><div>EVENTS/10m<b id="iev">0</b></div><div>SENSOR<b>wlan1mon</b></div>
-    </div>
+  .center{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);text-align:center;z-index:22;
+    color:var(--wht);font-size:15px;letter-spacing:.16em;text-shadow:0 0 10px rgba(0,0,0,.9);padding:0 14px}
+  .center.warn{color:var(--red)}
+
+  /* console / menu */
+  .console{border-top:1px solid var(--faint);min-height:74px;display:flex;flex-direction:column}
+  .msg{padding:9px 12px;font-size:13px;flex:1;display:flex;align-items:center}
+  .msg .nxt{color:var(--dim);font-size:10px;margin-left:auto;animation:pulse 1s infinite}
+  .menu{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--faint)}
+  .menu.hidden{display:none}
+  .menu button{background:var(--box);border:0;border-right:1px solid var(--faint);border-bottom:1px solid var(--faint);
+    color:var(--ink);font:inherit;font-size:12px;padding:8px 10px;cursor:pointer;text-align:left}
+  .menu button:nth-child(2n){border-right:0}
+  .menu button:hover,.menu button.sel{background:#13201a;color:var(--cy)}
+  .menu .sub{display:block;font-size:8px;color:var(--dim);margin-top:1px;letter-spacing:.06em}
+  .timer{position:absolute;bottom:0;left:0;height:2px;background:var(--cy);width:0;box-shadow:0 0 6px var(--cy)}
+
+  /* status bar (non-battle) */
+  .bar{display:flex;border-top:1px solid var(--faint);font-size:10px}
+  .bar div{flex:1;padding:6px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
+  .bar div:last-child{border-right:0}.bar b{display:block;color:var(--ink);font-size:12px;margin-top:1px}
+
+  /* demo controls */
+  .ctl{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:11px;color:var(--dim);width:440px;max-width:100%}
+  .ctl select,.ctl button{background:#0c1410;color:var(--ink);border:1px solid var(--faint);font:inherit;font-size:11px;padding:5px 9px;cursor:pointer}
+  .ctl button:hover{border-color:var(--cy);color:var(--cy)}
+</style></head><body>
+
+<div class="unit">
+  <div class="top">
+    <div class="mark"><span class="jp">クマ</span></div>
+    <div class="dot" id="dot"><i></i><span id="dtx">SENTINEL</span></div>
   </div>
 
-  <div id="battle">
-    <div class="scene">
-      <div class="plat e"></div><div class="plat k"></div>
-      <img class="spr" id="esp" alt="threat">
-      <img class="spr" id="ksp" src="sprites/anim/idle/0.png" alt="KUMA">
-      <div class="info e"><div class="nm"><span id="enm">ROGUE AP</span><b id="elv">Lv —</b></div>
-        <div class="hp"><i id="ehp" style="width:100%"></i></div></div>
-      <div class="info k"><div class="nm"><span class="jp">クマ</span><b>Lv 12</b></div>
-        <div class="hp"><i id="khp" style="width:100%"></i></div><div class="hpn" id="khpn">120 / 120</div></div>
+  <div class="scene" id="scene">
+    <div class="grid"></div>
+    <div class="plat e"></div><div class="plat k"></div>
+    <img class="spr" id="esp" alt="threat">
+    <img class="spr" id="ksp" alt="KUMA">
+    <div class="info e" id="einfo" style="display:none"><div class="nm"><span id="enm">-</span><b id="elv">Lv -</b></div>
+      <div class="hp"><i id="ehp" style="width:100%"></i></div><span class="badge" id="ebadge" style="display:none"></span></div>
+    <div class="info k" id="kinfo" style="display:none"><div class="nm"><span class="jp">クマ</span><b>Lv 12</b></div>
+      <div class="hp"><i id="khp" style="width:100%"></i></div></div>
+    <div id="fx"></div>
+    <div id="flash"><div class="scan"></div></div>
+    <div class="center" id="center"></div>
+  </div>
+
+  <div class="console" id="console">
+    <div class="msg" id="msg">monitoring the air. all quiet.</div>
+    <div class="menu hidden" id="menu"></div>
+    <div class="bar" id="statbar">
+      <div>THREAT<b id="th" style="color:var(--grn)">LOW</b></div>
+      <div>UPTIME<b>02:31</b></div><div>EVENTS<b id="ev">0</b></div><div>SENSOR<b>wlan1mon</b></div>
     </div>
-    <div class="console">
-      <div class="msg" id="msg">A wild threat appeared!</div>
-      <div class="menu hidden" id="menu"></div>
-    </div>
+    <div class="timer" id="timer"></div>
   </div>
 </div>
-<div id="flash"></div>
+
+<div class="ctl">
+  <span>demo:</span>
+  <select id="pick">
+    <option value="">random threat</option>
+  </select>
+  <button id="go">simulate threat [space]</button>
+  <button id="mute">audio: on</button>
+  <span id="hint" style="color:var(--dim)">tap once to enable audio</span>
+</div>
+
 <script>
-// KUMA = Jax's animation sheet (sprites/anim/<action>/0..4.png); enemies = Jax's
-// threat sheet (sprites/enemies/). All generated, sliced, keyed transparent.
-const AP='sprites/anim/';
-const ANIM={idle:5,walk:5,run:5,attack:5,special:5,hurt:5,guard:5,victory:5,ko:5,turn:5};
-function frames(act){return Array.from({length:ANIM[act]},(_,i)=>AP+act+'/'+i+'.png');}
-// preload every frame
-for(const act in ANIM)frames(act).forEach(u=>{const im=new Image();im.src=u;});
-// frame player bound to one <img>
-function Player(img){let f=[],i=0,timer=null;
-  function clear(){if(timer){clearInterval(timer);timer=null;}}
-  return {play(act,o){o=o||{};clear();f=frames(act);i=0;const loop=o.loop!==false,fps=o.fps||6;
-    const step=()=>{img.src=f[i];i++;if(i>=f.length){if(loop){i=0;}else{clear();if(o.onEnd)o.onEnd();return;}}};
-    step();timer=setInterval(step,1000/fps);}};
-}
-const EP='sprites/enemies/';
-const THREATS=[
- {name:'ROGUE AP',sprite:'01_rogue_ap.png',lv:14,hp:120,attacks:[{n:'EVIL TWIN',m:'It spins up a fake DemoNet_2G!',d:18},{n:'BEACON SPOOF',m:'It forges a trusted BSSID!',d:14}]},
- {name:'EVIL TWIN',sprite:'02_evil_twin.png',lv:15,hp:125,attacks:[{n:'CLONE',m:'It mirrors your AP perfectly!',d:18},{n:'DOWNGRADE',m:'It forces the link to open auth!',d:16}]},
- {name:'DEAUTHER',sprite:'03_deauther.png',lv:16,hp:135,attacks:[{n:'DEAUTH FLOOD',m:'It floods 1600 deauth frames!',d:22},{n:'DISASSOC',m:'It blasts disassoc frames!',d:16}]},
- {name:'WIFI PINEAPPLE',sprite:'04_pineapple.png',lv:18,hp:150,attacks:[{n:'KARMA',m:'It lures clients with fake SSIDs!',d:17},{n:'HANDSHAKE HARVEST',m:'It rips a handshake from the air!',d:21}]},
- {name:'BEACON FLOODER',sprite:'05_beacon_flooder.png',lv:13,hp:115,attacks:[{n:'SSID SPAM',m:'It spews hundreds of fake networks!',d:14},{n:'AIRTIME CHOKE',m:'It floods the channel with beacons!',d:12}]},
- {name:'KARMA LURE',sprite:'06_karma_lure.png',lv:16,hp:130,attacks:[{n:'FREE WIFI',m:'It dangles a fake open network!',d:17},{n:'PROBE REPLY',m:'It answers every probe request!',d:15}]},
- {name:'HANDSHAKE HARVESTER',sprite:'07_handshake_harvester.png',lv:19,hp:145,attacks:[{n:'EAPOL GRAB',m:'It snatches the 4-way handshake!',d:21},{n:'PMKID STEAL',m:'It rips the PMKID off the AP!',d:19}]},
- {name:'SNIFFER',sprite:'08_sniffer.png',lv:12,hp:110,attacks:[{n:'PACKET CAPTURE',m:'It silently logs your traffic!',d:12},{n:'EAVESDROP',m:'It listens on the channel!',d:14}]},
- {name:'RF JAMMER',sprite:'09_rf_jammer.png',lv:17,hp:140,attacks:[{n:'NOISE BLAST',m:'It drowns the band in RF noise!',d:20},{n:'SIGNAL FLOOD',m:'It saturates every channel!',d:16}]},
- {name:'BOTNET WORM',sprite:'10_botnet_worm.png',lv:20,hp:160,attacks:[{n:'INFECT',m:'It compromises a client device!',d:16},{n:'SWARM',m:'It pulls in the whole botnet!',d:19}]}];
-const MOVES=[
- {n:'HARDEN PMF',s:'block forged deauth',d:[20,26],m:'<span class="jp">クマ</span> hardened the link. Forged frames bounce off!'},
- {n:'REDIRECT',s:'fail to a clean band',d:[12,18],m:'<span class="jp">クマ</span> slipped the link to a clean channel!'},
- {n:'CONTAIN',s:'blacklist the attacker',d:[30,40],m:'<span class="jp">クマ</span> handed the MAC to the controller. Blacklisted!'},
- {n:'SCAN',s:'log evidence, find a weak point',d:[8,12],mark:true,m:'<span class="jp">クマ</span> logged the evidence and tagged a weak point!'}];
-let S=null,busy=false;
+// =====================================================================
+// KUMA Battle — front-end. Sprites: designs/sprites/{states,enemies}/.
+// Audio: original Web Audio chiptune (see docs/design/kuma-audio-vgm.md).
+// =====================================================================
+
+// ---- sprite maps -----------------------------------------------------
+const KST={SENTINEL:'03_sentinel',ALERT:'06_alert',INVESTIGATING:'07_investigating',
+  DEFENDING:'08_defending',APEX:'05_apex',ATTACKING:'09_attacking',VICTORY:'10_victory',
+  HONEY:'04_honey',HIBERNATING:'01_hibernating',FORAGING:'02_foraging'};
+const KS='sprites/states/', ES='sprites/enemies/';
+for(const k in KST){const i=new Image();i.src=KS+KST[k]+'.png';}
+
+// event_type -> enemy (mirrors docs/design/enemy-battle-mapping.json)
+const ENEMIES={
+  rogue_ap:{name:'ROGUE AP',sprite:'01_rogue_ap',text:'A rogue access point appeared.',weak:['SIGNAL MAUL','PAWLOCK'],hp:120,lv:14},
+  evil_twin:{name:'EVIL TWIN',sprite:'02_evil_twin',text:'A fractured twin is mimicking the network.',weak:['SIGNAL MAUL','HONEY SNARE'],hp:125,lv:15},
+  deauth_burst:{name:'DEAUTHER',sprite:'03_deauther',text:'A deauther is flooding disconnect frames.',weak:['CHANNEL ROAR'],hp:135,lv:16},
+  disassoc_burst:{name:'DEAUTHER',sprite:'03_deauther',text:'A disassociation burst is active.',weak:['CHANNEL ROAR'],hp:130,lv:16},
+  wifi_pineapple:{name:'WIFI PINEAPPLE',sprite:'04_pineapple',text:'A lure device is baiting nearby clients.',weak:['HONEY SNARE','SIGNAL MAUL'],hp:150,lv:18},
+  beacon_flood:{name:'BEACON FLOODER',sprite:'05_beacon_flooder',text:'Fake SSIDs are flooding the air.',weak:['CHANNEL ROAR','SIGNAL MAUL'],hp:115,lv:13},
+  karma_suspected:{name:'KARMA LURE',sprite:'06_karma_lure',text:'A lure is answering probe requests.',weak:['HONEY SNARE'],hp:130,lv:16},
+  handshake_harvest:{name:'HANDSHAKE HARVESTER',sprite:'07_handshake_harvester',text:'A harvester is trying to capture handshakes.',weak:['PAWLOCK','HONEY SNARE'],hp:145,lv:19},
+  sniffer:{name:'SNIFFER',sprite:'08_sniffer',text:'A passive listener is lurking nearby.',weak:['PAWLOCK'],hp:110,lv:12},
+  rf_jammer:{name:'RF JAMMER',sprite:'09_rf_jammer',text:'RF denial behavior is disrupting the channel.',weak:['CHANNEL ROAR'],hp:140,lv:17},
+  botnet_worm:{name:'BOTNET WORM',sprite:'10_botnet_worm',text:'Linked infected nodes are spreading.',weak:['CHANNEL ROAR','PAWLOCK'],hp:160,lv:20}
+};
+for(const k in ENEMIES){const i=new Image();i.src=ES+ENEMIES[k].sprite+'.png';}
+
+// abilities -> sprite clip, status effect
+const ABIL={
+  'SIGNAL MAUL':{clip:['SENTINEL','ATTACKING','VICTORY'],status:'DESTABILIZED',sub:'disrupt broadcast/spoof',fx:'slash',base:[20,26],cue:'signalMaul'},
+  'HONEY SNARE':{clip:['HONEY','INVESTIGATING','ATTACKING'],status:'MARKED',sub:'bait + mark, boost next',fx:'mark',base:[8,12],mark:true,cue:'honeySnare'},
+  'CHANNEL ROAR':{clip:['ALERT','APEX','ATTACKING'],status:'SUPPRESSED',sub:'break burst/flood/swarm',fx:'wave',base:[20,26],cue:'channelRoar'},
+  'PAWLOCK':{clip:['DEFENDING','APEX','VICTORY'],status:'CONTAINED',sub:'pin + contain',fx:'lock',base:[22,30],cue:'pawlock'}
+};
+const ORDER=['SIGNAL MAUL','HONEY SNARE','CHANNEL ROAR','PAWLOCK'];
+
+// ---- Web Audio chiptune engine --------------------------------------
+const NM={C:0,'C#':1,D:2,'D#':3,E:4,F:5,'F#':6,G:7,'G#':8,A:9,'A#':10,B:11};
+function hz(n){if(!n||n==='REST')return 0;const m=/^([A-G]#?)(\d)$/.exec(n);if(!m)return 0;
+  return 440*Math.pow(2,(NM[m[1]]+(+m[2]-4)*12-9)/12);}
+const AUD={ctx:null,master:null,muted:false,vol:0.32,mTimer:null,mNext:0,
+  init(){if(this.ctx)return;const A=window.AudioContext||window.webkitAudioContext;this.ctx=new A();
+    this.master=this.ctx.createGain();this.master.gain.value=this.muted?0:this.vol;this.master.connect(this.ctx.destination);},
+  resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();},
+  mute(m){this.muted=m;if(this.master)this.master.gain.value=m?0:this.vol;},
+  _osc(t,note,ms,wave,vol,fx){const f=hz(note);if(!f)return;const d=ms/1000;
+    const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type=(wave==='tri')?'triangle':(wave==='saw')?'sawtooth':'square';
+    o.frequency.setValueAtTime(f,t);
+    if(fx==='slide_up')o.frequency.exponentialRampToValueAtTime(f*1.6,t+d);
+    if(fx==='slide_down')o.frequency.exponentialRampToValueAtTime(f*0.55,t+d);
+    if(fx==='vibrato'){const lfo=this.ctx.createOscillator(),lg=this.ctx.createGain();lfo.frequency.value=14;lg.gain.value=8;lfo.connect(lg);lg.connect(o.frequency);lfo.start(t);lfo.stop(t+d);}
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime((vol||0.3),t+0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    o.connect(g);g.connect(this.master);o.start(t);o.stop(t+d+0.02);},
+  _noise(t,ms,vol){const d=ms/1000,n=Math.max(1,(this.ctx.sampleRate*d)|0);
+    const b=this.ctx.createBuffer(1,n,this.ctx.sampleRate),ch=b.getChannelData(0);
+    for(let i=0;i<n;i++)ch[i]=Math.random()*2-1;
+    const s=this.ctx.createBufferSource();s.buffer=b;const g=this.ctx.createGain();
+    g.gain.setValueAtTime((vol||0.2),t);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    s.connect(g);g.connect(this.master);s.start(t);s.stop(t+d);},
+  cue(seq){this.init();this.resume();let t=this.ctx.currentTime+0.02;
+    for(const e of seq){if(e.n==='NOISE')this._noise(t,e.d,e.v);else this._osc(t,e.n,e.d,e.w||'square',e.v,e.fx);t+=e.d/1000;}},
+  music(song){this.init();this.resume();this.stop();
+    const len=Math.max(...song.map(tr=>tr.reduce((a,e)=>a+e.d,0)));
+    const play=(start)=>{for(const tr of song){let t=start;for(const e of tr){if(e.n!=='REST')this._osc(t,e.n,e.d*0.92,e.w||'square',e.v,e.fx);t+=e.d/1000;}}};
+    this.mNext=this.ctx.currentTime+0.06;play(this.mNext);
+    this.mTimer=setInterval(()=>{this.mNext+=len/1000;play(this.mNext);},len);},
+  stop(){if(this.mTimer){clearInterval(this.mTimer);this.mTimer=null;}}
+};
+// cue/sfx note data (original, E-minor; see kuma-audio-vgm.md)
+const SFX={
+  threat:[{n:'E5',d:90,v:.3},{n:'REST',d:40},{n:'D5',d:90,v:.3},{n:'REST',d:40},{n:'E4',d:220,v:.32}],
+  lock:[{n:'E4',d:80,v:.26},{n:'G4',d:80,v:.26},{n:'B4',d:80,v:.26},{n:'D5',d:80,v:.26},{n:'E5',d:180,v:.3,fx:'vibrato'}],
+  encounter:[{n:'E3',d:120,v:.3,w:'tri'},{n:'REST',d:40},{n:'B3',d:120,v:.3,w:'tri'},{n:'E4',d:180,v:.32},{n:'D4',d:120,v:.3},{n:'E4',d:240,v:.34}],
+  intro:[{n:'E4',d:100,v:.3},{n:'G4',d:100,v:.3},{n:'B4',d:100,v:.3},{n:'E5',d:180,v:.34},{n:'B4',d:100,v:.3},{n:'D5',d:160,v:.32},{n:'E5',d:260,v:.34,fx:'vibrato'}],
+  victory:[{n:'E4',d:120,v:.3},{n:'G4',d:120,v:.3},{n:'B4',d:120,v:.32},{n:'E5',d:240,v:.34},{n:'D5',d:120,v:.3},{n:'E5',d:360,v:.34}],
+  critical:[{n:'E5',d:120,v:.32},{n:'A#4',d:120,v:.3},{n:'E4',d:220,v:.32,fx:'slide_down'}],
+  signalMaul:[{n:'E4',d:40,v:.28},{n:'G4',d:40,v:.28},{n:'B4',d:40,v:.28},{n:'E5',d:80,v:.32,fx:'slide_up'},{n:'NOISE',d:60,v:.2}],
+  honeySnare:[{n:'G4',d:80,v:.28},{n:'E5',d:80,v:.3},{n:'REST',d:50},{n:'B4',d:80,v:.28},{n:'E5',d:160,v:.3}],
+  channelRoar:[{n:'E3',d:80,v:.3,w:'tri'},{n:'E3',d:80,v:.3,w:'tri'},{n:'D3',d:80,v:.3,w:'tri'},{n:'B2',d:80,v:.3,w:'tri'},{n:'E2',d:220,v:.32,w:'tri'},{n:'NOISE',d:100,v:.22}],
+  pawlock:[{n:'C4',d:60,v:.28},{n:'REST',d:40},{n:'C4',d:60,v:.28},{n:'REST',d:40},{n:'E3',d:180,v:.3,w:'tri'}],
+  MARKED:[{n:'G4',d:80,v:.26},{n:'E5',d:90,v:.3}],
+  SUPPRESSED:[{n:'B4',d:80,v:.26},{n:'F4',d:130,v:.26,fx:'slide_down'}],
+  CONTAINED:[{n:'C4',d:60,v:.26},{n:'E3',d:140,v:.3,w:'tri'}],
+  DESTABILIZED:[{n:'E4',d:60,v:.26},{n:'D#4',d:60,v:.26},{n:'F4',d:90,v:.28,fx:'vibrato'}],
+  select:[{n:'E5',d:40,v:.24}],cancel:[{n:'B3',d:60,v:.22}]
+};
+// battle loop: lead (square) + bass (triangle), both 3000ms -> clean loop
+const LEAD=[
+ {n:'E4',d:120,v:.26},{n:'G4',d:120,v:.26},{n:'A4',d:120,v:.26},{n:'B4',d:240,v:.28},{n:'REST',d:120},
+ {n:'E4',d:120,v:.26},{n:'D5',d:120,v:.26},{n:'B4',d:120,v:.26},{n:'A4',d:240,v:.28},{n:'REST',d:120},
+ {n:'G4',d:120,v:.26},{n:'A4',d:120,v:.26},{n:'B4',d:120,v:.26},{n:'D5',d:240,v:.28},{n:'B4',d:120,v:.26},
+ {n:'A4',d:120,v:.26},{n:'G4',d:120,v:.26},{n:'E4',d:120,v:.26},{n:'B3',d:120,v:.24},{n:'E4',d:360,v:.3}];
+const BASS=[
+ {n:'E2',d:240,v:.3,w:'tri'},{n:'E2',d:240,v:.3,w:'tri'},{n:'B2',d:240,v:.3,w:'tri'},
+ {n:'C3',d:240,v:.3,w:'tri'},{n:'C3',d:240,v:.3,w:'tri'},{n:'B2',d:240,v:.3,w:'tri'},
+ {n:'G2',d:240,v:.3,w:'tri'},{n:'G2',d:240,v:.3,w:'tri'},{n:'D3',d:240,v:.3,w:'tri'},
+ {n:'A2',d:240,v:.3,w:'tri'},{n:'B2',d:240,v:.3,w:'tri'},{n:'E2',d:240,v:.3,w:'tri'},{n:'E2',d:120,v:.28,w:'tri'}];
+
+// ---- sprite renderer -------------------------------------------------
 const $=id=>document.getElementById(id);
-function setHP(el,cur,max){const pct=Math.max(0,cur/max*100);el.style.width=pct+'%';el.style.background=pct>50?'var(--grn)':pct>22?'var(--amb)':'var(--red)';}
-function msg(t,n){$('msg').innerHTML=t+(n?' <span class="nxt">'+n+'</span>':'');}
+const ksp=$('ksp'),esp=$('esp');
+let kumaClipTimer=null;
+function setKuma(state){ksp.src=KS+(KST[state]||KST.SENTINEL)+'.png';}
+function playClip(states,perMs,done){ if(kumaClipTimer)clearInterval(kumaClipTimer);
+  let i=0;setKuma(states[0]);
+  kumaClipTimer=setInterval(()=>{i++;if(i>=states.length){clearInterval(kumaClipTimer);kumaClipTimer=null;if(done)done();return;}setKuma(states[i]);},perMs);}
+function once(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
+
+// battle idle loop (sentinel + bob + occasional alert blink)
+let idleLoop=null;
+function startIdle(){stopIdle();setKuma('SENTINEL');ksp.classList.add('bob');
+  idleLoop=setInterval(()=>{if(S&&S.phase==='menu'){setKuma('ALERT');setTimeout(()=>{if(S&&S.phase==='menu')setKuma('SENTINEL');},160);}},3400);}
+function stopIdle(){if(idleLoop){clearInterval(idleLoop);idleLoop=null;}ksp.classList.remove('bob');}
+
+// ---- fx --------------------------------------------------------------
+function fxSlash(){const fx=$('fx');const s=document.createElement('div');s.className='slash';
+  s.style.cssText+='left:120px;top:70px;width:120px;animation:slashGo .45s ease-out';fx.appendChild(s);setTimeout(()=>s.remove(),500);}
+function fxWave(){const fx=$('fx');for(let k=0;k<3;k++){const w=document.createElement('div');w.className='wave';
+  w.style.cssText+='right:60px;top:50px;width:90px;height:90px;animation:waveGo .7s ease-out '+(k*120)+'ms';fx.appendChild(w);setTimeout(()=>w.remove(),900);}}
+function fxLock(){const fx=$('fx');const l=document.createElement('div');l.className='lock';
+  l.style.cssText+='right:64px;top:30px;width:84px;height:84px;animation:lockGo .6s ease-out';fx.appendChild(l);setTimeout(()=>l.remove(),700);}
+function fxMark(){const fx=$('fx');const m=document.createElement('div');m.className='mark';m.textContent='◆ MARK';
+  m.style.cssText+='right:80px;top:36px;animation:markGo .9s ease-out';fx.appendChild(m);setTimeout(()=>m.remove(),950);}
+function flash(red){const f=$('flash');f.className=red?'red':'';once(f,'go');}
+function scanSweep(){const s=$('flash').querySelector('.scan');s.style.animation='none';void s.offsetWidth;s.style.animation='scan .7s linear';setTimeout(()=>{s.style.animation='';},720);}
+
+// ---- HUD helpers -----------------------------------------------------
+function setHP(el,cur,max){const p=Math.max(0,cur/max*100);el.style.width=p+'%';el.style.background=p>50?'var(--grn)':p>22?'var(--amb)':'var(--red)';}
+function msg(t,nxt){$('msg').innerHTML=t+(nxt?'<span class="nxt">'+nxt+'</span>':'');}
+function center(t,warn){const c=$('center');c.textContent=t||'';c.className='center'+(warn?' warn':'');}
 function rnd(a){return a[0]+Math.floor(Math.random()*(a[1]-a[0]+1));}
-function lunge(el){el.classList.remove('lunge');void el.offsetWidth;el.classList.add('lunge');}
-const kumaP=Player($('ksp')),cubP=Player($('cub'));
-cubP.play('idle',{fps:5});
-function kuma(state){
-  if(state==='idle')kumaP.play('idle',{fps:5});
-  else if(state==='victory')kumaP.play('victory',{fps:6});
-  else if(state==='ko')kumaP.play('ko',{loop:false,fps:8});
-  else kumaP.play(state,{loop:false,fps:12,onEnd:()=>kumaP.play('idle',{fps:5})});
+
+// ---- state -----------------------------------------------------------
+let S=null,busy=false,turnTimer=null,turnRAF=null;
+
+function showFace(){ // non-battle: KUMA face + stat bar
+  S=null;stopIdle();setKuma('SENTINEL');ksp.classList.add('bob');
+  $('einfo').style.display='none';$('kinfo').style.display='none';esp.style.opacity=0;
+  $('menu').classList.add('hidden');$('menu').innerHTML='';$('statbar').style.display='flex';
+  $('dot').className='dot';$('dtx').textContent='SENTINEL';center('');
+  msg('monitoring the air. all quiet.');$('timer').style.width='0';
 }
 
-function trigger(){if($('battle').style.display==='block')return;
-  $('isay').textContent='! incoming...';$('ith').textContent='HIGH';$('ith').style.color='var(--red)';$('iev').textContent=1;
-  setTimeout(startBattle,450);}
-function startBattle(){const t=THREATS[Math.floor(Math.random()*THREATS.length)];
-  S={enemy:{...t,max:t.hp},kuma:{hp:120,max:120},mark:false};
-  $('pill').textContent='ENGAGED';$('flash').className='go';kuma('idle');
-  $('esp').src=EP+t.sprite;
-  setTimeout(()=>{
-    $('idle').style.display='none';$('battle').style.display='block';
-    $('esp').className='spr';$('esp').style.opacity=1;
-    $('enm').textContent=t.name;$('elv').textContent='Lv '+t.lv;
-    setHP($('ehp'),t.hp,t.hp);setHP($('khp'),120,120);$('khpn').textContent='120 / 120';
-    $('menu').classList.add('hidden');
-    msg('A wild <b>'+t.name+'</b> appeared!','next');
-    setTimeout(playerTurn,1300);},560);}
-function buildMenu(){const m=$('menu');m.innerHTML='';
-  MOVES.forEach((mv,i)=>{const b=document.createElement('button');b.innerHTML=mv.n+'<span class="sub">'+mv.s+'</span>';b.onclick=()=>doMove(i);m.appendChild(b);});
-  m.classList.remove('hidden');}
-function playerTurn(){msg('What will <span class="jp">クマ</span> do?');buildMenu();}
-function doMove(i){if(busy)return;busy=true;$('menu').classList.add('hidden');
-  const mv=MOVES[i];let dmg=rnd(mv.d);if(S.mark){dmg=Math.round(dmg*1.5);}
-  msg('<span class="jp">クマ</span> used <b>'+mv.n+'</b>!');kuma(mv.n==='CONTAIN'?'special':'attack');
-  setTimeout(()=>{lunge($('ksp'));
-    setTimeout(()=>{const e=$('esp');e.classList.remove('hit');void e.offsetWidth;e.classList.add('hit');
-      S.enemy.hp-=dmg;setHP($('ehp'),S.enemy.hp,S.enemy.max);if(mv.mark)S.mark=true;
-      setTimeout(()=>{msg(mv.m,'next');kuma('idle');
-        if(S.enemy.hp<=0)return setTimeout(victory,800);
-        setTimeout(enemyTurn,1100);},700);},170);},350);}
-function enemyTurn(){const a=S.enemy.attacks[Math.floor(Math.random()*S.enemy.attacks.length)];S.mark=false;
-  msg('<b>'+S.enemy.name+'</b> used <b>'+a.n+'</b>!');
-  setTimeout(()=>{lunge($('esp'));
-    setTimeout(()=>{kuma('hurt');const k=$('ksp');k.classList.remove('hurt');void k.offsetWidth;k.classList.add('hurt');
-      S.kuma.hp-=a.d;if(S.kuma.hp<0)S.kuma.hp=0;
-      setHP($('khp'),S.kuma.hp,S.kuma.max);$('khpn').textContent=S.kuma.hp+' / '+S.kuma.max;
-      setTimeout(()=>{msg(a.m,'next');kuma('idle');if(S.kuma.hp<=0)return setTimeout(faint,800);busy=false;setTimeout(playerTurn,850);},700);},170);},350);}
-function victory(){$('esp').classList.add('faint');kuma('victory');msg('<b>'+S.enemy.name+'</b> was contained!');
-  setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.');setTimeout(toIdle,1500);},1500);}
-function faint(){kuma('ko');msg('The link dropped... <span class="jp">クマ</span> regroups.');setTimeout(toIdle,1800);}
-function toIdle(){busy=false;$('battle').style.display='none';$('idle').style.display='flex';kuma('idle');
-  $('pill').textContent='SENTINEL';$('isay').textContent='all quiet';$('ith').textContent='LOW';$('ith').style.color='var(--grn)';$('iev').textContent=0;}
+// ---- encounter sequence (4a) ----------------------------------------
+function encounter(typeKey){ if(S)return; AUD.init();AUD.resume();
+  const en=ENEMIES[typeKey]||ENEMIES.rogue_ap;
+  S={en:{...en,max:en.hp,cur:en.hp},k:{cur:120,max:120},mark:false,phase:'encounter'};
+  $('statbar').style.display='none';$('dot').className='dot engaged';$('dtx').textContent='ENGAGED';
+  stopIdle();ksp.classList.remove('bob');
+  // P2 alert
+  setKuma('ALERT');flash(true);scanSweep();center('THREAT DETECTED',true);AUD.cue(SFX.threat);
+  setTimeout(()=>{ // P3 lock-on
+    center('HOSTILE SIGNAL LOCKED',true);AUD.cue(SFX.lock);
+    playClip(['ALERT','INVESTIGATING','DEFENDING'],260);
+    setTimeout(()=>{ // P4 approach (enemy silhouette)
+      center('HOSTILE ENTITY APPROACHING',true);setKuma('DEFENDING');
+      esp.src=ES+en.sprite+'.png';esp.style.opacity=1;esp.style.filter='brightness(0) drop-shadow(0 0 7px var(--cy))';
+      esp.classList.add('ebob');
+      setTimeout(()=>{ // P5 encounter initiated
+        center('ENCOUNTER INITIATED',true);setKuma('APEX');AUD.cue(SFX.encounter);flash(true);
+        setTimeout(battleIntro,900);
+      },1000);
+    },1000);
+  },900);
+}
 
-document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();trigger();}});
-$('idle').addEventListener('click',trigger);
+// ---- battle intro (4b) ----------------------------------------------
+function battleIntro(){ const en=S.en;
+  center('');S.phase='intro';
+  // P1 enemy reveal
+  esp.style.filter='';once(esp,'reveal');
+  msg('HOSTILE <b>'+en.name+'</b> DETECTED','');AUD.cue(SFX.intro);
+  setTimeout(()=>{ // P2 KUMA enters (walk-in via state shift + slide)
+    ksp.style.transition='left .6s ease-out';ksp.style.left='-60px';setKuma('SENTINEL');ksp.style.opacity=1;
+    requestAnimationFrame(()=>{ksp.style.left='34px';});
+    playClip(['SENTINEL','ALERT','DEFENDING'],200);
+    msg('<span class="jp">クマ</span> STANDS WATCH','');
+    setTimeout(()=>{ // P3 face off
+      ksp.style.transition='';
+      $('einfo').style.display='block';$('kinfo').style.display='block';
+      $('enm').textContent=en.name;$('elv').textContent='Lv '+en.lv;
+      setHP($('ehp'),en.cur,en.max);setHP($('khp'),S.k.cur,S.k.max);
+      msg(en.text,'');
+      setTimeout(()=>{ // P4 battlefield lock
+        S.phase='menu';startIdle();esp.classList.add('ebob');
+        AUD.music([LEAD,BASS]);
+        playerTurn();
+      },900);
+    },800);
+  },1100);
+}
+
+// ---- battle loop (4c + abilities) -----------------------------------
+function buildMenu(){const m=$('menu');m.innerHTML='';
+  ORDER.forEach(name=>{const a=ABIL[name];const b=document.createElement('button');
+    const eff=S.en.weak.includes(name)?' ▸':'';
+    b.innerHTML=name+eff+'<span class="sub">'+a.sub+'</span>';
+    b.onclick=()=>{AUD.cue(SFX.select);doMove(name);};m.appendChild(b);});
+  m.classList.remove('hidden');}
+function playerTurn(){if(S.k.cur<=0||S.en.cur<=0)return;
+  S.phase='menu';msg('What will <span class="jp">クマ</span> do?');buildMenu();startTurnTimer();}
+function startTurnTimer(){clearTurnTimer();const dur=30000,t0=performance.now();
+  const tick=()=>{const e=performance.now()-t0;$('timer').style.width=Math.min(100,e/dur*100)+'%';
+    if(e>=dur){$('timer').style.width='0';autoPick();return;}turnRAF=requestAnimationFrame(tick);};
+  turnRAF=requestAnimationFrame(tick);}
+function clearTurnTimer(){if(turnRAF){cancelAnimationFrame(turnRAF);turnRAF=null;}$('timer').style.width='0';}
+function autoPick(){ // KUMA auto-chooses a super-effective move (else SIGNAL MAUL)
+  const pick=ORDER.find(n=>S.en.weak.includes(n)&&ABIL[n].status!=='MARKED')||'SIGNAL MAUL';
+  msg('<span class="jp">クマ</span> acts on instinct...');setTimeout(()=>doMove(pick),500);}
+
+function doMove(name){ if(busy||S.phase!=='menu')return; busy=true;clearTurnTimer();
+  $('menu').classList.add('hidden');const a=ABIL[name];
+  msg('<span class="jp">クマ</span> used <b>'+name+'</b>!');
+  AUD.cue(SFX[a.cue]);
+  playClip(a.clip,180);
+  setTimeout(()=>{ once(ksp,'lungeK');
+    setTimeout(()=>{ // impact
+      if(a.fx==='slash')fxSlash(); else if(a.fx==='wave')fxWave(); else if(a.fx==='lock')fxLock(); else if(a.fx==='mark')fxMark();
+      const superEff=S.en.weak.includes(name);
+      if(a.mark){ S.mark=true; $('ebadge').style.display='inline-block';$('ebadge').textContent='MARKED';
+        once(esp,'hit');AUD.cue(SFX.MARKED);
+        msg('The threat took the bait. Enemy is <b>MARKED</b>.','next');
+        setTimeout(()=>{ if(checkEnd())return; enemyTurn(); },1100);
+      } else {
+        let dmg=rnd(a.base);if(superEff)dmg=Math.round(dmg*1.7);if(S.mark){dmg=Math.round(dmg*1.5);S.mark=false;$('ebadge').style.display='none';}
+        S.en.cur=Math.max(0,S.en.cur-dmg);setHP($('ehp'),S.en.cur,S.en.max);
+        once(esp,'hit');AUD.cue(SFX[a.status]);
+        $('ebadge').style.display='inline-block';$('ebadge').textContent=a.status;
+        const line=superEff?'It’s super effective! Enemy is <b>'+a.status+'</b>.':'Enemy is <b>'+a.status+'</b>.';
+        setTimeout(()=>{ msg(line,'next'); setTimeout(()=>{ if(checkEnd())return; enemyTurn(); },1000); },480);
+      }
+    },180);
+  },340);
+}
+function enemyTurn(){ if(S.en.cur<=0){checkEnd();return;}
+  setKuma('DEFENDING');
+  msg('<b>'+S.en.name+'</b> strikes back!');
+  setTimeout(()=>{ once(esp,'lungeE');
+    setTimeout(()=>{ once(ksp,'hit');setKuma('ALERT');
+      const dmg=rnd([8,16]);S.k.cur=Math.max(0,S.k.cur-dmg);setHP($('khp'),S.k.cur,S.k.max);
+      setTimeout(()=>{ if(checkEnd())return; busy=false; playerTurn(); },800);
+    },180);
+  },340);
+}
+function checkEnd(){
+  if(S.en.cur<=0){ busy=false;S.phase='win';AUD.stop();clearTurnTimer();
+    esp.classList.remove('ebob');once(esp,'faint');
+    playClip(['DEFENDING','VICTORY'],300);AUD.cue(SFX.victory);
+    msg('<b>'+S.en.name+'</b> was contained.','');
+    setTimeout(()=>{ center('THREAT CONTAINED');setKuma('VICTORY');
+      setTimeout(()=>{ msg('<span class="jp">クマ</span> defended the network.'); setTimeout(showFace,1600);},1400);},700);
+    return true;}
+  if(S.k.cur<=0){ busy=false;S.phase='lose';AUD.stop();clearTurnTimer();
+    setKuma('ALERT');msg('The link dropped... <span class="jp">クマ</span> regroups.','');
+    setTimeout(showFace,2000);return true;}
+  return false;
+}
+
+// ---- demo controls ---------------------------------------------------
+const sel=$('pick');
+Object.keys(ENEMIES).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=ENEMIES[k].name+' ('+k+')';sel.appendChild(o);});
+function trigger(){const k=sel.value||Object.keys(ENEMIES)[Math.floor(Math.random()*Object.keys(ENEMIES).length)];encounter(k);}
+$('go').onclick=()=>{AUD.init();AUD.resume();trigger();};
+$('mute').onclick=()=>{AUD.init();AUD.mute(!AUD.muted);$('mute').textContent='audio: '+(AUD.muted?'off':'on');};
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();AUD.init();AUD.resume();if(!S)trigger();}});
+document.body.addEventListener('click',()=>{AUD.init();AUD.resume();$('hint').textContent='';},{once:true});
+
+showFace();
 </script></body></html>
