@@ -61,13 +61,14 @@
   .def.hot{color:var(--amb)} .def.hot .led{background:var(--amb);box-shadow:0 0 6px var(--amb)}
 
   #apex{display:none;border:1px solid var(--red);border-top:0;background:rgba(255,71,71,.08);
-    color:var(--red);padding:7px 11px;font-size:12px;letter-spacing:.1em;animation:flash 1s steps(2) infinite}
+    color:var(--red);padding:7px 11px;font-size:12px;letter-spacing:.1em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:flash 1s steps(2) infinite}
   #apex.on{display:block}
   @keyframes flash{50%{background:rgba(255,71,71,.02)}}
 
   .console{border:1px solid var(--faint);border-top:0;background:var(--panel)}
   .ctitle{font-size:10px;letter-spacing:.3em;color:var(--dim);padding:6px 11px;border-bottom:1px solid var(--faint)}
-  table{width:100%;border-collapse:collapse;font-size:12px}
+  table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}
   td{padding:4px 11px;border-bottom:1px solid var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   td.t{color:var(--dim);width:64px}
   td.s{width:54px;font-weight:700}
