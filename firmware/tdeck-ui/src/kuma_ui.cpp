@@ -1,6 +1,7 @@
 // KUMA Guard T-Deck - UI implementation (LovyanGFX).
 #include "kuma_ui.h"
 #include "bear_sprites_data.h"
+#include "kuma_logo_data.h"
 
 namespace {
 LGFX_TDeck* D = nullptr;
@@ -129,9 +130,10 @@ void drawHome(const KumaStatus& s) {
                                : static_cast<lgfx::LovyanGFX*>(D);
   g->fillScreen(BG);
 
-  // --- top bar: KUMA + level, online dot ---------------------------------
-  g->setTextSize(2); g->setTextColor(FG, BG); g->setCursor(8, 5); g->print("KUMA");
-  g->setTextSize(1); g->setTextColor(GREEN, BG); g->setCursor(72, 12);
+  // --- top bar: クマ wordmark + level, online dot ------------------------
+  g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);   // katakana wordmark
+  g->setTextSize(1); g->setTextColor(GREEN, BG);
+  g->setCursor(8 + KUMA_LOGO_W + 8, 11);
   g->printf("Lv %u", s.level);
   g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
   g->setTextColor(s.online ? GREEN : GREY, BG); g->setCursor(254, 9);
