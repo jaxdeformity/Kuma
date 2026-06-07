@@ -70,6 +70,7 @@
   .hp{height:6px;background:#1c241e;border:1px solid var(--faint);margin-top:4px}
   .hp i{display:block;height:100%;background:var(--grn);transition:width .45s,background .3s}
   .badge{display:inline-block;font-size:8px;letter-spacing:.1em;color:var(--cy);border:1px solid var(--cy);padding:0 3px;margin-top:3px;text-shadow:0 0 5px var(--cy)}
+  .skull{height:15px;width:auto;vertical-align:middle;filter:drop-shadow(0 0 3px var(--red))}
 
   .center{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:22;
     color:var(--wht);font-size:12px;letter-spacing:.16em;text-align:center;white-space:nowrap;
@@ -306,7 +307,7 @@ function battleIntro(){const en=S.en;center('');S.phase='intro';
     requestAnimationFrame(()=>{ksp.style.left='34px';});playClip(['SENTINEL','ALERT','DEFENDING'],200);
     msg('<span class="jp">クマ</span> STANDS WATCH','');
     setTimeout(()=>{ksp.style.transition='';$('einfo').style.display='block';$('kinfo').style.display='block';
-      $('enm').textContent=en.name;$('elv').textContent='??';$('klv').textContent='Lv '+kumaLevel;
+      $('enm').textContent=en.name;$('elv').innerHTML='<img class="skull" src="sprites/skull_hud.png" alt="??">';$('klv').textContent='Lv '+kumaLevel;
       setHP($('ehp'),en.cur,en.max);setHP($('khp'),S.k.cur,S.k.max);msg(en.text,'');
       setTimeout(()=>{S.phase='menu';esp.classList.add('ebob');playerTurn();},900);
     },800);

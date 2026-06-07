@@ -70,6 +70,7 @@
   .hp i{display:block;height:100%;background:var(--grn);transition:width .45s,background .3s}
   .badge{display:inline-block;font-size:8px;letter-spacing:.1em;color:var(--cy);border:1px solid var(--cy);
     padding:0 3px;margin-top:3px;text-shadow:0 0 5px var(--cy)}
+  .skull{height:15px;width:auto;vertical-align:middle;filter:drop-shadow(0 0 3px var(--red))}
 
   /* encounter banner: top of scene, dark backplate so it reads over sprites */
   .center{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:22;
@@ -329,7 +330,7 @@ function battleIntro(){ const en=S.en;
     setTimeout(()=>{ // P3 face off
       ksp.style.transition='';
       $('einfo').style.display='block';$('kinfo').style.display='block';
-      $('enm').textContent=en.name;$('elv').textContent='??';
+      $('enm').textContent=en.name;$('elv').innerHTML='<img class="skull" src="sprites/skull_hud.png" alt="??">';
       $('klv').textContent='Lv '+(+(localStorage.getItem('kuma_level')||5));
       setHP($('ehp'),en.cur,en.max);setHP($('khp'),S.k.cur,S.k.max);
       msg(en.text,'');
