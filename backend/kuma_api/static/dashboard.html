@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>KUMA GUARD</title>
+<style>
+  :root{
+    --bg:#0a0c0b; --ink:#c8d0cc; --dim:#5d6b64; --line:#1c2420;
+    --green:#3fe07a; --cyan:#39d6e0; --amber:#f2a23c; --red:#ff4d4d; --grid:#101512;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:14px/1.5 "JetBrains Mono","SF Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:22px 22px; letter-spacing:.02em;
+    padding:18px; max-width:780px; margin:0 auto;
+  }
+  a{color:var(--cyan)}
+  .topbar{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .brand{font-weight:700;letter-spacing:.35em;color:var(--ink)}
+  .brand b{color:var(--green)}
+  .ver{color:var(--dim);font-size:12px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  @media(max-width:620px){.grid{grid-template-columns:1fr}}
+  /* corner-bracket panel, no rounded card slop */
+  .panel{position:relative;border:1px solid var(--line);padding:16px;background:rgba(0,0,0,.25)}
+  .panel::before,.panel::after{content:"";position:absolute;width:9px;height:9px;border:2px solid var(--dim)}
+  .panel::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .panel::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+  .label{color:var(--dim);font-size:11px;letter-spacing:.25em;text-transform:uppercase;margin-bottom:6px}
+  .bear{font-size:30px;line-height:1.1;white-space:pre;text-align:center;margin:6px 0 10px}
+  .mode{font-size:22px;font-weight:700;letter-spacing:.1em}
+  .threat{font-size:40px;font-weight:700;letter-spacing:.05em;margin:2px 0}
+  .kv{display:flex;justify-content:space-between;border-top:1px dotted var(--line);padding:5px 0}
+  .kv span:first-child{color:var(--dim)}
+  .pill{display:inline-block;padding:1px 7px;border:1px solid currentColor;font-size:11px;letter-spacing:.15em}
+  .events{margin-top:14px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--dim);text-align:left;font-weight:400;font-size:11px;letter-spacing:.2em;border-bottom:1px solid var(--line);padding:4px 6px}
+  td{padding:5px 6px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sev{font-weight:700;letter-spacing:.1em}
+  .lo{color:var(--green)} .me{color:var(--amber)} .hi{color:var(--red)} .cr{color:var(--red)}
+  .foot{color:var(--dim);font-size:11px;margin-top:14px;display:flex;justify-content:space-between}
+  .dot{width:7px;height:7px;display:inline-block;border-radius:50%;background:var(--red);margin-right:6px;vertical-align:middle}
+  .live .dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">K U M A &nbsp;<b>GUARD</b></div>
+    <div class="ver" id="ver">v0.0.1</div>
+  </div>
+
+  <div class="grid">
+    <div class="panel">
+      <div class="label">Status</div>
+      <div class="bear" id="bear">ʕ –ᴥ– ʔ</div>
+      <div class="mode" id="mode">—</div>
+      <div class="threat" id="threat">—</div>
+      <div class="label" style="margin-top:8px">Threat level</div>
+    </div>
+
+    <div class="panel">
+      <div class="label">Telemetry</div>
+      <div class="kv"><span>device</span><span id="device">—</span></div>
+      <div class="kv"><span>interface</span><span id="iface">—</span></div>
+      <div class="kv"><span>events / 10m</span><span id="ev10">—</span></div>
+      <div class="kv"><span>uptime</span><span id="uptime">—</span></div>
+      <div class="kv"><span>bear_state</span><span id="bs">—</span></div>
+      <div style="margin-top:10px"><span class="pill" id="conn">CONNECTING</span></div>
+    </div>
+  </div>
+
+  <div class="panel events">
+    <div class="label">Recent events</div>
+    <table>
+      <thead><tr><th style="width:64px">SEV</th><th style="width:46px">CONF</th><th>TYPE</th><th>SSID</th><th style="width:70px">CH</th></tr></thead>
+      <tbody id="events"><tr><td colspan="5" style="color:var(--dim)">waiting for backend…</td></tr></tbody>
+    </table>
+  </div>
+
+  <div class="foot">
+    <span><span class="dot"></span><span id="poll">offline</span></span>
+    <span>read-only · <a href="/docs">API</a></span>
+  </div>
+
+<script>
+const BEARS = {
+  sleeping:"ʕ –ᴥ– ʔ", foraging:"ʕ •ᴥ• ʔ", honey_trap:"ʕ •ᴥ• ʔ️",
+  suspicious:"ʕ ◑ᴥ◐ ʔ", alert:"ʕ ⊙ᴥ⊙ ʔ", apex_ready:"ʕ╬•ᴥ•╬ʔ",
+  logging:"ʕ •ᴥ• ʔ", error:"ʕ ✕ᴥ✕ ʔ"
+};
+const THREAT_COLOR = {low:"var(--green)",medium:"var(--amber)",high:"var(--red)",critical:"var(--red)"};
+const SEV_CLASS = {low:"lo",medium:"me",high:"hi",critical:"cr"};
+function hms(s){s=s||0;const p=n=>String(n).padStart(2,"0");return p(s/3600|0)+":"+p((s%3600)/60|0)+":"+p(s%60);}
+function setConn(ok){
+  const c=document.getElementById("conn"); const f=document.querySelector(".foot");
+  document.getElementById("poll").textContent = ok?"live · polling 2s":"backend offline";
+  f.classList.toggle("live",ok);
+  c.textContent = ok?"ONLINE":"OFFLINE"; c.style.color = ok?"var(--green)":"var(--red)";
+}
+async function tick(){
+  try{
+    const s = await (await fetch("/api/status",{cache:"no-store"})).json();
+    document.getElementById("ver").textContent  = "v"+s.version;
+    document.getElementById("device").textContent= s.device;
+    document.getElementById("iface").textContent = s.wifi_interface;
+    document.getElementById("ev10").textContent  = s.events_last_10m;
+    document.getElementById("uptime").textContent= hms(s.uptime_seconds);
+    document.getElementById("bs").textContent    = s.bear_state;
+    document.getElementById("mode").textContent  = (s.mode||"—").toUpperCase()+" MODE";
+    const t=document.getElementById("threat");
+    t.textContent=(s.threat_level||"—").toUpperCase();
+    t.style.color=THREAT_COLOR[s.threat_level]||"var(--ink)";
+    const b=document.getElementById("bear");
+    b.textContent=BEARS[s.bear_state]||BEARS.error;
+    b.style.color=THREAT_COLOR[s.threat_level]||"var(--cyan)";
+    setConn(true);
+
+    const ev = await (await fetch("/api/events?limit=10",{cache:"no-store"})).json();
+    const tb=document.getElementById("events");
+    tb.innerHTML = ev.length ? ev.map(e=>{
+      const sc=SEV_CLASS[e.severity]||"lo";
+      return `<tr>
+        <td class="sev ${sc}">${(e.severity||"").toUpperCase().slice(0,4)}</td>
+        <td>${e.confidence??""}</td>
+        <td>${e.event_type||""}</td>
+        <td>${e.ssid||"—"}</td>
+        <td>${e.channel??"—"}</td></tr>`;
+    }).join("") : `<tr><td colspan="5" style="color:var(--dim)">no events</td></tr>`;
+  }catch(err){ setConn(false); document.getElementById("bear").textContent=BEARS.error; }
+}
+tick(); setInterval(tick,2000);
+</script>
+</body>
+</html>

@@ -14,8 +14,10 @@ import asyncio
 import contextlib
 import os
 import random
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
 from kuma_core import database
 from kuma_core.config import settings
@@ -58,7 +60,13 @@ app = FastAPI(
 app.include_router(routes.router)
 
 
-@app.get("/")
-def root() -> dict:
-    return {"device": settings.device_name, "version": settings.version,
-            "docs": "/docs", "status": "/api/status"}
+_DASHBOARD = Path(__file__).parent / "static" / "dashboard.html"
+
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard() -> str:
+    """Read-only web face for headless KUMA (poll the API, draw the bear)."""
+    try:
+        return _DASHBOARD.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return "<h1>KUMA Guard</h1><p>Dashboard missing. API at /api/status</p>"
