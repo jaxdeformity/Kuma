@@ -76,6 +76,11 @@ def battle_win() -> dict:
     return progress.award("battle_win")
 
 
+@router.post("/progress/select-form")
+def select_form(req: schemas.FormRequest) -> dict:
+    return progress.select_form(req.form)
+
+
 @router.get("/events", response_model=list[schemas.EventModel])
 def get_events(limit: int = 50, severity: str | None = None,
                event_type: str | None = None, since: str | None = None):

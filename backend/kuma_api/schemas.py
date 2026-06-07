@@ -52,6 +52,10 @@ class ModeResponse(BaseModel):
     allowed_actions: list[str]
 
 
+class FormRequest(BaseModel):
+    form: int = Field(..., description="KUMA form index to make active (0..unlocked-1)")
+
+
 class ActionRequest(BaseModel):
     action: str
     target: str | None = None
