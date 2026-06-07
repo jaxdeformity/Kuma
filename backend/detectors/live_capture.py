@@ -21,6 +21,7 @@ import time
 
 from scapy.all import (  # type: ignore
     AsyncSniffer, Dot11, Dot11Deauth, Dot11Disas, Dot11Beacon, Dot11Elt,
+    Dot11ProbeResp, EAPOL,
 )
 
 from detectors.responder import ApexResponder
@@ -241,6 +242,91 @@ class EvilTwinTracker:
                       "detector": "evil_twin"})
 
 
+class KarmaTracker:
+    """Karma / PineAP detection: one BSSID answering probe requests for many
+    different SSIDs. A legit AP only probe-responds for its own SSID(s); a
+    karma radio impersonates whatever a client asks for, so a single source
+    emitting probe responses for several distinct SSIDs is the tell.
+    """
+
+    SSIDS_THRESHOLD = 4
+    WINDOW = 15
+    COOLDOWN = 20
+
+    def __init__(self) -> None:
+        self.events: collections.deque[tuple[float, str, str]] = collections.deque()
+        self.last_emit = 0.0
+
+    def add(self, bssid: str, ssid: str) -> dict | None:
+        if not ssid:
+            return None
+        now = time.time()
+        self.events.append((now, bssid, ssid))
+        cutoff = now - self.WINDOW
+        while self.events and self.events[0][0] < cutoff:
+            self.events.popleft()
+        if now - self.last_emit < self.COOLDOWN:
+            return None
+        per_bssid: dict[str, set[str]] = collections.defaultdict(set)
+        for _, b, s in self.events:
+            per_bssid[b].add(s)
+        worst = max(per_bssid, key=lambda k: len(per_bssid[k]), default=bssid)
+        n = len(per_bssid.get(worst, set()))
+        if n < self.SSIDS_THRESHOLD:
+            return None
+        self.last_emit = now
+        return events.make_event(
+            mode="sentinel", event_type="karma_suspected",
+            confidence=scoring.clamp_confidence(50 + n * 6),
+            severity="high" if n >= 8 else None,
+            message=f"Suspected karma/PineAP: BSSID {worst} probe-responded for "
+                    f"{n} distinct SSIDs in {self.WINDOW}s",
+            source=worst, bssid=worst, channel=_current_channel or None,
+            raw_json={"ssid_count": n, "ssids": sorted(per_bssid[worst])[:12],
+                      "detector": "karma"})
+
+
+class HandshakeHarvestTracker:
+    """Detect WPA handshake harvesting: a spike of EAPOL (4-way handshake)
+    frames, especially right after a deauth burst (deauth -> reconnect ->
+    handshake captured). The passive signature of Pwnagotchi/hcxdumptool.
+    """
+
+    WINDOW = 15
+    EAPOL_THRESHOLD = 6
+    COOLDOWN = 20
+
+    def __init__(self) -> None:
+        self.times: collections.deque[float] = collections.deque()
+        self.last_emit = 0.0
+        self.recent_deauth = 0.0    # set by the deauth detector on a burst
+
+    def add_eapol(self) -> dict | None:
+        now = time.time()
+        self.times.append(now)
+        cutoff = now - self.WINDOW
+        while self.times and self.times[0] < cutoff:
+            self.times.popleft()
+        if now - self.last_emit < self.COOLDOWN:
+            return None
+        count = len(self.times)
+        if count < self.EAPOL_THRESHOLD:
+            return None
+        self.last_emit = now
+        post_deauth = (now - self.recent_deauth) < 30
+        return events.make_event(
+            mode="sentinel", event_type="handshake_harvest_pattern",
+            confidence=scoring.clamp_confidence(
+                55 + min(count, 30) + (20 if post_deauth else 0)),
+            severity="high" if post_deauth else None,
+            message="EAPOL/4-way-handshake activity"
+                    + (" right after a deauth burst (forced-handshake harvest)"
+                       if post_deauth else f" ({count} EAPOL/{self.WINDOW}s)"),
+            channel=_current_channel or None,
+            raw_json={"eapol_count": count, "post_deauth": post_deauth,
+                      "window_seconds": self.WINDOW, "detector": "handshake"})
+
+
 def set_channel(iface: str, channel: int) -> None:
     global _current_channel
     subprocess.run(["iw", "dev", iface, "set", "channel", str(channel)],
@@ -278,6 +364,16 @@ def run(iface: str, channel: int, channels: list[int] | None,
     disassoc = BurstTracker("disassoc_burst", "disassoc")
     beacons = BeaconFloodTracker()
     eviltwin = EvilTwinTracker(settings.trusted_networks())
+    karma = KarmaTracker()
+    harvest = HandshakeHarvestTracker()
+
+    def _emit(ev: dict | None) -> None:
+        if not ev:
+            return
+        eid = database.insert_event(ev)
+        print(f"[{ev['severity'].upper()}] {ev['event_type']} "
+              f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
+              flush=True)
 
     def handle(pkt) -> None:
         if not pkt.haslayer(Dot11):
@@ -293,13 +389,23 @@ def run(iface: str, channel: int, channels: list[int] | None,
                     ssid = ""
             bssid = pkt[Dot11].addr2 or "?"
             ch = _current_channel or channel
-            for ev in (beacons.add(bssid, ssid),
-                       eviltwin.add(ssid, bssid, ch, beacon_security(pkt))):
-                if ev:
-                    eid = database.insert_event(ev)
-                    print(f"[{ev['severity'].upper()}] {ev['event_type']} "
-                          f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
-                          flush=True)
+            _emit(beacons.add(bssid, ssid))
+            _emit(eviltwin.add(ssid, bssid, ch, beacon_security(pkt)))
+            return
+        # --- probe responses: karma / PineAP ------------------------------
+        if pkt.haslayer(Dot11ProbeResp):
+            pssid = ""
+            elt = pkt.getlayer(Dot11Elt)
+            if elt is not None and getattr(elt, "ID", None) == 0:
+                try:
+                    pssid = bytes(elt.info).decode(errors="ignore")
+                except Exception:  # noqa: BLE001
+                    pssid = ""
+            _emit(karma.add(pkt[Dot11].addr2 or "?", pssid))
+            return
+        # --- EAPOL: WPA handshake harvest ---------------------------------
+        if pkt.haslayer(EAPOL):
+            _emit(harvest.add_eapol())
             return
         tracker = None
         reason = None
@@ -315,10 +421,9 @@ def run(iface: str, channel: int, channels: list[int] | None,
         tracker.add(d.addr2 or "?", d.addr1 or "?", reason)
         ev = tracker.maybe_emit(_current_channel or channel)
         if ev:
-            eid = database.insert_event(ev)
-            print(f"[{ev['severity'].upper()}] {ev['event_type']} "
-                  f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
-                  flush=True)
+            _emit(ev)
+            if ev["event_type"] == "deauth_burst":
+                harvest.recent_deauth = time.time()   # link deauth -> harvest
             if responder:
                 responder.on_deauth(ev)   # Apex active defense (gated)
 
