@@ -39,5 +39,6 @@ BearState bearStateFromString(const String& s) {
   if (s == "alert")      return BearState::Alert;
   if (s == "apex_ready") return BearState::ApexReady;
   if (s == "logging")    return BearState::Logging;
+  if (s == "investigating") return BearState::Logging;  // -> investigating sprite
   return BearState::Error;
 }

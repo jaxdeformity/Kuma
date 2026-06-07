@@ -7,6 +7,7 @@ instance.
 from __future__ import annotations
 
 import time
+from datetime import datetime, timedelta, timezone
 
 from kuma_core import database, scoring
 from kuma_core.config import settings
@@ -23,11 +24,29 @@ def uptime_seconds() -> int:
 
 
 def bear_state() -> str:
-    """The face. Sentinel escalates to 'alert' when the threat is high+."""
-    base = engine.bear_state()
-    if engine.current == "sentinel" and threat_level() in ("high", "critical"):
-        return "alert"
-    return base
+    """Autonomous face, independent of the manual mode.
+
+    Default is hibernate; when calm KUMA drifts between the ambient states
+    (hibernate -> forage -> honey). As real threat events arrive only a few
+    states surface - sentinel, then investigating - and it goes to alert right
+    before an encounter. The mode engine still drives actions/posture; this is
+    just the face shown on the dashboard + T-Deck.
+    """
+    t = threat_level()
+    if t in ("high", "critical"):
+        return "alert"            # about to engage
+    if t == "medium":
+        return "investigating"    # activity continuing
+    if _recent_events():
+        return "suspicious"       # sentinel: something noticed
+    # calm: ambient wander
+    return ("sleeping", "foraging", "honey_trap")[int(time.time() // 8) % 3]
+
+
+def _recent_events() -> bool:
+    since = (datetime.now(timezone.utc) - timedelta(minutes=10)
+             ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return database.count_events_since(since) > 0
 
 
 def threat_level() -> str:
