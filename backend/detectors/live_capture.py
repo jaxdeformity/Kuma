@@ -16,9 +16,13 @@ from __future__ import annotations
 import argparse
 import collections
 import subprocess
+import threading
 import time
 
 from scapy.all import AsyncSniffer, Dot11, Dot11Deauth, Dot11Disas  # type: ignore
+
+# Updated by the channel-hopper thread; used to label events with where we were.
+_current_channel = 0
 
 from kuma_core import database, events
 
@@ -94,12 +98,32 @@ class BurstTracker:
 
 
 def set_channel(iface: str, channel: int) -> None:
+    global _current_channel
     subprocess.run(["iw", "dev", iface, "set", "channel", str(channel)],
                    check=False)
+    _current_channel = channel
 
 
-def run(iface: str, channel: int) -> None:
-    if channel:
+def _hopper(iface: str, channels: list[int], dwell: float, stop: threading.Event) -> None:
+    while not stop.is_set():
+        for ch in channels:
+            if stop.is_set():
+                break
+            set_channel(iface, ch)
+            stop.wait(dwell)
+
+
+def run(iface: str, channel: int, channels: list[int] | None) -> None:
+    global _current_channel
+    stop = threading.Event()
+    hopper = None
+    if channels:
+        _current_channel = channels[0]
+        hopper = threading.Thread(target=_hopper, args=(iface, channels, 0.35, stop),
+                                  daemon=True)
+        hopper.start()
+        print(f"[live_capture] channel-hopping {channels} (0.35s dwell)", flush=True)
+    elif channel:
         set_channel(iface, channel)
     deauth = BurstTracker("deauth_burst", "deauth")
     disassoc = BurstTracker("disassoc_burst", "disassoc")
@@ -119,14 +143,14 @@ def run(iface: str, channel: int) -> None:
             return
         d = pkt[Dot11]
         tracker.add(d.addr2 or "?", d.addr1 or "?", reason)
-        ev = tracker.maybe_emit(channel)
+        ev = tracker.maybe_emit(_current_channel or channel)
         if ev:
             eid = database.insert_event(ev)
             print(f"[{ev['severity'].upper()}] {ev['event_type']} "
                   f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
                   flush=True)
 
-    print(f"[live_capture] sniffing {iface} ch{channel} "
+    print(f"[live_capture] sniffing {iface} "
           f"(deauth/disassoc, window={WINDOW_SECONDS}s, thresh={BURST_THRESHOLD})",
           flush=True)
     database.init_db()
@@ -138,6 +162,7 @@ def run(iface: str, channel: int) -> None:
     except KeyboardInterrupt:
         pass
     finally:
+        stop.set()
         sniffer.stop()
         print("[live_capture] stopped", flush=True)
 
@@ -147,8 +172,11 @@ def main() -> None:
     ap.add_argument("--iface", default="wlan1")
     ap.add_argument("--channel", type=int, default=0,
                     help="lock to this channel (0 = leave as-is)")
+    ap.add_argument("--hop", default="",
+                    help="comma-separated channels to hop, e.g. 1,6,10,11")
     args = ap.parse_args()
-    run(args.iface, args.channel)
+    channels = [int(c) for c in args.hop.split(",") if c.strip()] if args.hop else None
+    run(args.iface, args.channel, channels)
 
 
 if __name__ == "__main__":
