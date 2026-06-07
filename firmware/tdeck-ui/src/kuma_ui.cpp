@@ -1,0 +1,177 @@
+// KUMA Guard T-Deck — UI implementation (LovyanGFX).
+#include "kuma_ui.h"
+
+namespace {
+LGFX_TDeck* D = nullptr;
+
+// RGB565 palette
+constexpr uint16_t BG     = 0x0000;  // black
+constexpr uint16_t FG     = 0xFFFF;  // white
+constexpr uint16_t CYAN   = 0x07FF;  // sentinel
+constexpr uint16_t GREEN  = 0x07E0;  // safe / low
+constexpr uint16_t AMBER  = 0xFD20;  // honey / medium
+constexpr uint16_t RED    = 0xF800;  // high / critical
+constexpr uint16_t GREY   = 0x7BEF;  // offline
+constexpr uint16_t FUR    = 0x8C51;  // bear brown
+constexpr uint16_t FURDK  = 0x5AC9;  // darker brown
+constexpr uint16_t SNOUT  = 0xC618;  // light grey
+
+const char* MODE_LABELS[5] = {"Hibernate", "Foraging", "Honey",
+                              "Sentinel", "Apex"};
+
+uint16_t threatColor(const String& t) {
+  if (t == "high" || t == "critical") return RED;
+  if (t == "medium") return AMBER;
+  return GREEN;
+}
+
+void hms(uint32_t s, char* buf) {
+  sprintf(buf, "%02u:%02u:%02u", s / 3600, (s % 3600) / 60, s % 60);
+}
+}  // namespace
+
+namespace kuma_ui {
+
+void begin(LGFX_TDeck* d) {
+  D = d;
+  D->setRotation(1);            // landscape 320x240
+  D->fillScreen(BG);
+  D->setTextWrap(false);
+}
+
+void splash() {
+  D->fillScreen(BG);
+  D->setTextColor(CYAN, BG);
+  D->setTextSize(3);
+  D->setCursor(70, 80);
+  D->print("KUMA");
+  D->setTextSize(2);
+  D->setTextColor(GREY, BG);
+  D->setCursor(70, 120);
+  D->print("Guard");
+  drawBear(BearState::Sleeping, 250, 110, 40);
+}
+
+// --- the bear -----------------------------------------------------------
+void drawBear(BearState st, int cx, int cy, int r) {
+  uint16_t tint = FUR;
+  switch (st) {
+    case BearState::Alert:      tint = RED;   break;
+    case BearState::Suspicious: tint = CYAN;  break;
+    case BearState::HoneyTrap:  tint = AMBER; break;
+    case BearState::Foraging:   tint = GREEN; break;
+    case BearState::Error:      tint = GREY;  break;
+    default:                    tint = FUR;   break;
+  }
+  // ears
+  int er = r / 3;
+  D->fillCircle(cx - r + er, cy - r + er, er, FURDK);
+  D->fillCircle(cx + r - er, cy - r + er, er, FURDK);
+  // head
+  D->fillCircle(cx, cy, r, tint);
+  // snout
+  D->fillCircle(cx, cy + r / 4, r / 2, SNOUT);
+  // nose
+  D->fillCircle(cx, cy + r / 6, r / 8, BG);
+
+  // eyes by mood
+  int ex = r / 2, ey = cy - r / 4, eye = r / 8;
+  switch (st) {
+    case BearState::Sleeping:                 // closed (lines)
+      D->drawFastHLine(cx - ex - eye, ey, 2 * eye, BG);
+      D->drawFastHLine(cx + ex - eye, ey, 2 * eye, BG);
+      break;
+    case BearState::Alert:                     // wide
+      D->fillCircle(cx - ex, ey, eye + 1, BG);
+      D->fillCircle(cx + ex, ey, eye + 1, BG);
+      D->fillCircle(cx - ex, ey, 2, RED);
+      D->fillCircle(cx + ex, ey, 2, RED);
+      break;
+    case BearState::Suspicious:                // half-lidded
+      D->fillCircle(cx - ex, ey, eye, BG);
+      D->fillCircle(cx + ex, ey, eye, BG);
+      D->fillRect(cx - ex - eye, ey - eye, 2 * eye, eye, tint);
+      D->fillRect(cx + ex - eye, ey - eye, 2 * eye, eye, tint);
+      break;
+    default:                                   // normal dots
+      D->fillCircle(cx - ex, ey, eye, BG);
+      D->fillCircle(cx + ex, ey, eye, BG);
+      break;
+  }
+}
+
+// --- screens ------------------------------------------------------------
+void drawHome(const KumaStatus& s) {
+  D->fillScreen(BG);
+  D->setTextSize(3);
+  D->setTextColor(CYAN, BG);
+  D->setCursor(10, 8);
+  D->print("KUMA GUARD");
+
+  D->setTextSize(2);
+  D->setTextColor(s.online ? FG : GREY, BG);
+  D->setCursor(10, 48);
+  D->printf("%s", s.online ? modeLabel(s.mode) : "-- offline --");
+
+  int y = 86;
+  D->setCursor(10, y);
+  D->setTextColor(threatColor(s.threatLevel), BG);
+  D->printf("Threat: %s", s.online ? s.threatLevel.c_str() : "--");
+
+  D->setTextColor(FG, BG);
+  D->setCursor(10, y + 28);  D->printf("Events: %u", s.eventsLast10m);
+  char up[16]; hms(s.uptimeSeconds, up);
+  D->setCursor(10, y + 56);  D->printf("Uptime: %s", up);
+  D->setCursor(10, y + 84);
+  D->setTextColor(s.online ? GREEN : RED, BG);
+  D->printf("Backend: %s", s.online ? "ONLINE" : "OFFLINE");
+
+  drawBear(s.online ? s.bearState : BearState::Error, 255, 130, 50);
+
+  D->setTextSize(1);
+  D->setTextColor(GREY, BG);
+  D->setCursor(10, 228);
+  D->print("trackball: move   click/enter: menu");
+}
+
+void drawModeSelect(int selectedIndex, KumaMode current) {
+  D->fillScreen(BG);
+  D->setTextSize(2);
+  D->setTextColor(CYAN, BG);
+  D->setCursor(10, 10);
+  D->print("Select Mode");
+  for (int i = 0; i < 5; ++i) {
+    int yy = 50 + i * 34;
+    bool sel = (i == selectedIndex);
+    if (sel) D->fillRoundRect(6, yy - 4, 308, 30, 4, 0x18E3);
+    D->setTextColor(sel ? RED : GREEN, sel ? 0x18E3 : BG);
+    D->setCursor(16, yy);
+    bool isCur = ((int)current == i);
+    D->printf("%s %s%s", sel ? ">" : " ", MODE_LABELS[i], isCur ? "  *" : "");
+  }
+}
+
+void drawEventList(const KumaEvent* ev, int n) {
+  D->fillScreen(BG);
+  D->setTextSize(2);
+  D->setTextColor(CYAN, BG);
+  D->setCursor(10, 10);
+  D->print("Recent Events");
+  if (n == 0) {
+    D->setTextColor(GREY, BG);
+    D->setCursor(10, 50);
+    D->print("(none)");
+    return;
+  }
+  for (int i = 0; i < n && i < 6; ++i) {
+    int yy = 48 + i * 30;
+    uint16_t c = ev[i].severity == "high" || ev[i].severity == "critical" ? RED
+               : ev[i].severity == "medium" ? AMBER : GREEN;
+    D->setTextColor(c, BG);
+    D->setCursor(10, yy);
+    String sev = ev[i].severity; sev.toUpperCase();
+    D->printf("[%s] %s", sev.substring(0, 3).c_str(), ev[i].eventType.c_str());
+  }
+}
+
+}  // namespace kuma_ui

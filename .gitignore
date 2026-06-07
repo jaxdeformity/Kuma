@@ -15,6 +15,9 @@ firmware/**/.pio/
 firmware/**/.pioenvs/
 firmware/**/.piolibdeps/
 
+# Secrets: T-Deck local config holds Wi-Fi creds (use config.h.example as template)
+firmware/tdeck-ui/include/config.h
+
 # --- OS / editor ---
 .DS_Store
 Thumbs.db

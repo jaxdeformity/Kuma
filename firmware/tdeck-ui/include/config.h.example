@@ -1,0 +1,13 @@
+// KUMA Guard T-Deck — build-time config TEMPLATE.
+// Copy to config.h and fill in. config.h is gitignored so secrets never commit.
+#pragma once
+
+#define KUMA_WIFI_SSID      "YOUR_WIFI"
+#define KUMA_WIFI_PASSWORD  "YOUR_PASSWORD"
+
+// The Raspberry Pi running the KUMA backend (kuma_api). Set once the Pi is up.
+#define KUMA_BACKEND_HOST   "192.168.50.50"
+#define KUMA_BACKEND_PORT   8080
+
+#define KUMA_STATUS_POLL_MS 2000
+#define KUMA_EVENTS_POLL_MS 5000
