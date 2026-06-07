@@ -1,10 +1,10 @@
-# KUMA Guard Project Context
+# KUMA Project Context
 
 ## Project Summary
 
-You are helping build an open-source defensive cybersecurity hardware/software project called **KUMA Guard**.
+You are helping build an open-source defensive cybersecurity hardware/software project called **KUMA**.
 
-KUMA Guard is a portable blue-team cyber defense gadget inspired by the portability, personality, and hands-on usefulness of tools like Pwnagotchi, Flipper Zero, and Bruce, but defender-focused.
+KUMA is a portable blue-team cyber defense gadget inspired by the portability, personality, and hands-on usefulness of tools like Pwnagotchi, Flipper Zero, and Bruce, but defender-focused.
 
 The goal is **not** to build a sealed commercial product or expensive custom gadget. The goal is to build an open-source, DIY, reproducible platform using purchasable parts and 3D-printed enclosures later.
 
@@ -55,13 +55,13 @@ For now:
     Raspberry Pi 4 Model B
     + monitor-mode USB Wi-Fi dongle
     + M5Core with battery pack
-    = KUMA Guard v0.0 prototype
+    = KUMA v0.0 prototype
 
 ---
 
 ## Product Identity
 
-Name: **KUMA Guard**
+Name: **KUMA**
 
 Theme: **pixel-art blue-team bear mascot**
 
@@ -73,7 +73,7 @@ Purpose:
 - show status through a handheld mascot UI
 - eventually support controlled active-response workflows in authorized lab environments
 
-KUMA Guard should feel like a defender-focused counterpart to portable hacker gadgets, but it must be practical and modular.
+KUMA should feel like a defender-focused counterpart to portable hacker gadgets, but it must be practical and modular.
 
 Core philosophy:
 
@@ -91,7 +91,7 @@ Core philosophy:
 
 ## Core Operating Modes
 
-KUMA Guard has five first-class operating modes.
+KUMA has five first-class operating modes.
 
 ### 1. Hibernate Mode
 
@@ -430,7 +430,7 @@ Implement these endpoints at minimum.
 Returns:
 
     {
-      "device": "KUMA Guard",
+      "device": "KUMA",
       "version": "0.0.1",
       "mode": "sentinel",
       "threat_level": "low",
@@ -573,7 +573,7 @@ Create sample config files.
 ### config/kuma_settings.json
 
     {
-      "device_name": "KUMA Guard",
+      "device_name": "KUMA",
       "version": "0.0.1",
       "default_mode": "sentinel",
       "wifi_interface": "wlan1",
@@ -890,7 +890,7 @@ Implement these screens.
 
 Display:
 
-    KUMA GUARD
+    KUMA
     SENTINEL MODE
 
     Threat: LOW
@@ -1164,7 +1164,7 @@ The first demo should work like this:
 4. `/api/status` returns current mode, threat level, bear state, and event count.
 5. `/api/events` returns recent events.
 6. M5Core connects to backend API over Wi-Fi.
-7. M5Core displays KUMA Guard status and pixel bear state.
+7. M5Core displays KUMA status and pixel bear state.
 8. User can switch modes from M5Core.
 9. Backend logs the mode change.
 10. UI updates based on new mode.
@@ -1178,7 +1178,7 @@ Real packet capture comes after this pipeline works.
 ## Example Backend Status Response
 
     {
-      "device": "KUMA Guard",
+      "device": "KUMA",
       "version": "0.0.1",
       "mode": "sentinel",
       "threat_level": "medium",
@@ -1428,7 +1428,7 @@ Deliverables:
 
 Start here:
 
-    Create the KUMA Guard v0.0 repository scaffold and implement the backend mock API first. The first demo must show mode switching, event logging, mock Sentinel alerts, and an API response that an M5Core UI can consume. Do not implement real packet capture until the mock pipeline works end-to-end.
+    Create the KUMA v0.0 repository scaffold and implement the backend mock API first. The first demo must show mode switching, event logging, mock Sentinel alerts, and an API response that an M5Core UI can consume. Do not implement real packet capture until the mock pipeline works end-to-end.
 
 ---
 
@@ -1490,7 +1490,7 @@ After Sprint 1 works:
 
 ## Project North Star
 
-KUMA Guard should become:
+KUMA should become:
 
     A portable open-source blue-team cyber defense gadget that can forage the environment, set honey traps, stand sentinel, and enter apex mode only when explicitly authorized.
 

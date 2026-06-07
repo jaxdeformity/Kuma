@@ -1,4 +1,4 @@
-# KUMA Guard - Build Log
+# KUMA - Build Log
 
 Running log of what works, what doesn't, and setup gotchas. Newest first.
 

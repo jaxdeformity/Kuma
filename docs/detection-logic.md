@@ -1,4 +1,4 @@
-# KUMA Guard - Detection Logic
+# KUMA - Detection Logic
 
 ## The honesty rule
 

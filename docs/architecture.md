@@ -1,4 +1,4 @@
-# KUMA Guard - Architecture
+# KUMA - Architecture
 
 ## The split-brain principle
 

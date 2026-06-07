@@ -1,4 +1,4 @@
-# KUMA Guard - Backend
+# KUMA - Backend
 
 Python / FastAPI / SQLite backend. Runs on the Raspberry Pi 4 (or any Linux/macOS/Windows box for development). Sprint 1 runs entirely on a **mock detector** - no Wi-Fi hardware required.
 

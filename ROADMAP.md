@@ -1,4 +1,4 @@
-# KUMA Guard - Roadmap
+# KUMA - Roadmap
 
 ## Sprint 1 - Prove the pipeline ✅ (this commit)
 

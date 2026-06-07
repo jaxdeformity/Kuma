@@ -1,4 +1,4 @@
-# KUMA Guard - Modes
+# KUMA - Modes
 
 KUMA has five first-class modes. Each one is both a *behaviour* and a *face*. The lifecycle reads as a defender's day:
 

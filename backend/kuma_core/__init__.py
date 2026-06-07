@@ -1,1 +1,1 @@
-"""KUMA Guard core: config, modes, events, scoring, database."""
+"""KUMA core: config, modes, events, scoring, database."""

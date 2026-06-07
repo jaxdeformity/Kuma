@@ -1,4 +1,4 @@
-# KUMA Guard - T-Deck Firmware (flagship face)
+# KUMA - T-Deck Firmware (flagship face)
 
 PlatformIO firmware for the **LilyGo T-Deck / T-Deck Plus** (ESP32-S3). The T-Deck is KUMA's premium handheld face: it joins Wi-Fi, polls the Pi backend, and renders the bear + status. Keyboard + trackball give real on-device navigation. **No packet capture** - pure UI client.
 

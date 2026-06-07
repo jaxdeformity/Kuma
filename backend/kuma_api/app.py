@@ -1,4 +1,4 @@
-"""KUMA Guard backend entrypoint.
+"""KUMA backend entrypoint.
 
     uvicorn kuma_api.app:app --host 0.0.0.0 --port 8080
 
@@ -52,7 +52,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="KUMA Guard",
+    title="KUMA",
     version=settings.version,
     description="Blue-team defensive gadget backend. Mock pipeline in v0.0.",
     lifespan=lifespan,
@@ -69,4 +69,4 @@ def dashboard() -> str:
     try:
         return _DASHBOARD.read_text(encoding="utf-8")
     except FileNotFoundError:
-        return "<h1>KUMA Guard</h1><p>Dashboard missing. API at /api/status</p>"
+        return "<h1>KUMA</h1><p>Dashboard missing. API at /api/status</p>"

@@ -1,4 +1,4 @@
-# KUMA Guard backend - Python 3.11+
+# KUMA backend - Python 3.11+
 # Keep this lean: it runs on a Raspberry Pi.
 fastapi>=0.110
 uvicorn[standard]>=0.29

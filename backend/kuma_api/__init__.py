@@ -1,1 +1,1 @@
-"""KUMA Guard HTTP API (FastAPI)."""
+"""KUMA HTTP API (FastAPI)."""

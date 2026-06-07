@@ -1,4 +1,4 @@
-"""SQLite persistence for KUMA Guard.
+"""SQLite persistence for KUMA.
 
 Single-file DB at backend/data/kuma.db. Tables mirror the spec: events,
 known_aps, observations, actions, settings. Events are also mirrored to

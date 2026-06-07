@@ -1,0 +1,149 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>クマ // KUMA-OS</title>
+<style>
+  :root{--bg:#04080a;--p:#42ff8c;--pd:#1b6e38;--pf:#0c3a20;--red:#ff2e2e;--amb:#ffb000;--ink:#bfe8cf;--paper:#e9f5ec}
+  *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg)}
+  body{color:var(--p);font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
+    letter-spacing:.05em;padding:14px;max-width:920px;margin:0 auto;text-shadow:0 0 6px rgba(66,255,140,.4)}
+  .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:20;
+    background:repeating-linear-gradient(0deg,rgba(0,0,0,.32) 0 1px,transparent 1px 3px)}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:19;
+    background:radial-gradient(120% 100% at 50% 38%,transparent 58%,rgba(0,0,0,.55))}
+  .shell{display:grid;grid-template-columns:34px 1fr;gap:0;border:1px solid var(--pd)}
+  @media(max-width:600px){.shell{grid-template-columns:1fr}}
+  .rail{writing-mode:vertical-rl;text-orientation:upright;border-right:1px solid var(--pd);
+    display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:12px 0;
+    background:linear-gradient(180deg,rgba(66,255,140,.05),transparent);letter-spacing:.34em;font-size:17px}
+  @media(max-width:600px){.rail{writing-mode:horizontal-tb;flex-direction:row;border-right:0;border-bottom:1px solid var(--pd);padding:6px 10px}}
+  .rail .id{font-size:9px;color:var(--pd);letter-spacing:.2em;font-family:"JetBrains Mono",monospace}
+  .main{min-width:0}
+  .top{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid var(--pd)}
+  .wm{font-size:15px;letter-spacing:.22em}.wm b{font-size:19px}.wm .sub{font-size:9px;color:var(--pd);letter-spacing:.24em;display:block;margin-top:1px}
+  .stat{font-size:10px;color:var(--pd);text-align:right;line-height:1.6}.stat .on{color:var(--p)}
+  .grid{display:grid;grid-template-columns:200px 1fr}
+  @media(max-width:560px){.grid{grid-template-columns:1fr}}
+  .vp{position:relative;display:flex;align-items:center;justify-content:center;padding:14px;border-right:1px solid var(--pd);min-height:188px;overflow:hidden}
+  .vp::before{content:"";position:absolute;width:240px;height:240px;
+    background:conic-gradient(from 0deg,transparent 0 8deg,rgba(66,255,140,.05) 8deg 16deg);opacity:.6}
+  canvas{image-rendering:pixelated;width:150px;height:150px;position:relative;z-index:2}
+  .seal{position:absolute;top:10px;right:10px;width:46px;height:46px;border:2px solid var(--red);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;color:var(--red);z-index:3;line-height:1;
+    text-shadow:0 0 5px rgba(255,46,46,.6);transform:rotate(-7deg);opacity:.94;box-shadow:0 0 8px rgba(255,46,46,.25) inset}
+  .seal span{writing-mode:vertical-rl;font-size:17px;letter-spacing:-.04em}
+  .ro{padding:13px 15px;display:flex;flex-direction:column;gap:7px}
+  .lbl{font-size:10px;color:var(--pd);letter-spacing:.18em}
+  .threat{font-size:40px;font-weight:700;letter-spacing:.04em;line-height:.95;margin-top:-2px}
+  .bars{display:flex;gap:3px;margin:4px 0}.bb{height:8px;flex:1;background:var(--pf);border:1px solid var(--pd)}
+  .kv{display:flex;justify-content:space-between;font-size:12px;border-top:1px dashed var(--pf);padding:3px 0}
+  .kv b{color:var(--ink);font-weight:400}.kv span{color:var(--pd);letter-spacing:.1em}
+  .warn{display:none;background:repeating-linear-gradient(45deg,rgba(255,46,46,.14) 0 14px,rgba(255,46,46,.04) 14px 28px);
+    border-top:1px solid var(--red);border-bottom:1px solid var(--red);color:var(--red);
+    padding:5px 12px;font-size:12px;letter-spacing:.24em;animation:wf .8s steps(2) infinite}
+  .warn.on{display:block}@keyframes wf{50%{opacity:.45}}
+  .det{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--pd)}
+  .di{padding:8px 11px;border-right:1px solid var(--pf);border-bottom:1px solid var(--pf);display:flex;justify-content:space-between;align-items:center}
+  .di .n{font-size:11px;color:var(--pf);letter-spacing:.1em}.di .lp{width:7px;height:7px;background:var(--pf)}
+  .di.on .n{color:var(--p)}.di.on .lp{background:var(--red);box-shadow:0 0 6px var(--red)}
+  .log{border-top:1px solid var(--pd)}
+  .lt{font-size:10px;color:var(--pd);padding:5px 12px;border-bottom:1px solid var(--pf);letter-spacing:.2em}
+  .le{display:flex;gap:10px;padding:4px 12px;border-bottom:1px solid var(--pf);font-size:11px;white-space:nowrap;overflow:hidden}
+  .le .sv{width:42px;color:var(--red);font-weight:700}.le .sv.me{color:var(--amb)}.le .sv.lo{color:var(--p)}
+  .le .c{color:var(--amb);width:34px}.le .tp{color:var(--pd);width:184px;overflow:hidden;text-overflow:ellipsis}
+  .le .ms{color:var(--pf);overflow:hidden;text-overflow:ellipsis;flex:1}
+  .foot{display:flex;justify-content:space-between;color:var(--pf);font-size:10px;padding:6px 4px;letter-spacing:.1em}
+  .cur::after{content:"_";animation:bl 1s steps(2) infinite}@keyframes bl{50%{opacity:0}}
+</style></head><body>
+<div class="shell">
+  <div class="rail"><div class="jp">クマ</div><div class="id">KUMA-OS</div></div>
+  <div class="main">
+    <div class="top">
+      <div class="wm"><b class="jp">クマ</b><span class="sub">KUMA // SENTINEL TERMINAL</span></div>
+      <div class="stat"><div id="mode">SENTINEL</div><div><span class="on" id="st">ONLINE</span></div></div>
+    </div>
+    <div class="warn" id="warn">WARNING // ATTACK DETECTED</div>
+    <div class="grid">
+      <div class="vp"><canvas id="bear" width="32" height="32"></canvas><div class="seal"><span class="jp">クマ</span></div></div>
+      <div class="ro">
+        <div class="lbl">THREAT LEVEL</div>
+        <div class="threat" id="th">-</div>
+        <div class="bars" id="bars"></div>
+        <div class="kv"><span>EVENTS / 10M</span><b id="e10">-</b></div>
+        <div class="kv"><span>UPTIME</span><b id="up">-</b></div>
+        <div class="kv"><span>SENSOR</span><b id="sn">-</b></div>
+      </div>
+    </div>
+    <div class="det" id="det"></div>
+    <div class="log"><div class="lt">EVENT LOG <span class="cur"></span></div><div id="log"></div></div>
+    <div class="foot"><span id="fs">live</span><span>the bear is watching</span></div>
+  </div>
+</div>
+<script>
+const BW=32;
+function _px(c,x,y,col){if(x<0||y<0||x>=BW||y>=BW)return;c.fillStyle=col;c.fillRect(x|0,y|0,1,1);}
+function _disk(cx,cy,r,fn){const r2=r*r;for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){const dx=x-cx,dy=y-cy;if(dx*dx+dy*dy<=r2&&x>=0&&y>=0&&x<BW&&y<BW)fn(x,y);}}
+function _line(c,x0,y0,x1,y1,col){x0|=0;y0|=0;x1|=0;y1|=0;const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;let err=dx-dy,x=x0,y=y0;for(;;){_px(c,x,y,col);if(x===x1&&y===y1)break;const e2=2*err;if(e2>-dy){err-=dy;x+=sx;}if(e2<dx){err+=dx;y+=sy;}}}
+function drawBear(ctx,state,threat){ctx.clearRect(0,0,BW,BW);
+  const hi=(threat==='high'||threat==='critical'),med=(threat==='medium'),alert=(state==='alert');
+  const fur=hi?'#9d5f47':med?'#8f7748':'#7e7160',furD=hi?'#6f3d2d':med?'#5f4b2d':'#52483c';
+  const crown=hi?'#c83a28':'#9c4a36',dark='#221b13',red='#d83a2a',muz='#d9d0b9',nose='#15110c',fang='#f4f0e3';
+  const eyeC=alert?'#ff5340':(hi?'#ff8a55':med?'#ffd24a':'#cdd5c6'),earY=alert?9:7;
+  const P=(x,y,c)=>_px(ctx,x,y,c),L=(a,b,c,d,e)=>_line(ctx,a,b,c,d,e);
+  const m=[];for(let y=0;y<BW;y++)m[y]=new Array(BW).fill(false);const set=(x,y)=>{if(x>=0&&y>=0&&x<BW&&y<BW)m[y][x]=true;};
+  _disk(16,18,11,set);_disk(7,earY,3.5,set);_disk(25,earY,3.5,set);_disk(16,24,7.6,set);
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++){if(m[y][x])continue;let a=false;for(const d of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){const ny=y+d[1],nx=x+d[0];if(ny>=0&&ny<BW&&nx>=0&&nx<BW&&m[ny][nx]){a=true;break;}}if(a)P(x,y,dark);}
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++)if(m[y][x])P(x,y,y>21?furD:fur);
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++)if(m[y][x]&&y>=7&&y<=13){const dx=(x-16)/9,dy=(y-7)/6.5;if(dx*dx+dy*dy<=1)P(x,y,crown);}
+  _disk(7,earY,1.4,(x,y)=>P(x,y,dark));_disk(25,earY,1.4,(x,y)=>P(x,y,dark));
+  for(let y=0;y<BW;y++)for(let x=0;x<BW;x++){const ex=(x-16)/6,ey=(y-24)/4.3;if(ex*ex+ey*ey<=1&&m[y][x])P(x,y,muz);}
+  for(let x=14;x<=18;x++)P(x,20,nose);for(let x=15;x<=17;x++)P(x,21,nose);P(16,22,nose);
+  for(let t=0;t<2;t++){L(8,13+t,14,16+t,dark);L(24,13+t,18,16+t,dark);}
+  if(state==='sleeping'){L(10,18,13,18,dark);L(19,18,22,18,dark);}
+  else if(state==='error'){L(10,16,13,19,'#888');L(13,16,10,19,'#888');L(19,16,22,19,'#888');L(22,16,19,19,'#888');}
+  else{const s=17;for(let x=10;x<=13;x++){P(x,s,eyeC);P(x,s+1,eyeC);}for(let x=19;x<=22;x++){P(x,s,eyeC);P(x,s+1,eyeC);}
+    P(12,s,nose);P(12,s+1,nose);P(20,s,nose);P(20,s+1,nose);if(alert){P(11,s,'#fff');P(21,s,'#fff');}
+    if(state==='suspicious'){for(let x=10;x<=13;x++)P(x,s,fur);for(let x=19;x<=22;x++)P(x,s,fur);}}
+  if(alert){for(let x=13;x<=19;x++)P(x,25,dark);for(let x=14;x<=18;x++)P(x,26,nose);P(15,27,nose);P(17,27,nose);P(14,25,fang);P(15,26,fang);P(18,25,fang);P(17,26,fang);}
+  else{L(13,25,16,26,dark);L(19,25,16,26,dark);}
+  L(8,11,13,18,red);
+}
+const SAMPLE={status:{version:"0.0.1",mode:"sentinel",threat_level:"high",bear_state:"alert",events_last_10m:18,uptime_seconds:9123,wifi_interface:"wlan1mon"},
+  events:[
+   {event_type:"deauth_burst",severity:"high",timestamp:"2026-06-07T06:02:11Z",message:"Deauth burst on channel 10 (1640 frames/10s)",bssid:"02:00:5E:00:53:1D"},
+   {event_type:"evil_twin_suspected",severity:"high",timestamp:"2026-06-07T06:01:30Z",message:"Known SSID DemoNet_2G from unknown BSSID 02:CA:FE:11:22:33, security downgrade"},
+   {event_type:"beacon_flood",severity:"medium",timestamp:"2026-06-07T06:00:40Z",message:"Beacon flood: BSSID DE:AD:BE:EF:F1:00 advertising 7 SSIDs"},
+   {event_type:"karma_suspected",severity:"medium",timestamp:"2026-06-07T06:00:12Z",message:"Karma: CA:FE:00:00:00:01 probe-responding for 6 SSIDs"},
+   {event_type:"handshake_harvest_pattern",severity:"high",timestamp:"2026-06-07T05:59:55Z",message:"EAPOL harvest spike following deauth burst"},
+   {event_type:"apex_response",severity:"high",timestamp:"2026-06-07T05:59:50Z",message:"APEX: harden_pmf + containment dispatched"}
+  ]};
+async function getData(){if(location.protocol==='file:')return{status:SAMPLE.status,events:SAMPLE.events,live:false};
+  try{const[s,e]=await Promise.all([fetch('/api/status',{cache:'no-store'}).then(r=>r.json()),fetch('/api/events?limit=60',{cache:'no-store'}).then(r=>r.json())]);return{status:s,events:e,live:true};}
+  catch(_){return{status:SAMPLE.status,events:SAMPLE.events,live:false};}}
+const SEVRANK={low:0,medium:1,high:2,critical:3},SEVNAME=['low','medium','high','critical'];
+function groupEvents(ev){const o=[],g={};ev.forEach(e=>{const k=e.event_type||'?';if(!g[k]){g[k]={type:k,items:[],sev:0,latest:e};o.push(k);}g[k].items.push(e);g[k].sev=Math.max(g[k].sev,SEVRANK[e.severity]||0);});return o.map(k=>g[k]);}
+function hms(s){s=s||0;const p=n=>String(n).padStart(2,'0');return p(s/3600|0)+':'+p((s%3600)/60|0)+':'+p(s%60);}
+const detail=e=>e.message||((e.bssid||'')+' '+(e.ssid||'')).trim();
+
+const DET=[['deauth','DEAUTH'],['beacon','BEACON FLOOD'],['twin','EVIL TWIN'],['karma','KARMA'],['handshake','EAPOL'],['apex','APEX']];
+const bc=document.getElementById('bear').getContext('2d');
+async function render(){
+  const {status:s,events,live}=await getData();
+  const tl=s.threat_level||'low',hi=(tl==='high'||tl==='critical');
+  document.getElementById('mode').textContent=(s.mode||'-').toUpperCase();
+  document.getElementById('st').textContent=live?'ONLINE':'DEMO';
+  const th=document.getElementById('th');th.textContent=tl.toUpperCase();th.style.color=hi?'var(--red)':tl==='medium'?'var(--amb)':'var(--p)';
+  document.getElementById('e10').textContent=s.events_last_10m;document.getElementById('up').textContent=hms(s.uptime_seconds);document.getElementById('sn').textContent=s.wifi_interface;
+  document.getElementById('fs').textContent=live?'live · 3s poll':'sample data';
+  drawBear(bc,s.bear_state,tl);
+  document.getElementById('warn').className='warn'+(hi?' on':'');
+  const n={low:1,medium:2,high:3,critical:4}[tl]||0,bars=document.getElementById('bars');bars.innerHTML='';
+  for(let i=0;i<4;i++){const b=document.createElement('div');b.className='bb';if(i<n)b.style.background=i>=2?'var(--red)':i>=1?'var(--amb)':'var(--p)';bars.appendChild(b);}
+  const act={};events.forEach(e=>{const t=e.event_type||'';DET.forEach(([k])=>{if(t.includes(k))act[k]=1;});if(t==='apex_response')act.apex=1;});
+  document.getElementById('det').innerHTML=DET.map(([k,en])=>`<div class="di${act[k]?' on':''}"><span class="n">${en}</span><span class="lp"></span></div>`).join('');
+  const sc=x=>({low:'lo',medium:'me',high:'hi',critical:'hi'}[x]||'lo');
+  document.getElementById('log').innerHTML=groupEvents(events).map(g=>{const sv=SEVNAME[g.sev];
+    return `<div class="le"><span class="sv ${sc(sv)}">${sv.toUpperCase().slice(0,4)}</span><span class="c">×${g.items.length}</span><span class="tp">${g.type}</span><span class="ms">${detail(g.latest)}</span></div>`;}).join('');
+}
+render();setInterval(render,3000);
+</script></body></html>

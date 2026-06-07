@@ -1,4 +1,4 @@
-# KUMA Guard - Current Hardware (v0.0)
+# KUMA - Current Hardware (v0.0)
 
 ## The prototype stack
 
@@ -6,7 +6,7 @@
 Raspberry Pi 4 Model B
   + monitor-mode USB Wi-Fi dongle
   + M5Stack M5Core with battery pack
-  = KUMA Guard v0.0
+  = KUMA v0.0
 ```
 
 | Part | Role | Notes |

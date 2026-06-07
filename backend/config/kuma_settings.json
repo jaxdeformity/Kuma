@@ -1,5 +1,5 @@
 {
-  "device_name": "KUMA Guard",
+  "device_name": "KUMA",
   "version": "0.0.1",
   "default_mode": "sentinel",
   "wifi_interface": "wlan1",

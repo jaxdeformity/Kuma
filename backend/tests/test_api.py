@@ -26,7 +26,7 @@ def test_status_shape(client):
     for key in ("device", "version", "mode", "threat_level", "bear_state",
                 "uptime_seconds", "wifi_interface", "events_last_10m"):
         assert key in body
-    assert body["device"] == "KUMA Guard"
+    assert body["device"] == "KUMA"
 
 
 def test_mode_switch(client):

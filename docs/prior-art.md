@@ -1,4 +1,4 @@
-# KUMA Guard - Prior Art & What We Borrow
+# KUMA - Prior Art & What We Borrow
 
 KUMA is *not* a from-scratch invention. Four open-source gadgets already do the hard parts - for **red teams**. KUMA inverts their techniques into a **blue-team** posture: their attacks become our detections, their personality systems become our bear, their architectures become our scaffolding.
 

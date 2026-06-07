@@ -1,4 +1,4 @@
-# KUMA Guard - HTTP API
+# KUMA - HTTP API
 
 Base URL: `http://<pi-ip>:8080`. Interactive docs (Swagger) at `/docs`. All bodies are JSON.
 
@@ -12,7 +12,7 @@ Device heartbeat. Polled by the M5Core every 1-3s.
 
 ```json
 {
-  "device": "KUMA Guard",
+  "device": "KUMA",
   "version": "0.0.1",
   "mode": "sentinel",
   "threat_level": "medium",

@@ -1,8 +1,8 @@
 # クマ
 
-KUMA Guard. An open-source, DIY, blue-team Wi-Fi defense gadget.
+KUMA. An open-source, DIY, blue-team Wi-Fi defense gadget.
 
-Pwnagotchi, [Bjorn](https://github.com/infinition/Bjorn), [HashMonster](https://github.com/G4lile0/ESP32-WiFi-Hash-Monster), and [Bruce](https://github.com/pr3y/Bruce) are pocket tools built for attacking wireless networks. KUMA Guard is the opposite. It sits on the network you want to protect, watches the air for those attacks, scores what it sees, and shows it on a dashboard with a pixel-bear mascot whose mood tracks the threat. Detection and defense only. The device never transmits attack frames.
+Pwnagotchi, [Bjorn](https://github.com/infinition/Bjorn), [HashMonster](https://github.com/G4lile0/ESP32-WiFi-Hash-Monster), and [Bruce](https://github.com/pr3y/Bruce) are pocket tools built for attacking wireless networks. KUMA is the opposite. It sits on the network you want to protect, watches the air for those attacks, scores what it sees, and shows it on a dashboard with a pixel-bear mascot whose mood tracks the threat. Detection and defense only. The device never transmits attack frames.
 
 Five modes: Hibernate (conserve), Foraging (discover), Sentinel (detect), Honey (deceive), Apex (respond).
 
@@ -109,7 +109,7 @@ The look is locked in [DESIGN.md](DESIGN.md): a dark, monospace instrument conso
 
 ## Scope
 
-KUMA Guard is a defensive tool for networks you own or are authorized to monitor. It does not attack. Use it lawfully.
+KUMA is a defensive tool for networks you own or are authorized to monitor. It does not attack. Use it lawfully.
 
 ## License
 

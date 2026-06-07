@@ -1,4 +1,4 @@
-"""KUMA Guard configuration loader.
+"""KUMA configuration loader.
 
 Loads JSON config files from backend/config/ and exposes a single Settings
 object. Everything is plain dict-backed so configs stay human-editable and
@@ -47,7 +47,7 @@ class Settings:
     # Convenience accessors with sane fallbacks ---------------------------
     @property
     def device_name(self) -> str:
-        return self.settings.get("device_name", "KUMA Guard")
+        return self.settings.get("device_name", "KUMA")
 
     @property
     def version(self) -> str:

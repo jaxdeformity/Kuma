@@ -40,7 +40,7 @@
   .hi{color:var(--red)}.me{color:var(--amb)}.lo{color:var(--grn)}.cnt{color:var(--amb);font-weight:700}
   .foot{display:flex;justify-content:space-between;color:var(--dim);font-size:10px;padding:6px 2px}
 </style></head><body>
-  <div class="bar"><div class="wm">KUMA<i>·</i>GUARD</div>
+  <div class="bar"><div class="wm">KUMA</div>
     <div class="hr"><span id="ver">v0.0.1</span><span id="ifc">wlan</span>
       <span style="display:inline-flex;gap:6px;align-items:center"><span class="blip"></span><span id="lt">ONLINE</span></span></div></div>
   <div class="core">
@@ -53,7 +53,7 @@
   </div>
   <div class="def" id="def"></div>
   <div class="con"><div class="ct">EVENT LOG</div><table><tbody id="log"></tbody></table></div>
-  <div class="foot"><span id="fs">live · 3s</span><span>KUMA Guard · v1 console</span></div>
+  <div class="foot"><span id="fs">live · 3s</span><span>KUMA · v1 console</span></div>
 <script>
 // Shared core for the KUMA dashboard design variants.
 // - drawBear(ctx,state,threat): the Akakabuto pixel bear (32x32)
@@ -108,7 +108,7 @@ function drawBear(ctx,state,threat){
 }
 
 const SAMPLE = {
-  status:{device_name:"KUMA Guard",version:"0.0.1",mode:"sentinel",threat_level:"high",
+  status:{device_name:"KUMA",version:"0.0.1",mode:"sentinel",threat_level:"high",
     bear_state:"alert",events_last_10m:18,uptime_seconds:9123,wifi_interface:"wlan1mon"},
   events:[
     {event_type:"deauth_burst",severity:"high",timestamp:"2026-06-07T06:02:11Z",message:"Deauth burst on channel 10 (1640 frames/10s)",bssid:"02:00:5E:00:53:1D"},

@@ -1,4 +1,4 @@
-# KUMA Guard - DESIGN.md
+# KUMA - DESIGN.md
 
 > The single source of truth for how KUMA looks and feels. Every surface - the
 > web dashboard, the T-Deck handheld face, any future UI - must read like it
@@ -76,7 +76,7 @@ CRT touch: a faint `repeating-linear-gradient` scanline overlay at ~50% opacity,
 
 ## 6. Components
 
-- **Header strip** - wordmark `KUMA·GUARD`, version, sensor iface, live blip (green pulse = online, red = offline).
+- **Header strip** - wordmark `KUMA`, version, sensor iface, live blip (green pulse = online, red = offline).
 - **Bear viewport** - bordered, faint radial glow, the pixel bear centered, a dim state tag bottom-left.
 - **Readout** - MODE (cyan, tracked), THREAT LEVEL label + big colored value, a 4-segment gauge, key/value rows (events/10m, uptime, sensor) on dotted dividers.
 - **Defenses strip** - one cell per detector with a LED dot; green=armed, amber=hot (firing).

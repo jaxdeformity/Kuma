@@ -1,72 +1,107 @@
-<!doctype html><html><head><meta charset="utf-8"><title>bear preview</title>
+<!doctype html><html><head><meta charset="utf-8"><title>kuma bear v2</title>
 <style>
-  body{background:#050807;margin:0;padding:28px;font:12px ui-monospace,monospace;color:#566;
-    display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end}
+  body{background:#0b0e0c;margin:0;padding:26px;font:12px ui-monospace,monospace;color:#566;
+    display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end}
   .cell{text-align:center}
   canvas{image-rendering:pixelated;width:192px;height:192px;
-    background:radial-gradient(120% 120% at 50% 35%,rgba(70,224,122,.06),transparent 60%);
-    border:1px solid #2a322d}
-  .lbl{margin-top:8px;letter-spacing:.2em;text-transform:uppercase}
+    background:radial-gradient(120% 120% at 50% 42%,rgba(120,90,60,.10),transparent 62%);border:1px solid #2a322d}
+  .lbl{margin-top:7px;letter-spacing:.18em;text-transform:uppercase;font-size:11px}
 </style></head><body>
 <script>
-const W=32;
-function px(x,y,c){if(x<0||y<0||x>=W||y>=W)return;CTX.fillStyle=c;CTX.fillRect(x|0,y|0,1,1);}
-function disk(cx,cy,r,fn){const r2=r*r;
-  for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){
-    const dx=x-cx,dy=y-cy;if(dx*dx+dy*dy<=r2&&x>=0&&y>=0&&x<W&&y<W)fn(x,y);}}
-function line(x0,y0,x1,y1,c){x0|=0;y0|=0;x1|=0;y1|=0;
-  const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;
-  let err=dx-dy,x=x0,y=y0;
-  for(;;){px(x,y,c);if(x===x1&&y===y1)break;const e2=2*err;
-    if(e2>-dy){err-=dy;x+=sx;}if(e2<dx){err+=dx;y+=sy;}}}
+const W=24;
 let CTX;
-function drawBear(state,threat){
-  const hi=(threat==='high'||threat==='critical'), med=(threat==='medium');
-  const alert=(state==='alert');
-  const fur=hi?'#9d5f47':med?'#8f7748':'#7e7160';
-  const furD=hi?'#6f3d2d':med?'#5f4b2d':'#52483c';
-  const crown=hi?'#c83a28':'#9c4a36';
-  const dark='#221b13', red='#d83a2a';
-  const muz='#d9d0b9', nose='#15110c', fang='#f4f0e3';
-  const eyeC=alert?'#ff5340':(hi?'#ff8a55':med?'#ffd24a':'#cdd5c6');
-  const earY=alert?9:7;
-  const mask=[];for(let y=0;y<W;y++)mask[y]=new Array(W).fill(false);
-  const set=(x,y)=>{if(x>=0&&y>=0&&x<W&&y<W)mask[y][x]=true;};
-  disk(16,18,11,set); disk(7,earY,3.5,set); disk(25,earY,3.5,set); disk(16,24,7.6,set);
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){if(mask[y][x])continue;let adj=false;
-    for(const d of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){
-      const ny=y+d[1],nx=x+d[0];if(ny>=0&&ny<W&&nx>=0&&nx<W&&mask[ny][nx]){adj=true;break;}}
-    if(adj)px(x,y,dark);}
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x])px(x,y,y>21?furD:fur);
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x]&&y>=7&&y<=13){
-    const dx=(x-16)/9,dy=(y-7)/6.5;if(dx*dx+dy*dy<=1)px(x,y,crown);}
-  disk(7,earY,1.4,(x,y)=>px(x,y,dark)); disk(25,earY,1.4,(x,y)=>px(x,y,dark));
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){const ex=(x-16)/6,ey=(y-24)/4.3;
-    if(ex*ex+ey*ey<=1&&mask[y][x])px(x,y,muz);}
-  for(let x=14;x<=18;x++)px(x,20,nose);for(let x=15;x<=17;x++)px(x,21,nose);px(16,22,nose);
-  for(let t=0;t<2;t++){line(8,13+t,14,16+t,dark);line(24,13+t,18,16+t,dark);}
-  if(state==='sleeping'){line(10,18,13,18,dark);line(19,18,22,18,dark);}
-  else if(state==='error'){line(10,16,13,19,'#888');line(13,16,10,19,'#888');
-    line(19,16,22,19,'#888');line(22,16,19,19,'#888');}
-  else{
-    const slit=17;
-    for(let x=10;x<=13;x++){px(x,slit,eyeC);px(x,slit+1,eyeC);}
-    for(let x=19;x<=22;x++){px(x,slit,eyeC);px(x,slit+1,eyeC);}
-    px(12,slit,nose);px(12,slit+1,nose);px(20,slit,nose);px(20,slit+1,nose);
-    if(alert){px(11,slit,'#fff');px(21,slit,'#fff');}
-    if(state==='suspicious'){for(let x=10;x<=13;x++)px(x,slit,fur);for(let x=19;x<=22;x++)px(x,slit,fur);}
+function px(x,y,c){if(x<0||y<0||x>=W||y>=W||!c)return;CTX.fillStyle=c;CTX.fillRect(x|0,y|0,1,1);}
+function tri(x0,y0,x1,y1,x2,y2,c){const mnx=Math.min(x0,x1,x2),mxx=Math.max(x0,x1,x2),mny=Math.min(y0,y1,y2),mxy=Math.max(y0,y1,y2);
+  for(let y=mny;y<=mxy;y++)for(let x=mnx;x<=mxx;x++){const w0=(x1-x)*(y2-y)-(x2-x)*(y1-y),w1=(x2-x)*(y0-y)-(x0-x)*(y2-y),w2=(x0-x)*(y1-y)-(x1-x)*(y0-y);
+    if((w0>=0&&w1>=0&&w2>=0)||(w0<=0&&w1<=0&&w2<=0))px(x,y,c);}}
+
+// hand-authored body. o=outline # =fur :=shadow m=muzzle n=nose .=empty
+const BODY=[
+"........................",
+"....ooo......ooo........",
+"...o###o....o###o......",
+"...o####o..o####o.......",
+"..o######oo######o......",
+".o################o....",
+".o################o....",
+"o##################o...",
+"o##################o...",
+"o##################o...",
+"o##################o...",
+"o##################o...",
+".o################o....",
+".o#####mmmmmmmm###o....",
+".o####mmmmmmmmmm##o....",
+"..o##mmmmmnnmmmmm#o....",
+"..o##mmmmmnnmmmmm#o....",
+"...o#mmmmmmmmmmm#o.....",
+"....o#mmmmmmmmm#o......",
+".....o#########o.......",
+"......oo#####oo........",
+".......ooooooo........."
+];
+function paint(threat){
+  const hi=(threat==='high'||threat==='critical'),med=(threat==='medium');
+  const C={o:'#1a130d',
+    '#':hi?'#a8553a':med?'#977040':'#8a7053',
+    ':':hi?'#7a3826':med?'#664a28':'#5e4c39',
+    m:'#ddd3bb', n:'#140f0a'};
+  for(let y=0;y<BODY.length;y++)for(let x=0;x<BODY[y].length;x++){
+    let ch=BODY[y][x];
+    if(ch==='#'&&(y>16||x>15))ch=':';        // cel shadow lower-right
+    px(x,y,C[ch]);
   }
-  if(alert){for(let x=13;x<=19;x++)px(x,25,dark);
-    for(let x=14;x<=18;x++)px(x,26,nose);px(15,27,nose);px(17,27,nose);
-    px(14,25,fang);px(15,26,fang);px(18,25,fang);px(17,26,fang);}
-  else{line(13,25,16,26,dark);line(19,25,16,26,dark);}
-  line(8,11,13,18,red);
 }
+const EL=6, ER=15, EY=10;                      // eye centers
+
+function drawBear(state,threat){
+  CTX.clearRect(0,0,W,W);
+  const hi=(threat==='high'||threat==='critical'),med=(threat==='medium'),demon=(state==='alert'||state==='apex');
+  const out='#1a130d', white='#f4f2ea', nose='#140f0a', fang='#f6f2e6', red='#e23a26', horn='#e7dcc2';
+  const glow = state==='alert'?'#ff3a2a':(state==='apex'?'#ff7a3a':hi?'#ff9a40':med?'#ffd24a':null);
+
+  // horns first (behind nothing, above ears) for demon states
+  if(demon){ tri(5,4,8,4,5,0,horn); tri(16,4,13,4,16,0,horn);
+             px(5,4,out);px(8,4,out);px(16,4,out);px(13,4,out); }
+  paint(threat);
+
+  // ---- eyes ----
+  function roundEye(cx,look){                   // cute big eye
+    for(const[dx,dy]of[[0,-1],[-1,0],[0,0],[1,0],[0,1]])px(cx+dx,EY+dy,nose); // plus-shaped dark
+    px(cx-1,EY-1,nose);px(cx+1,EY-1,nose);px(cx-1,EY+1,nose);px(cx+1,EY+1,nose); // fill to 3x3
+    px(cx+(look||-1),EY-1,white);               // shine
+    if(glow){px(cx,EY,glow);}                    // glowing iris center when threat up
+  }
+  function slit(cx){ for(let i=-1;i<=1;i++)px(cx+i,EY,glow||'#cdd5c6'); px(cx,EY,nose); }
+  function angry(cx,s){ for(let i=0;i<3;i++){px(cx-1+i,EY+(s>0?i: (2-i)),glow);px(cx-1+i,EY+1+(s>0?i:(2-i)),glow);} px(cx,EY,nose); px(cx-1*s,EY-1,out); }
+
+  if(state==='sleeping'){ for(const cx of[EL,ER]){px(cx-1,EY,out);px(cx,EY+1,out);px(cx+1,EY,out);} }
+  else if(state==='error'){ for(const cx of[EL,ER]){px(cx-1,EY-1,'#9a9a9a');px(cx+1,EY+1,'#9a9a9a');px(cx+1,EY-1,'#9a9a9a');px(cx-1,EY+1,'#9a9a9a');px(cx,EY,'#9a9a9a');} }
+  else if(state==='suspicious'){ slit(EL); slit(ER);
+    px(EL-2,EY-2,out);px(EL-1,EY-1,out); px(ER+2,EY-2,out);px(ER+1,EY-1,out); } // skeptical brow tilt
+  else if(state==='alert'||state==='apex'){ angry(EL,1); angry(ER,-1);
+    for(let t=0;t<2;t++){px(EL-2+t,EY-2,out);px(EL+1+t,EY-1,out);px(ER+1-t,EY-2,out);px(ER-2+t,EY-1,out);} } // furrow
+  else if(state==='honey'){ for(const cx of[EL,ER]){px(cx-1,EY,out);px(cx+1,EY,out);px(cx,EY,'#ffd24a');} } // half-lidded smug
+  else { roundEye(EL,-1); roundEye(ER,-1); }     // foraging / default: cute
+
+  // ---- mouth (muzzle is around rows 13-18, center col ~10) ----
+  const MX=10,MY=18;
+  if(demon){ for(let x=MX-3;x<=MX+3;x++)px(x,MY-1,out);            // snarl
+    for(let x=MX-2;x<=MX+2;x++)px(x,MY,nose);
+    tri(MX-3,MY-1,MX-1,MY-1,MX-2,MY-3,fang); tri(MX+1,MY-1,MX+3,MY-1,MX+2,MY-3,fang);
+    px(7,7,red);px(8,8,red);px(9,9,red);px(10,10,red);            // diagonal scar
+  }
+  else if(state==='sleeping'){ px(MX-1,MY-1,out);px(MX,MY,out);px(MX+1,MY-1,out); }
+  else if(state==='honey'){ px(MX-2,MY,out);px(MX-1,MY,out);px(MX,MY-1,out);px(MX+1,MY-1,out); } // smirk
+  else if(state==='error'){ px(MX-2,MY-1,out);px(MX-1,MY,out);px(MX,MY-1,out);px(MX+1,MY,out);px(MX+2,MY-1,out); } // wavy
+  else { px(MX-2,MY-1,out);px(MX-1,MY,out);px(MX,MY,out);px(MX+1,MY,out);px(MX+2,MY-1,out); } // gentle smile
+}
+
 const STATES=[['sleeping','low'],['foraging','low'],['suspicious','medium'],['alert','high'],['error','low']];
 for(const [st,th] of STATES){
   const cell=document.createElement('div');cell.className='cell';
   const cv=document.createElement('canvas');cv.width=W;cv.height=W;
-  CTX=cv.getContext('2d');CTX.clearRect(0,0,W,W);drawBear(st,th);
+  CTX=cv.getContext('2d');drawBear(st,th);
   const l=document.createElement('div');l.className='lbl';l.textContent=st+' / '+th;
   cell.appendChild(cv);cell.appendChild(l);document.body.appendChild(cell);
 }
