@@ -90,6 +90,16 @@ bool setMode(KumaMode mode) {
   return code == 200;
 }
 
+bool postBattleWin() {
+  if (!wifiConnected()) return false;
+  HTTPClient http;
+  http.setTimeout(2000);
+  if (!http.begin(baseUrl() + "/api/progress/battle-win")) return false;
+  int code = http.POST("");
+  http.end();
+  return code == 200;
+}
+
 bool sendAction(const char* action, bool confirm) {
   if (!wifiConnected()) return false;
   HTTPClient http;

@@ -15,6 +15,8 @@
 #include "input.h"
 #include "kuma_api_client.h"
 #include "kuma_ui.h"
+#include "kuma_battle.h"
+#include "kuma_audio.h"
 
 static LGFX_TDeck display;
 static KumaStatus g_status;
@@ -39,6 +41,8 @@ void setup() {
   display.init();
   display.setBrightness(200);
   kuma_ui::begin(&display);
+  battle::begin(&display);
+  audio::begin();
   kuma_ui::splash();
 
   input::begin();
@@ -72,7 +76,10 @@ void loop() {
       g_status.online = false;                    // only after 3 fails (~6s)
       g_status.bearState = BearState::Error;
     }                                             // else: keep last-good bear
-    if (g_screen == Screen::Home) kuma_ui::drawHome(g_status);
+    if (g_screen == Screen::Home) {
+      battle::maybeStart(g_status);                // runs the on-device battle if threatened
+      kuma_ui::drawHome(g_status);                 // (re)draw the monitoring face
+    }
   }
 
   // --- input -------------------------------------------------------------

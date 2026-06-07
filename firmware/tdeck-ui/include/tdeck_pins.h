@@ -29,6 +29,11 @@
 #define TDECK_TB_RIGHT      2
 #define TDECK_TB_CLICK      0      // shared with BOOT
 
+// I2S audio (MAX98357A amp -> speaker). LilyGo T-Deck reference pins.
+#define TDECK_I2S_BCK       7
+#define TDECK_I2S_WS        5
+#define TDECK_I2S_DOUT      6
+
 // Misc
 #define TDECK_SDCARD_CS     39
 #define TDECK_BAT_ADC       4
