@@ -29,6 +29,7 @@ from detectors.responder import ApexResponder
 _current_channel = 0
 
 from kuma_core import database, events, scoring
+from kuma_core.config import settings
 
 # Subtype 12 = deauthentication, 10 = disassociation.
 WINDOW_SECONDS = 10
@@ -163,6 +164,83 @@ class BeaconFloodTracker:
         return ev
 
 
+_RSN_ID = 48
+_VENDOR_ID = 221
+_SEC_RANK = {"OPEN": 0, "WEP": 1, "WPA": 2, "WPA2": 3,
+             "WPA2/WPA3": 4, "WPA3": 5}
+
+
+def beacon_security(pkt) -> str:
+    """Best-effort security class from a beacon: OPEN / WEP / WPA / WPA2."""
+    try:
+        privacy = bool(pkt[Dot11Beacon].cap.privacy)
+    except Exception:  # noqa: BLE001
+        privacy = False
+    has_rsn = has_wpa = False
+    el = pkt.getlayer(Dot11Elt)
+    while el is not None:
+        eid = getattr(el, "ID", None)
+        if eid == _RSN_ID:
+            has_rsn = True
+        elif eid == _VENDOR_ID:
+            try:
+                if bytes(el.info)[:4] == b"\x00\x50\xf2\x01":
+                    has_wpa = True
+            except Exception:  # noqa: BLE001
+                pass
+        el = el.payload.getlayer(Dot11Elt)
+    if has_rsn:
+        return "WPA2"
+    if has_wpa:
+        return "WPA"
+    return "WEP" if privacy else "OPEN"
+
+
+class EvilTwinTracker:
+    """Rogue-AP / evil-twin detection against the trusted baseline.
+
+    A trusted SSID seen from a BSSID not in its trusted set is suspicious; if it
+    also shows a security downgrade vs the expected, it escalates to evil-twin.
+    This is the passive, defensive inverse of the Pineapple's PineAP/karma.
+    """
+
+    COOLDOWN = 30
+
+    def __init__(self, trusted: list[dict]) -> None:
+        self.trusted = {n["ssid"]: {b.upper() for b in n.get("bssids", [])}
+                        for n in trusted}
+        self.expected = {n["ssid"]: n.get("expected_security") for n in trusted}
+        self.alerted: dict[tuple[str, str], float] = {}
+
+    def add(self, ssid: str, bssid: str, channel, security: str) -> dict | None:
+        if not ssid or ssid not in self.trusted:
+            return None
+        bssid = (bssid or "").upper()
+        if not bssid or bssid in self.trusted[ssid]:
+            return None
+        key = (ssid, bssid)
+        now = time.time()
+        if now - self.alerted.get(key, 0) < self.COOLDOWN:
+            return None
+        self.alerted[key] = now
+        exp = self.expected.get(ssid)
+        downgrade = bool(exp) and bool(security) and \
+            _SEC_RANK.get(security, 99) < _SEC_RANK.get(exp, -1)
+        if downgrade:
+            etype, conf, sev = "evil_twin_suspected", 85, "high"
+            msg = (f"Known SSID '{ssid}' from unknown BSSID {bssid} with "
+                   f"security downgrade ({security} vs expected {exp})")
+        else:
+            etype, conf, sev = "new_bssid_for_known_ssid", 55, None
+            msg = f"Known SSID '{ssid}' advertised by unknown BSSID {bssid}"
+        return events.make_event(
+            mode="sentinel", event_type=etype, confidence=conf, severity=sev,
+            message=msg, ssid=ssid, bssid=bssid, channel=channel, source=bssid,
+            raw_json={"security_seen": security, "security_expected": exp,
+                      "trusted_bssids": sorted(self.trusted[ssid]),
+                      "detector": "evil_twin"})
+
+
 def set_channel(iface: str, channel: int) -> None:
     global _current_channel
     subprocess.run(["iw", "dev", iface, "set", "channel", str(channel)],
@@ -199,11 +277,12 @@ def run(iface: str, channel: int, channels: list[int] | None,
     deauth = BurstTracker("deauth_burst", "deauth")
     disassoc = BurstTracker("disassoc_burst", "disassoc")
     beacons = BeaconFloodTracker()
+    eviltwin = EvilTwinTracker(settings.trusted_networks())
 
     def handle(pkt) -> None:
         if not pkt.haslayer(Dot11):
             return
-        # --- beacon / SSID flood ------------------------------------------
+        # --- beacons: SSID flood + evil-twin/rogue-AP ---------------------
         if pkt.haslayer(Dot11Beacon):
             ssid = ""
             elt = pkt.getlayer(Dot11Elt)
@@ -212,12 +291,15 @@ def run(iface: str, channel: int, channels: list[int] | None,
                     ssid = bytes(elt.info).decode(errors="ignore")
                 except Exception:  # noqa: BLE001
                     ssid = ""
-            ev = beacons.add(pkt[Dot11].addr2 or "?", ssid)
-            if ev:
-                eid = database.insert_event(ev)
-                print(f"[{ev['severity'].upper()}] {ev['event_type']} "
-                      f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
-                      flush=True)
+            bssid = pkt[Dot11].addr2 or "?"
+            ch = _current_channel or channel
+            for ev in (beacons.add(bssid, ssid),
+                       eviltwin.add(ssid, bssid, ch, beacon_security(pkt))):
+                if ev:
+                    eid = database.insert_event(ev)
+                    print(f"[{ev['severity'].upper()}] {ev['event_type']} "
+                          f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
+                          flush=True)
             return
         tracker = None
         reason = None
