@@ -1,0 +1,31 @@
+{
+  "pack": "Kuma Cyber Battle Audio Pack",
+  "files": [
+    {
+      "file": "kuma_attack_cyber_claw_slash.wav",
+      "bytes": 48554,
+      "sha256": "6917bf50678878a29f0275f4b8273ab412756322a76759e268841785905725ad"
+    },
+    {
+      "file": "kuma_attack_charged_bear_strike.wav",
+      "bytes": 97064,
+      "sha256": "d5c610597b674afcdb2bfd91ac5a45ce8d1351f4de36aed60f640c9dffe429c0"
+    },
+    {
+      "file": "kuma_attack_full_action_cue.wav",
+      "bytes": 72368,
+      "sha256": "55e33aef093e897109f6357c316986869a9e8e8d15209ef6b138d90555a10af8"
+    },
+    {
+      "file": "kuma_dark_synthwave_victory_beepbox.mid",
+      "bytes": 2162,
+      "sha256": "0fab8864b9d484b465c7cabf671b2135c60db92119682d385b9a614eeedad259"
+    },
+    {
+      "file": "kuma_audio_pack_readme.txt",
+      "bytes": 957,
+      "sha256": "8c76f2b807d35cf798ca15dec4eb82c91d1b78e8f7165966b753fa522974048d"
+    }
+  ],
+  "notes": "Original SFX and MIDI. Sonic/Pokemon referenced only as functional/style inspiration, not melodic source material."
+}

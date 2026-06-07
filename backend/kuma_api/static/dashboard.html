@@ -2,95 +2,345 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>クマ</title>
 <style>
-  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#5d6f63;--faint:#222a25;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec}
-  *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg)}
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec;--box:#0c1410;--cy:#25d0ff}
+  *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#000}
   body{color:var(--ink);font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
-    letter-spacing:.05em;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:18px}
-  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
-    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.18) 2px 3px)}
-  .unit{width:440px;max-width:100%;border:1px solid var(--faint);background:#0a0e0c;position:relative}
-  .top{display:flex;justify-content:space-between;align-items:center;padding:8px 13px;border-bottom:1px solid var(--faint)}
-  .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif}
-  .mark{font-size:18px;letter-spacing:.1em;color:var(--wht)}
-  #lv{font-size:11px;color:var(--grn);letter-spacing:.12em;margin-left:8px;text-shadow:0 0 6px rgba(70,224,122,.4)}
-  .dot{font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px}
-  .dot i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:p 1.7s infinite}
-  .dot.off i{background:var(--red);box-shadow:none;animation:none}
-  @keyframes p{50%{opacity:.4}}
-  .stage{padding:22px 18px 10px;display:flex;flex-direction:column;align-items:center;gap:14px}
-  #bear{image-rendering:pixelated;height:188px;width:auto;max-width:220px}
-  .say{font-size:14px;color:var(--ink);text-align:center;min-height:20px;letter-spacing:.04em}
-  .say.hot{color:var(--red)}.say.warn{color:var(--amb)}
-  .say b{color:var(--wht);font-weight:400}
-  .bar{display:flex;border-top:1px solid var(--faint);font-size:11px}
-  .bar div{flex:1;padding:7px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
-  .bar div:last-child{border-right:0}
-  .bar b{display:block;color:var(--ink);font-weight:400;font-size:13px;margin-top:2px;letter-spacing:.02em}
-  .bar b.hot{color:var(--red)}.bar b.warn{color:var(--amb)}.bar b.ok{color:var(--grn)}
-</style></head><body>
-  <div class="unit">
-    <div class="top"><div class="mark"><span class="jp">クマ</span><span id="lv">Lv 1</span></div>
-      <div class="dot" id="dot"><i></i><span id="dtx">ONLINE</span></div></div>
-    <div class="stage">
-      <img id="bear" alt="KUMA">
-      <div class="say" id="say">. . .</div>
-    </div>
-    <div class="bar">
-      <div>THREAT<b id="th" class="ok">-</b></div>
-      <div>UPTIME<b id="up">-</b></div>
-      <div>EVENTS/10m<b id="ev">-</b></div>
-      <div>NETWORKS<b id="nw">-</b></div>
-      <div>SENSOR<b id="sn">-</b></div>
-    </div>
-  </div>
-<script>
-// ---- bear face (Jax's state portraits, one per bear_state) ------------
-const BEAR_IMG=document.getElementById('bear');
-const STATE_SPRITE={                      // bear_state -> state portrait
-  sleeping:'01_hibernating', foraging:'02_foraging', honey_trap:'04_honey', honey:'04_honey',
-  suspicious:'03_sentinel', alert:'06_alert', apex_ready:'05_apex', apex:'05_apex',
-  investigating:'07_investigating', defending:'08_defending',
-  attacking:'09_attacking', victory:'10_victory', error:'03_sentinel'};
-const SPV='?v=4';  // bump to bust browser cache when sprites change
-for(const k of Object.values(STATE_SPRITE)){const im=new Image();im.src='sprites/states/'+k+'.png'+SPV;}
-function drawBear(state){
-  const key=STATE_SPRITE[state]||STATE_SPRITE.error;
-  if(!(BEAR_IMG.getAttribute('src')||'').includes(key))BEAR_IMG.src='sprites/states/'+key+'.png'+SPV;
-}
+    display:flex;flex-direction:column;align-items:center;gap:10px;min-height:100vh;padding:18px;letter-spacing:.04em}
+  .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif;margin:0 .22em}
+  .mark .jp{margin:0}
+  img{image-rendering:pixelated}
+  .unit{width:440px;max-width:100%;border:1px solid var(--faint);background:#0a0e0c;position:relative;overflow:hidden}
+  .unit::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:40;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.17) 2px 3px)}
+  .top{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;border-bottom:1px solid var(--faint);font-size:11px}
+  .mark{font-size:16px;letter-spacing:.1em;color:var(--wht)}
+  #lv{font-size:10px;color:var(--grn);letter-spacing:.12em;margin-left:8px;text-shadow:0 0 6px rgba(70,224,122,.4)}
+  .rt{display:flex;align-items:center;gap:10px}
+  .dot{color:var(--dim);display:flex;align-items:center;gap:6px}
+  .dot i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:pulse 1.7s infinite}
+  .dot.engaged i{background:var(--red);box-shadow:0 0 7px var(--red)}
+  .dot.off i{background:var(--dim);box-shadow:none;animation:none}
+  #mute{background:none;border:1px solid var(--faint);color:var(--dim);font:inherit;font-size:9px;
+    padding:2px 6px;cursor:pointer;letter-spacing:.1em}
+  #mute:hover{color:var(--cy);border-color:var(--cy)}
+  @keyframes pulse{50%{opacity:.4}}
 
-// ---- live data -------------------------------------------------------
-const SAMPLE={status:{version:"0.0.1",mode:"sentinel",threat_level:"low",bear_state:"foraging",events_last_10m:0,uptime_seconds:9123,wifi_interface:"wlan1mon",level:7,xp:194,network_count:42},events:[]};
-const ATTACK={status:{mode:"sentinel",threat_level:"high",bear_state:"alert",events_last_10m:14,uptime_seconds:9240,wifi_interface:"wlan1mon",level:7,xp:194,network_count:42},events:[{event_type:"deauth_burst",severity:"high",channel:10,raw_json:{frame_count:1640}}]};
-async function getData(){if(location.protocol==='file:'){const d=new Date();return (Math.floor(d.getSeconds()/6)%2)?ATTACK:SAMPLE;}
-  try{const[s,e]=await Promise.all([fetch('/api/status',{cache:'no-store'}).then(r=>r.json()),fetch('/api/events?limit=20',{cache:'no-store'}).then(r=>r.json())]);return{status:s,events:e,live:true};}catch(_){return SAMPLE;}}
+  .scene{position:relative;height:230px;overflow:hidden;background:
+    radial-gradient(140% 90% at 72% 22%,rgba(255,59,48,.06),transparent 55%),
+    radial-gradient(120% 90% at 28% 86%,rgba(37,208,255,.06),transparent 55%),
+    linear-gradient(180deg,#0a0f0c,#06090a)}
+  .grid{position:absolute;inset:0;opacity:.12;pointer-events:none;
+    background:linear-gradient(var(--faint) 1px,transparent 1px) 0 0/100% 22px,
+               linear-gradient(90deg,var(--faint) 1px,transparent 1px) 0 0/22px 100%}
+  .plat{position:absolute;width:140px;height:30px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(120,150,130,.16),transparent)}
+  .plat.e{top:96px;right:30px}.plat.k{bottom:18px;left:28px}
+  .plat.hidden{display:none}
+  .spr{position:absolute;transition:opacity .25s}
+  #ksp{bottom:8px;left:34px;height:150px;width:auto;transform-origin:bottom center;filter:drop-shadow(0 5px 5px rgba(0,0,0,.55))}
+  #ksp.facepose{left:0;right:0;margin:0 auto;bottom:22px;height:182px}
+  #esp{top:18px;right:30px;max-width:150px;max-height:128px;width:auto;height:auto;filter:drop-shadow(0 5px 5px rgba(0,0,0,.55))}
+  .bob{animation:bob 2.4s ease-in-out infinite}@keyframes bob{50%{transform:translateY(-5px)}}
+  .ebob{animation:ebob 2.6s ease-in-out infinite}@keyframes ebob{50%{transform:translateY(4px)}}
+  .lungeK{animation:lungeK .42s ease-in-out}@keyframes lungeK{45%{transform:translate(34px,-22px) scale(1.05)}}
+  .lungeE{animation:lungeE .42s ease-in-out}@keyframes lungeE{45%{transform:translate(-24px,28px)}}
+  .hit{animation:hit .4s linear}@keyframes hit{0%,100%{transform:translateX(0);filter:none}25%{transform:translateX(6px);filter:brightness(2.6) saturate(.4)}50%{transform:translateX(-5px)}75%{transform:translateX(4px);filter:brightness(2.6) saturate(.4)}}
+  .reveal{animation:reveal 1.1s steps(1)}@keyframes reveal{0%,40%{filter:brightness(0) drop-shadow(0 0 6px var(--cy));opacity:.85}45%{transform:translateX(3px)}55%{transform:translateX(-3px);filter:brightness(0) drop-shadow(0 0 9px var(--cy))}70%{filter:brightness(.4)}100%{filter:none;opacity:1}}
+  .faint{transition:opacity .9s,transform .9s;opacity:0;transform:translateY(22px) scale(.82)}
+
+  #fx{position:absolute;inset:0;pointer-events:none;z-index:25}
+  .slash{position:absolute;height:3px;background:linear-gradient(90deg,transparent,var(--cy),#fff,var(--cy),transparent);box-shadow:0 0 8px var(--cy);opacity:0}
+  .wave{position:absolute;border:2px solid var(--cy);border-radius:50%;opacity:0;box-shadow:0 0 10px var(--cy)}
+  .lock{position:absolute;border:2px solid var(--cy);opacity:0}
+  .mk{position:absolute;color:var(--amb);font-size:18px;text-shadow:0 0 8px var(--amb);opacity:0}
+  @keyframes slashGo{0%{opacity:0;transform:translateX(-30px) scaleX(.2)}30%{opacity:1}100%{opacity:0;transform:translateX(30px) scaleX(1.4)}}
+  @keyframes waveGo{0%{opacity:.9;transform:scale(.2)}100%{opacity:0;transform:scale(2.4)}}
+  @keyframes lockGo{0%{opacity:0;transform:scale(1.6) rotate(8deg)}40%{opacity:1}100%{opacity:.9;transform:scale(1) rotate(0)}}
+  @keyframes markGo{0%{opacity:0;transform:translateY(6px) scale(.6)}40%{opacity:1;transform:translateY(-4px) scale(1.1)}100%{opacity:0;transform:translateY(-10px)}}
+  #flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:30}
+  #flash.go{animation:flash .5s ease-out}@keyframes flash{0%{opacity:0}20%{opacity:.85}100%{opacity:0}}
+  #flash.red.go{background:var(--red)}
+  .scan{position:absolute;left:0;right:0;height:60px;z-index:28;pointer-events:none;opacity:0;
+    background:linear-gradient(transparent,rgba(37,208,255,.22),transparent)}
+
+  .info{position:absolute;background:var(--box);border:1px solid var(--faint);padding:5px 8px;min-width:172px;z-index:20;font-size:11px}
+  .info.e{top:14px;left:14px}.info.k{bottom:62px;right:14px}
+  .info .nm{display:flex;justify-content:space-between;color:var(--wht)}
+  .info .nm b{color:var(--dim);font-weight:400;font-size:9px}
+  .hp{height:6px;background:#1c241e;border:1px solid var(--faint);margin-top:4px}
+  .hp i{display:block;height:100%;background:var(--grn);transition:width .45s,background .3s}
+  .badge{display:inline-block;font-size:8px;letter-spacing:.1em;color:var(--cy);border:1px solid var(--cy);padding:0 3px;margin-top:3px;text-shadow:0 0 5px var(--cy)}
+
+  .center{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:22;
+    color:var(--wht);font-size:12px;letter-spacing:.16em;text-align:center;white-space:nowrap;
+    background:rgba(5,8,7,.86);border:1px solid var(--faint);padding:5px 14px;text-shadow:0 1px 2px #000}
+  .center:empty{display:none}
+  .center.warn{color:var(--red);border-color:rgba(255,59,48,.55);box-shadow:0 0 10px rgba(255,59,48,.25)}
+
+  .console{border-top:1px solid var(--faint);min-height:74px;display:flex;flex-direction:column}
+  .msg{padding:9px 12px;font-size:13px;flex:1;display:flex;align-items:center}
+  .msg.hot{color:var(--red)}.msg.warn{color:var(--amb)}
+  .msg b{color:var(--wht);font-weight:400}.msg .nxt{color:var(--dim);font-size:10px;margin-left:auto;animation:pulse 1s infinite}
+  .menu{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--faint)}
+  .menu.hidden{display:none}
+  .menu button{background:var(--box);border:0;border-right:1px solid var(--faint);border-bottom:1px solid var(--faint);
+    color:var(--ink);font:inherit;font-size:12px;padding:8px 10px;cursor:pointer;text-align:left}
+  .menu button:nth-child(2n){border-right:0}
+  .menu button:hover{background:#13201a;color:var(--cy)}
+  .menu .sub{display:block;font-size:8px;color:var(--dim);margin-top:1px;letter-spacing:.06em}
+  .timer{position:absolute;bottom:0;left:0;height:2px;background:var(--cy);width:0;box-shadow:0 0 6px var(--cy)}
+
+  .bar{display:flex;border-top:1px solid var(--faint);font-size:10px}
+  .bar div{flex:1;padding:6px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
+  .bar div:last-child{border-right:0}.bar b{display:block;color:var(--ink);font-size:12px;margin-top:1px}
+  .bar.hidden{display:none}
+  .hint{font-size:10px;color:var(--dim);letter-spacing:.08em}
+</style></head><body>
+
+<div class="unit">
+  <div class="top">
+    <div class="mark"><span class="jp">クマ</span><span id="lv">Lv 1</span></div>
+    <div class="rt"><button id="mute">AUDIO</button>
+      <div class="dot" id="dot"><i></i><span id="dtx">ONLINE</span></div></div>
+  </div>
+
+  <div class="scene" id="scene">
+    <div class="grid"></div>
+    <div class="plat e hidden" id="plate"></div><div class="plat k hidden" id="platk"></div>
+    <img class="spr" id="esp" alt="threat" style="opacity:0">
+    <img class="spr" id="ksp" alt="KUMA">
+    <div class="info e" id="einfo" style="display:none"><div class="nm"><span id="enm">-</span><b id="elv">??</b></div>
+      <div class="hp"><i id="ehp" style="width:100%"></i></div><span class="badge" id="ebadge" style="display:none"></span></div>
+    <div class="info k" id="kinfo" style="display:none"><div class="nm"><span class="jp">クマ</span><b id="klv">Lv 1</b></div>
+      <div class="hp"><i id="khp" style="width:100%"></i></div></div>
+    <div id="fx"></div>
+    <div id="flash"><div class="scan"></div></div>
+    <div class="center" id="center"></div>
+  </div>
+
+  <div class="console" id="console">
+    <div class="msg" id="msg">monitoring the air. all quiet.</div>
+    <div class="menu hidden" id="menu"></div>
+    <div class="bar" id="statbar">
+      <div>THREAT<b id="th" style="color:var(--grn)">-</b></div>
+      <div>UPTIME<b id="up">-</b></div><div>EVENTS<b id="ev">-</b></div>
+      <div>NETWORKS<b id="nw">-</b></div><div>SENSOR<b id="sn">-</b></div>
+    </div>
+    <div class="timer" id="timer"></div>
+  </div>
+</div>
+<div class="hint" id="hint">tap once to enable battle audio</div>
+
+<script src="audio/music.gen.js"></script>
+<script>
+// ===== KUMA live dashboard: monitoring face + battle, driven by /api/status =====
+const SPV='?v=5';
+const KST={SENTINEL:'03_sentinel',ALERT:'06_alert',INVESTIGATING:'07_investigating',
+  DEFENDING:'08_defending',APEX:'05_apex',ATTACKING:'09_attacking',VICTORY:'10_victory',
+  HONEY:'04_honey',HIBERNATING:'01_hibernating',FORAGING:'02_foraging'};
+const KS='sprites/states/', ES='sprites/enemies/';
+for(const k in KST){const i=new Image();i.src=KS+KST[k]+'.png'+SPV;}
+// bear_state (from API) -> state sprite
+const FACE={sleeping:'01_hibernating',foraging:'02_foraging',honey_trap:'04_honey',honey:'04_honey',
+  suspicious:'03_sentinel',alert:'06_alert',apex_ready:'05_apex',apex:'05_apex',
+  investigating:'07_investigating',defending:'08_defending',attacking:'09_attacking',victory:'10_victory',error:'03_sentinel'};
+// event_type -> battle enemy
+const ENEMIES={
+  rogue_ap:{name:'ROGUE AP',sprite:'01_rogue_ap',text:'A rogue access point appeared.',weak:['SIGNAL MAUL','PAWLOCK'],hp:120},
+  evil_twin:{name:'EVIL TWIN',sprite:'02_evil_twin',text:'A fractured twin is mimicking the network.',weak:['SIGNAL MAUL','HONEY SNARE'],hp:125},
+  deauth_burst:{name:'DEAUTHER',sprite:'03_deauther',text:'A deauther is flooding disconnect frames.',weak:['CHANNEL ROAR'],hp:135},
+  disassoc_burst:{name:'DEAUTHER',sprite:'03_deauther',text:'A disassociation burst is active.',weak:['CHANNEL ROAR'],hp:130},
+  wifi_pineapple:{name:'WIFI PINEAPPLE',sprite:'04_pineapple',text:'A lure device is baiting nearby clients.',weak:['HONEY SNARE','SIGNAL MAUL'],hp:150},
+  beacon_flood:{name:'BEACON FLOODER',sprite:'05_beacon_flooder',text:'Fake SSIDs are flooding the air.',weak:['CHANNEL ROAR','SIGNAL MAUL'],hp:115},
+  karma_suspected:{name:'KARMA LURE',sprite:'06_karma_lure',text:'A lure is answering probe requests.',weak:['HONEY SNARE'],hp:130},
+  handshake_harvest:{name:'HANDSHAKE HARVESTER',sprite:'07_handshake_harvester',text:'A harvester is trying to capture handshakes.',weak:['PAWLOCK','HONEY SNARE'],hp:145},
+  sniffer:{name:'SNIFFER',sprite:'08_sniffer',text:'A passive listener is lurking nearby.',weak:['PAWLOCK'],hp:110},
+  rf_jammer:{name:'RF JAMMER',sprite:'09_rf_jammer',text:'RF denial behavior is disrupting the channel.',weak:['CHANNEL ROAR'],hp:140},
+  botnet_worm:{name:'BOTNET WORM',sprite:'10_botnet_worm',text:'Linked infected nodes are spreading.',weak:['CHANNEL ROAR','PAWLOCK'],hp:160}
+};
+for(const k in ENEMIES){const i=new Image();i.src=ES+ENEMIES[k].sprite+'.png';}
+function enemyKeyFor(et){if(!et)return null;et=(''+et).toLowerCase();
+  if(et.includes('deauth'))return 'deauth_burst';
+  if(et.includes('disassoc'))return 'disassoc_burst';
+  if(et.includes('beacon')||et.includes('ssid'))return 'beacon_flood';
+  if(et.includes('twin'))return 'evil_twin';
+  if(et.includes('rogue')||et.includes('bssid'))return 'rogue_ap';
+  if(et.includes('karma')||et.includes('pineap'))return 'karma_suspected';
+  if(et.includes('handshake')||et.includes('eapol'))return 'handshake_harvest';
+  if(et.includes('sniff'))return 'sniffer';
+  if(et.includes('jam'))return 'rf_jammer';
+  if(et.includes('botnet')||et.includes('worm'))return 'botnet_worm';
+  return null;}
+const ABIL={
+  'SIGNAL MAUL':{clip:['SENTINEL','ATTACKING','VICTORY'],status:'DESTABILIZED',sub:'disrupt broadcast/spoof',fx:'slash',base:[20,26]},
+  'HONEY SNARE':{clip:['HONEY','INVESTIGATING','ATTACKING'],status:'MARKED',sub:'bait + mark, boost next',fx:'mark',base:[8,12],mark:true},
+  'CHANNEL ROAR':{clip:['ALERT','APEX','ATTACKING'],status:'SUPPRESSED',sub:'break burst/flood/swarm',fx:'wave',base:[20,26]},
+  'PAWLOCK':{clip:['DEFENDING','APEX','VICTORY'],status:'CONTAINED',sub:'pin + contain',fx:'lock',base:[22,30]}};
+const ORDER=['SIGNAL MAUL','HONEY SNARE','CHANNEL ROAR','PAWLOCK'];
+const ABIL_SFX={'SIGNAL MAUL':'claw','CHANNEL ROAR':'charged','PAWLOCK':'full','HONEY SNARE':'full'};
+
+// ---- audio ----
+const AUD={ctx:null,master:null,muted:false,vol:0.32,mTimer:null,buf:{},_loaded:false,
+  init(){if(this.ctx)return;const A=window.AudioContext||window.webkitAudioContext;this.ctx=new A();
+    this.master=this.ctx.createGain();this.master.gain.value=this.muted?0:this.vol;this.master.connect(this.ctx.destination);},
+  resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();},
+  mute(m){this.muted=m;if(this.master)this.master.gain.value=m?0:this.vol;},
+  loadSamples(){if(this._loaded||!this.ctx)return;this._loaded=true;
+    const S={claw:'kuma_attack_cyber_claw_slash',charged:'kuma_attack_charged_bear_strike',full:'kuma_attack_full_action_cue'};
+    for(const k in S){fetch('audio/sfx/'+S[k]+'.wav').then(r=>r.arrayBuffer()).then(b=>this.ctx.decodeAudioData(b)).then(buf=>{this.buf[k]=buf;}).catch(()=>{});}},
+  sample(name,vol){const b=this.buf[name];if(!b||!this.ctx)return;const s=this.ctx.createBufferSource();s.buffer=b;
+    const g=this.ctx.createGain();g.gain.value=(vol==null?0.85:vol);s.connect(g);g.connect(this.master);s.start();},
+  _tone(t,f,ms,wave,vol){if(!f)return;const d=ms/1000;const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+    o.type=(wave==='tri')?'triangle':'square';o.frequency.setValueAtTime(f,t);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    o.connect(g);g.connect(this.master);o.start(t);o.stop(t+d+0.03);},
+  WAVES:['square','tri','square','square'],VOLS:[0.20,0.24,0.15,0.16],
+  playScore(score,loop){if(!this.ctx)return;this.resume();this.stop();if(!score)return;
+    const sched=(base)=>{for(const e of score.ev)this._tone(base+e.t/1000,440*Math.pow(2,(e.n-69)/12),e.d,this.WAVES[e.k]||'square',this.VOLS[e.k]!=null?this.VOLS[e.k]:0.16);};
+    let next=this.ctx.currentTime+0.06;sched(next);
+    if(loop&&score.loopMs>0)this.mTimer=setInterval(()=>{next+=score.loopMs/1000;sched(next);},score.loopMs);},
+  stop(){if(this.mTimer){clearInterval(this.mTimer);this.mTimer=null;}}};
+const M=(typeof MUSIC!=='undefined')?MUSIC:{};
+
+// ---- helpers ----
+const $=id=>document.getElementById(id);
+const ksp=$('ksp'),esp=$('esp');
+let kumaClipTimer=null;
+function setKuma(state){ksp.src=KS+(KST[state]||KST.SENTINEL)+'.png'+SPV;}
+function setFace(st){const f=FACE[st]||FACE.error;if(!(ksp.getAttribute('src')||'').includes(f))ksp.src=KS+f+'.png'+SPV;}
+function playClip(states,perMs,done){if(kumaClipTimer)clearInterval(kumaClipTimer);let i=0;setKuma(states[0]);
+  kumaClipTimer=setInterval(()=>{i++;if(i>=states.length){clearInterval(kumaClipTimer);kumaClipTimer=null;if(done)done();return;}setKuma(states[i]);},perMs);}
+function once(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
+function fxSlash(){const s=document.createElement('div');s.className='slash';s.style.cssText+='left:120px;top:70px;width:120px;animation:slashGo .45s ease-out';$('fx').appendChild(s);setTimeout(()=>s.remove(),500);}
+function fxWave(){for(let k=0;k<3;k++){const w=document.createElement('div');w.className='wave';w.style.cssText+='right:60px;top:50px;width:90px;height:90px;animation:waveGo .7s ease-out '+(k*120)+'ms';$('fx').appendChild(w);setTimeout(()=>w.remove(),900);}}
+function fxLock(){const l=document.createElement('div');l.className='lock';l.style.cssText+='right:64px;top:30px;width:84px;height:84px;animation:lockGo .6s ease-out';$('fx').appendChild(l);setTimeout(()=>l.remove(),700);}
+function fxMark(){const m=document.createElement('div');m.className='mk';m.textContent='MARK';m.style.cssText+='right:80px;top:36px;animation:markGo .9s ease-out';$('fx').appendChild(m);setTimeout(()=>m.remove(),950);}
+function flash(red){const f=$('flash');f.className=red?'red':'';once(f,'go');}
+function scanSweep(){const s=$('flash').querySelector('.scan');s.style.animation='none';void s.offsetWidth;s.style.animation='scan .7s linear';setTimeout(()=>{s.style.animation='';},720);}
+function setHP(el,cur,max){const p=Math.max(0,cur/max*100);el.style.width=p+'%';el.style.background=p>50?'var(--grn)':p>22?'var(--amb)':'var(--red)';}
+function msg(t,nxt,cls){$('msg').className='msg'+(cls?' '+cls:'');$('msg').innerHTML=t+(nxt?'<span class="nxt">'+nxt+'</span>':'');}
+function center(t,warn){const c=$('center');c.textContent=t||'';c.className='center'+(warn?' warn':'');}
+function rnd(a){return a[0]+Math.floor(Math.random()*(a[1]-a[0]+1));}
 function hms(s){s=s||0;const p=n=>String(n).padStart(2,'0');return p(s/3600|0)+':'+p((s%3600)/60|0)+':'+p(s%60);}
 const SEV={low:0,medium:1,high:2,critical:3};
-function phrase(e){const t=e.event_type||'',r=e.raw_json||{};
+function phrase(e){const t=(e.event_type||''),r=e.raw_json||{};
   if(t.includes('deauth'))return ['deauth flood',e.channel?'ch'+e.channel:'',r.frame_count?r.frame_count+' frames':''].filter(Boolean).join(' · ');
   if(t.includes('disassoc'))return 'disassoc flood';
-  if(t.includes('beacon'))return 'beacon flood';
-  if(t.includes('twin')||t.includes('bssid')||t.includes('rogue'))return 'evil twin'+(e.ssid?' · '+e.ssid:'');
-  if(t.includes('karma'))return 'karma / pineapple';
-  if(t.includes('handshake'))return 'handshake harvest';
+  if(t.includes('beacon')||t.includes('ssid'))return 'beacon flood';
+  if(t.includes('twin')||t.includes('rogue')||t.includes('bssid'))return 'evil twin'+(e.ssid?' · '+e.ssid:'');
+  if(t.includes('karma')||t.includes('pineap'))return 'karma / pineapple';
+  if(t.includes('handshake')||t.includes('eapol'))return 'handshake harvest';
   if(t==='apex_response')return 'apex engaged';
   return e.message||t;}
-async function render(){
-  const d=await getData(),s=d.status,events=d.events||[],live=d.live!==false&&location.protocol!=='file:';
-  const tl=s.threat_level||'low',hi=(tl==='high'||tl==='critical'),med=tl==='medium';
-  drawBear(s.bear_state||'foraging');
-  document.getElementById('dot').className='dot'+(live?'':' off');
-  document.getElementById('dtx').textContent=live?'ONLINE':'DEMO';
-  const th=document.getElementById('th');th.textContent=tl.toUpperCase();th.className=hi?'hot':med?'warn':'ok';
-  document.getElementById('up').textContent=hms(s.uptime_seconds);
-  document.getElementById('ev').textContent=s.events_last_10m;
-  document.getElementById('nw').textContent=s.network_count!=null?s.network_count:'-';
-  document.getElementById('sn').textContent=s.wifi_interface||'-';
-  document.getElementById('lv').textContent='Lv '+(s.level||1);
-  const say=document.getElementById('say');
-  if(!events.length){say.textContent='all quiet';say.className='say';}
-  else{const top=events.slice().sort((a,b)=>(SEV[b.severity]||0)-(SEV[a.severity]||0))[0];
-    say.innerHTML='<b>'+phrase(top)+'</b>';
-    say.className='say '+((top.severity==='high'||top.severity==='critical')?'hot':top.severity==='medium'?'warn':'');}
+
+// ---- state ----
+let S=null,busy=false,turnRAF=null,kumaLevel=1,lastBattledId=0;
+
+function showFace(){S=null;AUD.stop();
+  $('einfo').style.display='none';$('kinfo').style.display='none';esp.style.opacity=0;esp.className='spr';
+  $('plate').classList.add('hidden');$('platk').classList.add('hidden');
+  $('menu').classList.add('hidden');$('menu').innerHTML='';$('statbar').classList.remove('hidden');
+  center('');$('timer').style.width='0';
+  ksp.style.left='';ksp.style.transition='';ksp.classList.add('facepose','bob');}
+
+// ---- live polling ----
+async function tick(){
+  let s=null,events=[];
+  try{const r=await Promise.all([fetch('/api/status',{cache:'no-store'}).then(x=>x.json()),
+    fetch('/api/events?limit=10',{cache:'no-store'}).then(x=>x.json())]);s=r[0];events=r[1]||[];}
+  catch(_){}
+  if(s)kumaLevel=s.level||1;
+  if(S)return;                     // mid-battle: don't touch the face
+  updateFace(s,events);
+  if(s&&(s.threat_level==='high'||s.threat_level==='critical')){
+    const cand=events.filter(e=>enemyKeyFor(e.event_type)).sort((a,b)=>(b.id||0)-(a.id||0))[0];
+    if(cand&&(cand.id||0)>lastBattledId){lastBattledId=cand.id||0;encounter(enemyKeyFor(cand.event_type));}
+  }
 }
-render();setInterval(render,2000);
+function updateFace(s,events){
+  if(!s){$('dot').className='dot off';$('dtx').textContent='OFFLINE';msg('backend unreachable.');return;}
+  setFace(s.bear_state||'foraging');
+  $('dot').className='dot';$('dtx').textContent='ONLINE';$('lv').textContent='Lv '+(s.level||1);
+  const tl=s.threat_level||'low',hi=(tl==='high'||tl==='critical'),med=tl==='medium';
+  const th=$('th');th.textContent=tl.toUpperCase();th.style.color=hi?'var(--red)':med?'var(--amb)':'var(--grn)';
+  $('up').textContent=hms(s.uptime_seconds);$('ev').textContent=s.events_last_10m;
+  $('nw').textContent=s.network_count!=null?s.network_count:'-';$('sn').textContent=s.wifi_interface||'-';
+  if(!events.length){msg('monitoring the air. all quiet.');}
+  else{const top=events.slice().sort((a,b)=>(SEV[b.severity]||0)-(SEV[a.severity]||0))[0];
+    msg('<b>'+phrase(top)+'</b>','',(top.severity==='high'||top.severity==='critical')?'hot':top.severity==='medium'?'warn':'');}
+}
+
+// ---- battle (front-end) ----
+function encounter(typeKey){if(S)return;AUD.init();AUD.resume();AUD.loadSamples();
+  const en=ENEMIES[typeKey]||ENEMIES.rogue_ap;
+  S={en:{...en,max:en.hp,cur:en.hp},k:{cur:120,max:120},mark:false,phase:'encounter'};
+  $('statbar').classList.add('hidden');$('dot').className='dot engaged';$('dtx').textContent='ENGAGED';
+  ksp.classList.remove('facepose','bob');ksp.style.left='';
+  $('plate').classList.remove('hidden');$('platk').classList.remove('hidden');
+  setKuma('ALERT');flash(true);scanSweep();center('THREAT DETECTED',true);
+  AUD.playScore(M.encounter,false);
+  setTimeout(()=>{if(S)AUD.playScore(M.battle,true);},(M.encounter&&M.encounter.loopMs)||1600);
+  setTimeout(()=>{center('HOSTILE SIGNAL LOCKED',true);playClip(['ALERT','INVESTIGATING','DEFENDING'],260);
+    setTimeout(()=>{center('HOSTILE ENTITY APPROACHING',true);setKuma('DEFENDING');
+      esp.src=ES+en.sprite+'.png';esp.style.opacity=1;esp.style.filter='brightness(0) drop-shadow(0 0 7px var(--cy))';esp.classList.add('ebob');
+      setTimeout(()=>{center('ENCOUNTER INITIATED',true);setKuma('APEX');flash(true);setTimeout(battleIntro,900);},1000);
+    },1000);
+  },900);}
+function battleIntro(){const en=S.en;center('');S.phase='intro';
+  esp.style.filter='';once(esp,'reveal');msg('HOSTILE <b>'+en.name+'</b> DETECTED','');
+  setTimeout(()=>{ksp.style.transition='left .6s ease-out';ksp.style.left='-60px';setKuma('SENTINEL');ksp.style.opacity=1;
+    requestAnimationFrame(()=>{ksp.style.left='34px';});playClip(['SENTINEL','ALERT','DEFENDING'],200);
+    msg('<span class="jp">クマ</span> STANDS WATCH','');
+    setTimeout(()=>{ksp.style.transition='';$('einfo').style.display='block';$('kinfo').style.display='block';
+      $('enm').textContent=en.name;$('elv').textContent='??';$('klv').textContent='Lv '+kumaLevel;
+      setHP($('ehp'),en.cur,en.max);setHP($('khp'),S.k.cur,S.k.max);msg(en.text,'');
+      setTimeout(()=>{S.phase='menu';esp.classList.add('ebob');playerTurn();},900);
+    },800);
+  },1100);}
+function buildMenu(){const m=$('menu');m.innerHTML='';
+  ORDER.forEach(name=>{const a=ABIL[name];const b=document.createElement('button');
+    b.innerHTML=name+(S.en.weak.includes(name)?' ▸':'')+'<span class="sub">'+a.sub+'</span>';
+    b.onclick=()=>doMove(name);m.appendChild(b);});m.classList.remove('hidden');}
+function playerTurn(){if(S.k.cur<=0||S.en.cur<=0)return;S.phase='menu';setKuma('SENTINEL');msg('What will <span class="jp">クマ</span> do?');buildMenu();startTurnTimer();}
+function startTurnTimer(){clearTurnTimer();const dur=30000,t0=performance.now();
+  const t=()=>{const e=performance.now()-t0;$('timer').style.width=Math.min(100,e/dur*100)+'%';
+    if(e>=dur){$('timer').style.width='0';autoPick();return;}turnRAF=requestAnimationFrame(t);};turnRAF=requestAnimationFrame(t);}
+function clearTurnTimer(){if(turnRAF){cancelAnimationFrame(turnRAF);turnRAF=null;}$('timer').style.width='0';}
+function autoPick(){const pick=ORDER.find(n=>S.en.weak.includes(n)&&ABIL[n].status!=='MARKED')||'SIGNAL MAUL';
+  msg('<span class="jp">クマ</span> acts on instinct...');setTimeout(()=>doMove(pick),500);}
+function doMove(name){if(busy||S.phase!=='menu')return;busy=true;clearTurnTimer();$('menu').classList.add('hidden');
+  const a=ABIL[name];msg('<span class="jp">クマ</span> used <b>'+name+'</b>!');AUD.sample(ABIL_SFX[name]||'full');playClip(a.clip,180);
+  setTimeout(()=>{once(ksp,'lungeK');
+    setTimeout(()=>{if(a.fx==='slash')fxSlash();else if(a.fx==='wave')fxWave();else if(a.fx==='lock')fxLock();else if(a.fx==='mark')fxMark();
+      const sup=S.en.weak.includes(name);
+      if(a.mark){S.mark=true;$('ebadge').style.display='inline-block';$('ebadge').textContent='MARKED';once(esp,'hit');
+        msg('The threat took the bait. Enemy is <b>MARKED</b>.','next');setTimeout(()=>{if(checkEnd())return;enemyTurn();},1100);
+      }else{let dmg=rnd(a.base);if(sup)dmg=Math.round(dmg*1.7);if(S.mark){dmg=Math.round(dmg*1.5);S.mark=false;$('ebadge').style.display='none';}
+        S.en.cur=Math.max(0,S.en.cur-dmg);setHP($('ehp'),S.en.cur,S.en.max);once(esp,'hit');
+        $('ebadge').style.display='inline-block';$('ebadge').textContent=a.status;
+        const line=sup?'It’s super effective! Enemy is <b>'+a.status+'</b>.':'Enemy is <b>'+a.status+'</b>.';
+        setTimeout(()=>{msg(line,'next');setTimeout(()=>{if(checkEnd())return;enemyTurn();},1000);},480);}
+    },180);},340);}
+function enemyTurn(){if(S.en.cur<=0){checkEnd();return;}setKuma('DEFENDING');msg('<b>'+S.en.name+'</b> strikes back!');
+  setTimeout(()=>{once(esp,'lungeE');
+    setTimeout(()=>{once(ksp,'hit');setKuma('ALERT');const dmg=rnd([8,16]);S.k.cur=Math.max(0,S.k.cur-dmg);setHP($('khp'),S.k.cur,S.k.max);
+      setTimeout(()=>{if(checkEnd())return;busy=false;playerTurn();},800);},180);},340);}
+function checkEnd(){
+  if(S.en.cur<=0){busy=false;S.phase='win';AUD.stop();clearTurnTimer();esp.classList.remove('ebob');once(esp,'faint');
+    playClip(['DEFENDING','VICTORY'],300);AUD.playScore(M.victory,false);
+    fetch('/api/progress/battle-win',{method:'POST'}).catch(()=>{});
+    msg('<b>'+S.en.name+'</b> was contained.','');
+    setTimeout(()=>{center('THREAT CONTAINED');setKuma('VICTORY');
+      setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.');setTimeout(showFace,1600);},1400);},700);return true;}
+  if(S.k.cur<=0){busy=false;S.phase='lose';AUD.stop();clearTurnTimer();setKuma('ALERT');
+    msg('The link dropped... <span class="jp">クマ</span> regroups.','');setTimeout(showFace,2000);return true;}
+  return false;}
+
+// ---- audio unlock + mute ----
+function unlock(){AUD.init();AUD.resume();AUD.loadSamples();$('hint').textContent='';}
+document.body.addEventListener('click',unlock,{once:true});
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();unlock();}},{once:true});
+$('mute').onclick=(e)=>{e.stopPropagation();AUD.init();AUD.mute(!AUD.muted);$('mute').textContent=AUD.muted?'MUTED':'AUDIO';};
+
+showFace();tick();setInterval(tick,2000);
 </script></body></html>

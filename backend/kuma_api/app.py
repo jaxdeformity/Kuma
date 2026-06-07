@@ -73,8 +73,9 @@ app = FastAPI(
 app.include_router(routes.router)
 
 _STATIC = Path(__file__).parent / "static"
-# serve the bear state sprites (and any other static assets) for the dashboard
+# serve the bear sprites + battle audio for the dashboard
 app.mount("/sprites", StaticFiles(directory=_STATIC / "sprites"), name="sprites")
+app.mount("/audio", StaticFiles(directory=_STATIC / "audio"), name="audio")
 
 _DASHBOARD = _STATIC / "dashboard.html"
 
