@@ -18,8 +18,7 @@
   img{image-rendering:pixelated}
 
   #idle{padding:22px 18px 0;display:flex;flex-direction:column;align-items:center;gap:12px}
-  #idle img{height:170px;width:auto;animation:bob 2.4s ease-in-out infinite}
-  @keyframes bob{50%{transform:translateY(-6px)}}
+  #idle img{height:175px;width:auto}
   .say{font-size:15px;min-height:20px}.hint{font-size:11px;color:var(--dim);letter-spacing:.1em}
   .strip{display:flex;width:100%;border-top:1px solid var(--faint);font-size:11px;margin-top:6px}
   .strip div{flex:1;padding:7px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
@@ -73,7 +72,7 @@
     <div class="pill"><i></i><span id="pill">SENTINEL</span></div></div>
 
   <div id="idle">
-    <img id="cub" src="sprites/sheet/37.png" alt="KUMA">
+    <img id="cub" src="sprites/anim/idle/0.png" alt="KUMA">
     <div class="say" id="isay">all quiet</div>
     <div class="hint">[ space ] simulate an attack</div>
     <div class="strip">
@@ -86,7 +85,7 @@
     <div class="scene">
       <div class="plat e"></div><div class="plat k"></div>
       <img class="spr" id="esp" alt="threat">
-      <img class="spr" id="ksp" src="sprites/sheet/37.png" alt="KUMA">
+      <img class="spr" id="ksp" src="sprites/anim/idle/0.png" alt="KUMA">
       <div class="info e"><div class="nm"><span id="enm">ROGUE AP</span><b id="elv">Lv —</b></div>
         <div class="hp"><i id="ehp" style="width:100%"></i></div></div>
       <div class="info k"><div class="nm"><span class="jp">クマ</span><b>Lv 12</b></div>
@@ -100,9 +99,20 @@
 </div>
 <div id="flash"></div>
 <script>
-// KUMA art = Jax's sprite sheet (sprites/sheet/); enemies = Jax's threat sheet
-// (sprites/enemies/). All art is generated, sliced, and keyed transparent.
-const F={idle:'sprites/sheet/37.png',special:'sprites/sheet/05.png',attack:'sprites/sheet/04.png',hurt:'sprites/sheet/35.png'};
+// KUMA = Jax's animation sheet (sprites/anim/<action>/0..4.png); enemies = Jax's
+// threat sheet (sprites/enemies/). All generated, sliced, keyed transparent.
+const AP='sprites/anim/';
+const ANIM={idle:5,walk:5,run:5,attack:5,special:5,hurt:5,guard:5,victory:5,ko:5,turn:5};
+function frames(act){return Array.from({length:ANIM[act]},(_,i)=>AP+act+'/'+i+'.png');}
+// preload every frame
+for(const act in ANIM)frames(act).forEach(u=>{const im=new Image();im.src=u;});
+// frame player bound to one <img>
+function Player(img){let f=[],i=0,timer=null;
+  function clear(){if(timer){clearInterval(timer);timer=null;}}
+  return {play(act,o){o=o||{};clear();f=frames(act);i=0;const loop=o.loop!==false,fps=o.fps||6;
+    const step=()=>{img.src=f[i];i++;if(i>=f.length){if(loop){i=0;}else{clear();if(o.onEnd)o.onEnd();return;}}};
+    step();timer=setInterval(step,1000/fps);}};
+}
 const EP='sprites/enemies/';
 const THREATS=[
  {name:'ROGUE AP',sprite:'01_rogue_ap.png',lv:14,hp:120,attacks:[{n:'EVIL TWIN',m:'It spins up a fake DemoNet_2G!',d:18},{n:'BEACON SPOOF',m:'It forges a trusted BSSID!',d:14}]},
@@ -126,7 +136,14 @@ function setHP(el,cur,max){const pct=Math.max(0,cur/max*100);el.style.width=pct+
 function msg(t,n){$('msg').innerHTML=t+(n?' <span class="nxt">'+n+'</span>':'');}
 function rnd(a){return a[0]+Math.floor(Math.random()*(a[1]-a[0]+1));}
 function lunge(el){el.classList.remove('lunge');void el.offsetWidth;el.classList.add('lunge');}
-function kuma(state){$('ksp').src=F[state];}
+const kumaP=Player($('ksp')),cubP=Player($('cub'));
+cubP.play('idle',{fps:5});
+function kuma(state){
+  if(state==='idle')kumaP.play('idle',{fps:5});
+  else if(state==='victory')kumaP.play('victory',{fps:6});
+  else if(state==='ko')kumaP.play('ko',{loop:false,fps:8});
+  else kumaP.play(state,{loop:false,fps:12,onEnd:()=>kumaP.play('idle',{fps:5})});
+}
 
 function trigger(){if($('battle').style.display==='block')return;
   $('isay').textContent='! incoming...';$('ith').textContent='HIGH';$('ith').style.color='var(--red)';$('iev').textContent=1;
@@ -149,7 +166,7 @@ function buildMenu(){const m=$('menu');m.innerHTML='';
 function playerTurn(){msg('What will <span class="jp">クマ</span> do?');buildMenu();}
 function doMove(i){if(busy)return;busy=true;$('menu').classList.add('hidden');
   const mv=MOVES[i];let dmg=rnd(mv.d);if(S.mark){dmg=Math.round(dmg*1.5);}
-  msg('<span class="jp">クマ</span> used <b>'+mv.n+'</b>!');kuma('special');
+  msg('<span class="jp">クマ</span> used <b>'+mv.n+'</b>!');kuma(mv.n==='CONTAIN'?'special':'attack');
   setTimeout(()=>{lunge($('ksp'));
     setTimeout(()=>{const e=$('esp');e.classList.remove('hit');void e.offsetWidth;e.classList.add('hit');
       S.enemy.hp-=dmg;setHP($('ehp'),S.enemy.hp,S.enemy.max);if(mv.mark)S.mark=true;
@@ -163,9 +180,9 @@ function enemyTurn(){const a=S.enemy.attacks[Math.floor(Math.random()*S.enemy.at
       S.kuma.hp-=a.d;if(S.kuma.hp<0)S.kuma.hp=0;
       setHP($('khp'),S.kuma.hp,S.kuma.max);$('khpn').textContent=S.kuma.hp+' / '+S.kuma.max;
       setTimeout(()=>{msg(a.m,'next');kuma('idle');if(S.kuma.hp<=0)return setTimeout(faint,800);busy=false;setTimeout(playerTurn,850);},700);},170);},350);}
-function victory(){$('esp').classList.add('faint');msg('<b>'+S.enemy.name+'</b> was contained!');
+function victory(){$('esp').classList.add('faint');kuma('victory');msg('<b>'+S.enemy.name+'</b> was contained!');
   setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.');setTimeout(toIdle,1500);},1500);}
-function faint(){msg('The link dropped... <span class="jp">クマ</span> regroups.');setTimeout(toIdle,1800);}
+function faint(){kuma('ko');msg('The link dropped... <span class="jp">クマ</span> regroups.');setTimeout(toIdle,1800);}
 function toIdle(){busy=false;$('battle').style.display='none';$('idle').style.display='flex';kuma('idle');
   $('pill').textContent='SENTINEL';$('isay').textContent='all quiet';$('ith').textContent='LOW';$('ith').style.color='var(--grn)';$('iev').textContent=0;}
 
