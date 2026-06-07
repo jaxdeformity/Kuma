@@ -244,14 +244,17 @@ class EvilTwinTracker:
     """
 
     COOLDOWN = 30
-    LEARN_HITS = 5
+    LEARN_WINDOW = 90    # seconds to learn an AP's legit fingerprint variants
+    LEARN_HITS = 3       # a fingerprint must recur this often to be a legit variant
+    RECUR = 6            # a non-baseline fingerprint must recur this often to alert
 
     def __init__(self, trusted: list[dict]) -> None:
         self.trusted = {n["ssid"]: {b.upper() for b in n.get("bssids", [])}
                         for n in trusted}
         self.expected = {n["ssid"]: n.get("expected_security") for n in trusted}
         self.alerted: dict[tuple[str, str], float] = {}
-        self.good_fp: dict[str, str] = {}
+        self.good_fps: dict[str, set[str]] = collections.defaultdict(set)
+        self.first_seen: dict[str, float] = {}
         self.fp_count: dict[str, collections.Counter] = collections.defaultdict(
             collections.Counter)
 
@@ -261,20 +264,22 @@ class EvilTwinTracker:
         bssid = (bssid or "").upper()
         now = time.time()
 
-        # --- trusted BSSID: learn fingerprint, flag spoof ------------------
+        # --- trusted BSSID: learn fingerprint set, flag spoof --------------
         if bssid in self.trusted[ssid]:
             if not fp:
                 return None
+            self.first_seen.setdefault(bssid, now)
             self.fp_count[bssid][fp] += 1
-            if bssid not in self.good_fp:
+            # During the learning window, add every recurring fingerprint to the
+            # AP's legit set (a multi-radio router has several legit variants).
+            if now - self.first_seen[bssid] < self.LEARN_WINDOW:
                 if self.fp_count[bssid][fp] >= self.LEARN_HITS:
-                    self.good_fp[bssid] = fp   # established baseline
+                    self.good_fps[bssid].add(fp)
                 return None
-            if fp == self.good_fp[bssid]:
+            if fp in self.good_fps[bssid]:
                 return None
-            # require the mismatching fingerprint to RECUR (a clone beacons
-            # persistently; a one-off odd beacon shouldn't fire).
-            if self.fp_count[bssid][fp] < 3:
+            # past learning: a brand-new fingerprint that persists = impersonation
+            if self.fp_count[bssid][fp] < self.RECUR:
                 return None
             key = (bssid, fp)
             if now - self.alerted.get(key, 0) < self.COOLDOWN:
@@ -286,8 +291,8 @@ class EvilTwinTracker:
                 message=f"BSSID-SPOOF suspected: trusted AP {bssid} ('{ssid}') "
                         f"beacon fingerprint changed — impersonation",
                 ssid=ssid, bssid=bssid, channel=channel, source=bssid,
-                raw_json={"good_fp": self.good_fp[bssid], "seen_fp": fp,
-                          "detector": "fingerprint"})
+                raw_json={"known_fps": sorted(self.good_fps[bssid]),
+                          "seen_fp": fp, "detector": "fingerprint"})
 
         # --- unknown BSSID for a trusted SSID ------------------------------
         key = (ssid, bssid)

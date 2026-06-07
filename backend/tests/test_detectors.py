@@ -94,24 +94,34 @@ def test_evil_twin_on_security_downgrade():
 
 
 def test_fingerprint_spoof_on_trusted_bssid():
+    import time
     t = L.EvilTwinTracker(TRUSTED)
     bssid = "AA:BB:CC:00:00:01"
-    for _ in range(L.EvilTwinTracker.LEARN_HITS):     # establish good fp
-        assert t.add("Home", bssid, 6, "WPA2", "goodfp") is None
-    # a different fingerprint claiming the trusted BSSID must recur, then fire
-    assert t.add("Home", bssid, 6, "WPA2", "badfp") is None      # 1
-    assert t.add("Home", bssid, 6, "WPA2", "badfp") is None      # 2
-    ev = t.add("Home", bssid, 6, "WPA2", "badfp")                # 3 -> fire
+    for _ in range(L.EvilTwinTracker.LEARN_HITS):     # learn the legit fp
+        t.add("Home", bssid, 6, "WPA2", "goodfp")
+    assert "goodfp" in t.good_fps[bssid]
+    t.first_seen[bssid] = time.time() - t.LEARN_WINDOW - 1   # close learning
+    assert t.add("Home", bssid, 6, "WPA2", "goodfp") is None  # legit fp still ok
+    ev = None
+    for _ in range(L.EvilTwinTracker.RECUR):          # a new fp must persist
+        ev = t.add("Home", bssid, 6, "WPA2", "badfp")
     assert ev is not None
     assert ev["event_type"] == "evil_twin_suspected"
-    assert "fingerprint" in ev["raw_json"]["detector"]
+    assert ev["raw_json"]["detector"] == "fingerprint"
 
 
-def test_stable_fingerprint_no_false_positive():
+def test_multiple_legit_fingerprints_no_false_positive():
+    """A multi-radio router with two legit fingerprints must not false-alarm."""
+    import time
     t = L.EvilTwinTracker(TRUSTED)
     bssid = "AA:BB:CC:00:00:01"
-    fired = [t.add("Home", bssid, 6, "WPA2", "stable") for _ in range(40)]
-    assert all(e is None for e in fired)     # same fp forever -> never alerts
+    for fp in ("fpA", "fpB"):                          # learn both legit variants
+        for _ in range(L.EvilTwinTracker.LEARN_HITS):
+            t.add("Home", bssid, 6, "WPA2", fp)
+    t.first_seen[bssid] = time.time() - t.LEARN_WINDOW - 1
+    fired = [t.add("Home", bssid, 6, "WPA2", fp)
+             for fp in ("fpA", "fpB") for _ in range(20)]
+    assert all(e is None for e in fired)               # both known -> no alert
 
 
 # --- beacon parsing (scapy) --------------------------------------------
