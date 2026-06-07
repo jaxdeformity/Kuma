@@ -172,17 +172,18 @@ function enemyKeyFor(et){if(!et)return null;et=(''+et).toLowerCase();
   if(et.includes('botnet')||et.includes('worm'))return 'botnet_worm';
   return null;}
 const ABIL={
-  'SIGNAL MAUL':{clip:['SENTINEL','ATTACKING','VICTORY'],status:'DESTABILIZED',sub:'disrupt broadcast/spoof',fx:'slash',base:[20,26]},
-  'HONEY SNARE':{clip:['HONEY','INVESTIGATING','ATTACKING'],status:'MARKED',sub:'bait + mark, boost next',fx:'mark',base:[8,12],mark:true},
-  'CHANNEL ROAR':{clip:['ALERT','APEX','ATTACKING'],status:'SUPPRESSED',sub:'break burst/flood/swarm',fx:'wave',base:[20,26]},
-  'PAWLOCK':{clip:['DEFENDING','APEX','VICTORY'],status:'CONTAINED',sub:'pin + contain',fx:'lock',base:[22,30]}};
+  'SIGNAL MAUL':{clip:['DEFENDING','ATTACKING','DEFENDING'],status:'DESTABILIZED',sub:'disrupt broadcast/spoof',fx:'slash',base:[20,26]},
+  'HONEY SNARE':{clip:['DEFENDING','ATTACKING','DEFENDING'],status:'MARKED',sub:'bait + mark, boost next',fx:'mark',base:[8,12],mark:true},
+  'CHANNEL ROAR':{clip:['DEFENDING','ATTACKING','DEFENDING'],status:'SUPPRESSED',sub:'break burst/flood/swarm',fx:'wave',base:[20,26]},
+  'PAWLOCK':{clip:['DEFENDING','APEX','DEFENDING'],status:'CONTAINED',sub:'pin + contain (active defense)',fx:'lock',base:[22,30]}};
 const ORDER=['SIGNAL MAUL','HONEY SNARE','CHANNEL ROAR','PAWLOCK'];
 const ABIL_SFX={'SIGNAL MAUL':'claw','CHANNEL ROAR':'charged','PAWLOCK':'full','HONEY SNARE':'full'};
 
 // ---- audio ----
 const AUD={ctx:null,master:null,muted:false,vol:0.32,mTimer:null,buf:{},_loaded:false,
   init(){if(this.ctx)return;const A=window.AudioContext||window.webkitAudioContext;this.ctx=new A();
-    this.master=this.ctx.createGain();this.master.gain.value=this.muted?0:this.vol;this.master.connect(this.ctx.destination);},
+    this.master=this.ctx.createGain();this.master.gain.value=this.muted?0:this.vol;this.master.connect(this.ctx.destination);
+    this.musicGain=this.ctx.createGain();this.musicGain.gain.value=1;this.musicGain.connect(this.master);},
   resume(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();},
   mute(m){this.muted=m;if(this.master)this.master.gain.value=m?0:this.vol;},
   loadSamples(){if(this._loaded||!this.ctx)return;this._loaded=true;
@@ -193,13 +194,15 @@ const AUD={ctx:null,master:null,muted:false,vol:0.32,mTimer:null,buf:{},_loaded:
   _tone(t,f,ms,wave,vol){if(!f)return;const d=ms/1000;const o=this.ctx.createOscillator(),g=this.ctx.createGain();
     o.type=(wave==='tri')?'triangle':'square';o.frequency.setValueAtTime(f,t);
     g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+d);
-    o.connect(g);g.connect(this.master);o.start(t);o.stop(t+d+0.03);},
+    o.connect(g);g.connect(this.musicGain);o.start(t);o.stop(t+d+0.03);},
   WAVES:['square','tri','square','square'],VOLS:[0.20,0.24,0.15,0.16],
   playScore(score,loop){if(!this.ctx)return;this.resume();this.stop();if(!score)return;
+    const now=this.ctx.currentTime;this.musicGain.gain.cancelScheduledValues(now);this.musicGain.gain.setValueAtTime(1,now);
     const sched=(base)=>{for(const e of score.ev)this._tone(base+e.t/1000,440*Math.pow(2,(e.n-69)/12),e.d,this.WAVES[e.k]||'square',this.VOLS[e.k]!=null?this.VOLS[e.k]:0.16);};
-    let next=this.ctx.currentTime+0.06;sched(next);
+    let next=now+0.06;sched(next);
     if(loop&&score.loopMs>0)this.mTimer=setInterval(()=>{next+=score.loopMs/1000;sched(next);},score.loopMs);},
-  stop(){if(this.mTimer){clearInterval(this.mTimer);this.mTimer=null;}}};
+  stop(){if(this.mTimer){clearInterval(this.mTimer);this.mTimer=null;}
+    if(this.musicGain){const now=this.ctx.currentTime;this.musicGain.gain.cancelScheduledValues(now);this.musicGain.gain.setValueAtTime(0.0001,now);}}};
 const M=(typeof MUSIC!=='undefined')?MUSIC:{};
 
 // ---- helpers ----
@@ -208,6 +211,14 @@ const ksp=$('ksp'),esp=$('esp');
 let kumaClipTimer=null;
 function setKuma(state){ksp.src=KS+(KST[state]||KST.SENTINEL)+'.png'+SPV;}
 function setFace(st){const f=FACE[st]||FACE.error;if(!(ksp.getAttribute('src')||'').includes(f))ksp.src=KS+f+'.png'+SPV;}
+// monitoring stance by activity: calm -> wander (hibernate/forage/honey); anomaly -> sentinel
+// -> investigating (sustained) -> alert (about to encounter). Drives the dashboard face.
+function setMon(name){const f=KST[name]||KST.SENTINEL;if(!(ksp.getAttribute('src')||'').includes(f))ksp.src=KS+f+'.png'+SPV;}
+function monState(s){const tl=s.threat_level,ev=s.events_last_10m||0;
+  if(tl==='high'||tl==='critical')return 'ALERT';
+  if(tl==='medium')return 'INVESTIGATING';
+  if(ev>0)return 'SENTINEL';
+  return null;}  // calm -> ambient wander cycle
 function playClip(states,perMs,done){if(kumaClipTimer)clearInterval(kumaClipTimer);let i=0;setKuma(states[0]);
   kumaClipTimer=setInterval(()=>{i++;if(i>=states.length){clearInterval(kumaClipTimer);kumaClipTimer=null;if(done)done();return;}setKuma(states[i]);},perMs);}
 function once(el,cls){el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls);}
@@ -259,7 +270,8 @@ async function tick(){
 }
 function updateFace(s,events){
   if(!s){$('dot').className='dot off';$('dtx').textContent='OFFLINE';msg('backend unreachable.');return;}
-  setFace(s.bear_state||'foraging');
+  const ms=monState(s);
+  setMon(ms||['HIBERNATING','FORAGING','HONEY'][Math.floor(Date.now()/9000)%3]);
   $('dot').className='dot';$('dtx').textContent='ONLINE';$('lv').textContent='Lv '+(s.level||1);
   const tl=s.threat_level||'low',hi=(tl==='high'||tl==='critical'),med=tl==='medium';
   const th=$('th');th.textContent=tl.toUpperCase();th.style.color=hi?'var(--red)':med?'var(--amb)':'var(--grn)';
@@ -301,7 +313,7 @@ function buildMenu(){const m=$('menu');m.innerHTML='';
   ORDER.forEach(name=>{const a=ABIL[name];const b=document.createElement('button');
     b.innerHTML=name+(S.en.weak.includes(name)?' ▸':'')+'<span class="sub">'+a.sub+'</span>';
     b.onclick=()=>doMove(name);m.appendChild(b);});m.classList.remove('hidden');}
-function playerTurn(){if(S.k.cur<=0||S.en.cur<=0)return;S.phase='menu';setKuma('SENTINEL');msg('What will <span class="jp">クマ</span> do?');buildMenu();startTurnTimer();}
+function playerTurn(){if(S.k.cur<=0||S.en.cur<=0)return;S.phase='menu';setKuma('DEFENDING');msg('What will <span class="jp">クマ</span> do?');buildMenu();startTurnTimer();}
 function startTurnTimer(){clearTurnTimer();const dur=30000,t0=performance.now();
   const t=()=>{const e=performance.now()-t0;$('timer').style.width=Math.min(100,e/dur*100)+'%';
     if(e>=dur){$('timer').style.width='0';autoPick();return;}turnRAF=requestAnimationFrame(t);};turnRAF=requestAnimationFrame(t);}
@@ -331,7 +343,7 @@ function checkEnd(){
     fetch('/api/progress/battle-win',{method:'POST'}).catch(()=>{});
     msg('<b>'+S.en.name+'</b> was contained.','');
     setTimeout(()=>{center('THREAT CONTAINED');setKuma('VICTORY');
-      setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.');setTimeout(showFace,1600);},1400);},700);return true;}
+      setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.','');setTimeout(showFace,60000);},1400);},700);return true;}  // victory holds ~1 min
   if(S.k.cur<=0){busy=false;S.phase='lose';AUD.stop();clearTurnTimer();setKuma('ALERT');
     msg('The link dropped... <span class="jp">クマ</span> regroups.','');setTimeout(showFace,2000);return true;}
   return false;}
