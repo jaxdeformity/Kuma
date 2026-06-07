@@ -60,6 +60,11 @@ class ApexResponder:
         protect = {b.upper() for b in self.cfg.get("protect_bssids", [])}
         if not attacker or attacker in protect:
             return None  # never act against our own / protected gear
+        # Only respond to a SIGNIFICANT attack, not routine AP deauths.
+        raw = event.get("raw_json") or {}
+        min_frames = self.cfg.get("min_response_frames", 100)
+        if event.get("severity") != "high" and raw.get("frame_count", 0) < min_frames:
+            return None
         self._last = time.time()
 
         resp = self.cfg.get("responses", {})
