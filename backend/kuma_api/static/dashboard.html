@@ -40,7 +40,7 @@
     background-color:#050807;display:flex;align-items:center;justify-content:center;
     padding:16px;border-right:1px solid var(--faint);min-height:200px}
   @media(max-width:600px){.viewport{border-right:0;border-bottom:1px solid var(--faint)}}
-  #bear{image-rendering:pixelated;width:168px;height:168px}
+  #bear{image-rendering:pixelated;height:172px;width:auto;max-width:188px}
   .vp-tag{position:absolute;bottom:6px;left:8px;font-size:10px;color:var(--dim);letter-spacing:.2em}
 
   .readout{padding:13px 15px;display:flex;flex-direction:column;gap:9px}
@@ -99,7 +99,7 @@
 
   <div class="core">
     <div class="viewport">
-      <canvas id="bear" width="32" height="32"></canvas>
+      <img id="bear" alt="KUMA">
       <div class="vp-tag" id="bstate">--</div>
     </div>
     <div class="readout">
@@ -131,79 +131,19 @@ const DEFENSES=[
   ["handshake","handshake harvest"],["apex","apex defense"]
 ];
 
-// ---- pixel bear (algorithmic, 24x24) ----------------------------------
-const bc=document.getElementById("bear").getContext("2d");
-const W=32;
+// ---- KUMA state face (Jax's generated state sprites) ------------------
+// bear_state from /api/status maps to a mode portrait in static/sprites/states/.
+const BEAR_IMG=document.getElementById("bear");
+const STATE_SPRITE={
+  sleeping:'01_hibernating', foraging:'02_foraging', honey_trap:'04_honey',
+  suspicious:'03_sentinel', alert:'06_alert', apex_ready:'05_apex',
+  investigating:'07_investigating', defending:'08_defending',
+  attacking:'09_attacking', victory:'10_victory', error:'03_sentinel'};
 function tint(t){return getComputedStyle(document.documentElement).getPropertyValue(({low:'--grn',medium:'--amb',high:'--red',critical:'--red'})[t]||'--cyn').trim();}
-function px(x,y,c){if(x<0||y<0||x>=W||y>=W)return;bc.fillStyle=c;bc.fillRect(x|0,y|0,1,1);}
-function disk(cx,cy,r,fn){const r2=r*r;
-  for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){
-    const dx=x-cx,dy=y-cy; if(dx*dx+dy*dy<=r2&&x>=0&&y>=0&&x<W&&y<W)fn(x,y);}}
-function line(x0,y0,x1,y1,c){x0|=0;y0|=0;x1|=0;y1|=0;
-  const dx=Math.abs(x1-x0),dy=Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1;
-  let err=dx-dy,x=x0,y=y0;
-  for(;;){px(x,y,c);if(x===x1&&y===y1)break;const e2=2*err;
-    if(e2>-dy){err-=dy;x+=sx;}if(e2<dx){err+=dx;y+=sy;}}}
-
-// ---- AKAKABUTO: a battle-scarred guardian bear (32x32) ----------------
 function drawBear(state,threat){
-  bc.clearRect(0,0,W,W);
-  const hi=(threat==='high'||threat==='critical'), med=(threat==='medium');
-  const alert=(state==='alert');
-  const fur  = hi?'#9d5f47':med?'#8f7748':'#7e7160';   // grizzled, warms with threat
-  const furD = hi?'#6f3d2d':med?'#5f4b2d':'#52483c';   // shadow fur (jaw/underside)
-  const crown= hi?'#c83a28':'#9c4a36';                 // red "helmet" marking
-  const dark='#221b13', red='#d83a2a';
-  const muz='#d9d0b9', nose='#15110c', fang='#f4f0e3';
-  const eyeC = alert?'#ff5340':(hi?'#ff8a55':med?'#ffd24a':'#cdd5c6');
-  const earY = alert?9:7;                               // ears pin back when alert
-
-  const mask=[]; for(let y=0;y<W;y++)mask[y]=new Array(W).fill(false);
-  const set=(x,y)=>{if(x>=0&&y>=0&&x<W&&y<W)mask[y][x]=true;};
-  disk(16,18,11,set);                 // broad head
-  disk(7,earY,3.5,set); disk(25,earY,3.5,set);   // ears
-  disk(16,24,7.6,set);                // heavy muzzle/jaw
-
-  // outline (empty pixel touching fur)
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){if(mask[y][x])continue;let adj=false;
-    for(const d of[[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){
-      const ny=y+d[1],nx=x+d[0];if(ny>=0&&ny<W&&nx>=0&&nx<W&&mask[ny][nx]){adj=true;break;}}
-    if(adj)px(x,y,dark);}
-  // fur + underside shadow
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x])px(x,y,y>21?furD:fur);
-  // red helmet crown (Akakabuto signature)
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x]&&y>=7&&y<=13){
-    const dx=(x-16)/9,dy=(y-7)/6.5; if(dx*dx+dy*dy<=1)px(x,y,crown);}
-  // ear interiors
-  disk(7,earY,1.4,(x,y)=>px(x,y,dark)); disk(25,earY,1.4,(x,y)=>px(x,y,dark));
-  // muzzle (lighter mask)
-  for(let y=0;y<W;y++)for(let x=0;x<W;x++){const ex=(x-16)/6,ey=(y-24)/4.3;
-    if(ex*ex+ey*ey<=1&&mask[y][x])px(x,y,muz);}
-  // nose (blunt triangle)
-  for(let x=14;x<=18;x++)px(x,20,nose); for(let x=15;x<=17;x++)px(x,21,nose); px(16,22,nose);
-
-  // heavy angled brow (always scowling) - outer high, inner low
-  for(let t=0;t<2;t++){line(8,13+t,14,16+t,dark); line(24,13+t,18,16+t,dark);}
-
-  if(state==='sleeping'){ line(10,18,13,18,dark); line(19,18,22,18,dark); }
-  else if(state==='error'){ line(10,16,13,19,'#888');line(13,16,10,19,'#888');
-                            line(19,16,22,19,'#888');line(22,16,19,19,'#888'); }
-  else {
-    const slit=alert?17:(state==='suspicious'?18:17);   // narrowed when calm
-    for(let x=10;x<=13;x++){px(x,slit,eyeC);px(x,slit+1,eyeC);}
-    for(let x=19;x<=22;x++){px(x,slit,eyeC);px(x,slit+1,eyeC);}
-    px(12,slit,nose);px(12,slit+1,nose); px(20,slit,nose);px(20,slit+1,nose);  // pupils
-    if(alert){px(11,slit,'#fff');px(21,slit,'#fff');}                          // glint
-    if(state==='suspicious'){for(let x=10;x<=13;x++)px(x,slit,fur);for(let x=19;x<=22;x++)px(x,slit,fur);} // half-lid
-  }
-
-  if(alert){                                   // open snarl + fangs
-    for(let x=13;x<=19;x++)px(x,25,dark);
-    for(let x=14;x<=18;x++)px(x,26,nose); px(15,27,nose);px(17,27,nose);
-    px(14,25,fang);px(15,26,fang); px(18,25,fang);px(17,26,fang);
-  } else { line(13,25,16,26,dark); line(19,25,16,26,dark); }   // grim line
-
-  line(8,11,13,18,red);          // diagonal battle scar across the left brow/eye
+  const key=STATE_SPRITE[state]||STATE_SPRITE.error;
+  const src='sprites/states/'+key+'.png';
+  if(!BEAR_IMG.getAttribute('src')||!BEAR_IMG.getAttribute('src').endsWith(src))BEAR_IMG.src=src;
 }
 
 const lvl={low:1,medium:2,high:3,critical:4};
