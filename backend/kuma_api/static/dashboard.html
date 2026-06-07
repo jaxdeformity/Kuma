@@ -49,11 +49,11 @@ const STATE_SPRITE={                      // bear_state -> state portrait
   suspicious:'03_sentinel', alert:'06_alert', apex_ready:'05_apex', apex:'05_apex',
   investigating:'07_investigating', defending:'08_defending',
   attacking:'09_attacking', victory:'10_victory', error:'03_sentinel'};
-for(const k of Object.values(STATE_SPRITE)){const im=new Image();im.src='sprites/states/'+k+'.png';}
+const SPV='?v=3';  // bump to bust browser cache when sprites change
+for(const k of Object.values(STATE_SPRITE)){const im=new Image();im.src='sprites/states/'+k+'.png'+SPV;}
 function drawBear(state){
   const key=STATE_SPRITE[state]||STATE_SPRITE.error;
-  const src='sprites/states/'+key+'.png';
-  if(!BEAR_IMG.getAttribute('src')||!BEAR_IMG.getAttribute('src').endsWith(src))BEAR_IMG.src=src;
+  if(!(BEAR_IMG.getAttribute('src')||'').includes(key))BEAR_IMG.src='sprites/states/'+key+'.png'+SPV;
 }
 
 // ---- live data -------------------------------------------------------

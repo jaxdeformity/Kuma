@@ -296,14 +296,14 @@ function encounter(typeKey){ if(S)return; AUD.init();AUD.resume();
   // P2 alert
   setKuma('ALERT');flash(true);scanSweep();center('THREAT DETECTED',true);AUD.cue(SFX.threat);
   setTimeout(()=>{ // P3 lock-on
-    center('HOSTILE SIGNAL LOCKED',true);AUD.cue(SFX.lock);
+    center('HOSTILE SIGNAL LOCKED',true);
     playClip(['ALERT','INVESTIGATING','DEFENDING'],260);
     setTimeout(()=>{ // P4 approach (enemy silhouette)
       center('HOSTILE ENTITY APPROACHING',true);setKuma('DEFENDING');
       esp.src=ES+en.sprite+'.png';esp.style.opacity=1;esp.style.filter='brightness(0) drop-shadow(0 0 7px var(--cy))';
       esp.classList.add('ebob');
       setTimeout(()=>{ // P5 encounter initiated
-        center('ENCOUNTER INITIATED',true);setKuma('APEX');AUD.cue(SFX.encounter);flash(true);
+        center('ENCOUNTER INITIATED',true);setKuma('APEX');flash(true);
         setTimeout(battleIntro,900);
       },1000);
     },1000);
@@ -315,7 +315,7 @@ function battleIntro(){ const en=S.en;
   center('');S.phase='intro';
   // P1 enemy reveal
   esp.style.filter='';once(esp,'reveal');
-  msg('HOSTILE <b>'+en.name+'</b> DETECTED','');AUD.cue(SFX.intro);
+  msg('HOSTILE <b>'+en.name+'</b> DETECTED','');
   setTimeout(()=>{ // P2 KUMA enters (walk-in via state shift + slide)
     ksp.style.transition='left .6s ease-out';ksp.style.left='-60px';setKuma('SENTINEL');ksp.style.opacity=1;
     requestAnimationFrame(()=>{ksp.style.left='34px';});
@@ -329,8 +329,7 @@ function battleIntro(){ const en=S.en;
       msg(en.text,'');
       setTimeout(()=>{ // P4 battlefield lock
         S.phase='menu';startIdle();esp.classList.add('ebob');
-        AUD.music([LEAD,BASS]);
-        playerTurn();
+        playerTurn();  // no looping battle music (battery); audio only on encounter + actions
       },900);
     },800);
   },1100);
@@ -364,13 +363,13 @@ function doMove(name){ if(busy||S.phase!=='menu')return; busy=true;clearTurnTime
       if(a.fx==='slash')fxSlash(); else if(a.fx==='wave')fxWave(); else if(a.fx==='lock')fxLock(); else if(a.fx==='mark')fxMark();
       const superEff=S.en.weak.includes(name);
       if(a.mark){ S.mark=true; $('ebadge').style.display='inline-block';$('ebadge').textContent='MARKED';
-        once(esp,'hit');AUD.cue(SFX.MARKED);
+        once(esp,'hit');
         msg('The threat took the bait. Enemy is <b>MARKED</b>.','next');
         setTimeout(()=>{ if(checkEnd())return; enemyTurn(); },1100);
       } else {
         let dmg=rnd(a.base);if(superEff)dmg=Math.round(dmg*1.7);if(S.mark){dmg=Math.round(dmg*1.5);S.mark=false;$('ebadge').style.display='none';}
         S.en.cur=Math.max(0,S.en.cur-dmg);setHP($('ehp'),S.en.cur,S.en.max);
-        once(esp,'hit');AUD.cue(SFX[a.status]);
+        once(esp,'hit');
         $('ebadge').style.display='inline-block';$('ebadge').textContent=a.status;
         const line=superEff?'It’s super effective! Enemy is <b>'+a.status+'</b>.':'Enemy is <b>'+a.status+'</b>.';
         setTimeout(()=>{ msg(line,'next'); setTimeout(()=>{ if(checkEnd())return; enemyTurn(); },1000); },480);
