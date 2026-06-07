@@ -18,14 +18,11 @@
     letter-spacing:.04em; padding:14px; max-width:860px; margin:0 auto;
     text-shadow:0 0 1px rgba(120,255,170,.08);
   }
-  /* CRT scanlines + flicker, hardware feel */
   body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
     background:repeating-linear-gradient(0deg,transparent 0 2px,var(--scan) 2px 3px);
     mix-blend-mode:multiply;opacity:.5}
   a{color:var(--cyn);text-decoration:none}
-  .rule{border:0;border-top:1px solid var(--faint);margin:0}
 
-  /* header strip */
   header{display:flex;justify-content:space-between;align-items:center;
     border:1px solid var(--faint);border-bottom-width:2px;padding:7px 11px;background:var(--panel)}
   .wordmark{font-weight:700;letter-spacing:.42em;color:var(--wht)}
@@ -39,11 +36,11 @@
   .core{display:grid;grid-template-columns:200px 1fr;gap:0;border:1px solid var(--faint);border-top:0}
   @media(max-width:600px){.core{grid-template-columns:1fr}}
   .viewport{position:relative;
-    background:radial-gradient(120% 120% at 50% 30%,rgba(70,224,122,.06),transparent 60%);
+    background:radial-gradient(120% 120% at 50% 32%,rgba(70,224,122,.06),transparent 60%);
     background-color:#050807;display:flex;align-items:center;justify-content:center;
     padding:16px;border-right:1px solid var(--faint);min-height:200px}
   @media(max-width:600px){.viewport{border-right:0;border-bottom:1px solid var(--faint)}}
-  #bear{image-rendering:pixelated;width:160px;height:160px}
+  #bear{image-rendering:pixelated;width:168px;height:168px}
   .vp-tag{position:absolute;bottom:6px;left:8px;font-size:10px;color:var(--dim);letter-spacing:.2em}
 
   .readout{padding:13px 15px;display:flex;flex-direction:column;gap:9px}
@@ -56,7 +53,6 @@
   .kv b{color:var(--wht);font-weight:400}
   .kv span{color:var(--dim)}
 
-  /* defenses strip */
   .defenses{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--faint);border-top:0}
   .def{flex:1 0 33%;display:flex;align-items:center;gap:7px;padding:6px 10px;
     border-right:1px solid var(--faint);border-top:1px solid var(--faint);font-size:11px;color:var(--dim)}
@@ -64,13 +60,11 @@
   .def.armed{color:var(--ink)}
   .def.hot{color:var(--amb)} .def.hot .led{background:var(--amb);box-shadow:0 0 6px var(--amb)}
 
-  /* apex banner */
   #apex{display:none;border:1px solid var(--red);border-top:0;background:rgba(255,71,71,.08);
     color:var(--red);padding:7px 11px;font-size:12px;letter-spacing:.1em;animation:flash 1s steps(2) infinite}
   #apex.on{display:block}
   @keyframes flash{50%{background:rgba(255,71,71,.02)}}
 
-  /* event console */
   .console{border:1px solid var(--faint);border-top:0;background:var(--panel)}
   .ctitle{font-size:10px;letter-spacing:.3em;color:var(--dim);padding:6px 11px;border-bottom:1px solid var(--faint)}
   table{width:100%;border-collapse:collapse;font-size:12px}
@@ -90,14 +84,14 @@
     <div class="wordmark">KUMA<span class="g">·</span>GUARD</div>
     <div class="hdr-r">
       <span id="ver">v0.0.1</span>
-      <span id="chan">ch--</span>
+      <span id="chan">wlan</span>
       <span class="live" id="live"><span class="blip"></span><span id="livetxt">LINK</span></span>
     </div>
   </header>
 
   <div class="core">
     <div class="viewport">
-      <canvas id="bear" width="32" height="32"></canvas>
+      <canvas id="bear" width="24" height="24"></canvas>
       <div class="vp-tag" id="bstate">--</div>
     </div>
     <div class="readout">
@@ -122,61 +116,70 @@
 
 <script>
 const TC={low:"var(--grn)",medium:"var(--amb)",high:"var(--red)",critical:"var(--red)"};
-const SEG=4, BEAR_PX=32, SCALE=5;
+const SEG=4;
 const DEFENSES=[
   ["deauth","deauth flood"],["beacon_flood","beacon spam"],
   ["evil_twin","evil twin"],["karma","karma/pineap"],
   ["handshake","handshake harvest"],["apex","apex defense"]
 ];
-// --- pixel bear ---------------------------------------------------------
-// 1=fur 2=dark 3=snout 4=nose  (eyes drawn per-state)
-const B=[
-"................................",
-".....22..............22.........",
-"....2112............2112........",
-"....1111............1111........",
-".....11111111111111111..........",
-"....111111111111111111..........",
-"...11111111111111111111.........",
-"...11111111111111111111.........",
-"...11111111111111111111.........",
-"...11111111111111111111.........",
-"...11111133333333331111.........",
-"...11111333333333331111.........",
-"...11113333333333333111.........",
-"...11113333334433333111.........",
-"...11113333344443333111.........",
-"...11113333333333333111.........",
-"....1111333333333331111.........",
-"....11111333333333311111........",
-".....111111333333111111.........",
-"......1111111111111111..........",
-".......11111111111111...........",
-"........111111111111............",
-"..........11111111..............",
-"................................"];
+
+// ---- pixel bear (algorithmic, 24x24) ----------------------------------
 const bc=document.getElementById("bear").getContext("2d");
+const W=24;
 function tint(t){return getComputedStyle(document.documentElement).getPropertyValue(({low:'--grn',medium:'--amb',high:'--red',critical:'--red'})[t]||'--cyn').trim();}
+function px(x,y,c){bc.fillStyle=c;bc.fillRect(x|0,y|0,1,1);}
+function disk(cx,cy,r,fn){const r2=r*r;
+  for(let y=Math.floor(cy-r);y<=cy+r;y++)for(let x=Math.floor(cx-r);x<=cx+r;x++){
+    const dx=x-cx,dy=y-cy; if(dx*dx+dy*dy<=r2&&x>=0&&y>=0&&x<W&&y<W)fn(x,y);}}
 function drawBear(state,threat){
-  const fur = (threat==='high'||threat==='critical')?'#c43a3a':(threat==='medium'?'#b9772e':'#8c6a3f');
-  const furL='#a98a5a', dark='#4a3826', snout='#d8d2c0', nose='#1a1a1a';
-  bc.clearRect(0,0,BEAR_PX,BEAR_PX);
-  for(let y=0;y<B.length;y++)for(let x=0;x<B[y].length;x++){
-    const c=B[y][x]; if(c===".")continue;
-    bc.fillStyle = c==="1"?fur : c==="2"?dark : c==="3"?snout : nose;
-    bc.fillRect(x,y,1,1);
+  bc.clearRect(0,0,W,W);
+  const fur = (threat==='high'||threat==='critical')?'#bf563a'
+            : (threat==='medium')?'#b0793b':'#9b7c52';
+  const earIn='#6f5538', dark='#33271a', snout='#e7e0cb', nose='#19140f';
+  const mask=[]; for(let y=0;y<W;y++)mask[y]=new Array(W).fill(false);
+  const set=(x,y)=>{mask[y][x]=true;};
+  disk(12,13.5,8.6,set);          // head
+  disk(6,5.5,3.2,set);            // left ear
+  disk(18,5.5,3.2,set);           // right ear
+  // outline = empty pixels touching fur
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++){
+    if(mask[y][x])continue; let adj=false;
+    for(const d of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[-1,-1],[1,-1],[-1,1]]){
+      const ny=y+d[1],nx=x+d[0]; if(ny>=0&&ny<W&&nx>=0&&nx<W&&mask[ny][nx]){adj=true;break;}}
+    if(adj)px(x,y,dark);
   }
-  // eyes by mood (positions ~ x 8-9 and 21-22, y 8)
-  const L=8,R=21,EY=8;
-  const eye=(x,c)=>{bc.fillStyle=c;bc.fillRect(x,EY,2,2);};
-  if(state==='sleeping'){bc.fillStyle='#3a2e20';bc.fillRect(L,EY+1,3,1);bc.fillRect(R,EY+1,3,1);}
-  else if(state==='alert'){bc.fillStyle='#fff';bc.fillRect(L-1,EY-1,4,4);bc.fillRect(R-1,EY-1,4,4);eye(L,'#ff3030');eye(R,'#ff3030');}
-  else if(state==='suspicious'){bc.fillStyle='#111';bc.fillRect(L,EY,3,2);bc.fillRect(R,EY,3,2);bc.fillStyle=fur;bc.fillRect(L,EY,3,1);bc.fillRect(R,EY,3,1);}
-  else if(state==='honey_trap'){eye(L,'#111');eye(R,'#111');bc.fillStyle='#f2a23c';bc.fillRect(15,EY-2,2,1);}
-  else if(state==='error'){bc.fillStyle='#777';bc.fillRect(L,EY,1,1);bc.fillRect(L+1,EY+1,1,1);bc.fillRect(R,EY,1,1);bc.fillRect(R+1,EY+1,1,1);}
-  else {eye(L,'#111');eye(R,'#111');}
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(mask[y][x])px(x,y,fur);
+  disk(6,5.5,1.5,(x,y)=>px(x,y,earIn));
+  disk(18,5.5,1.5,(x,y)=>px(x,y,earIn));
+  // snout (ellipse, clipped to head)
+  for(let y=0;y<W;y++)for(let x=0;x<W;x++){
+    const ex=(x-12)/5.2, ey=(y-16.8)/3.4;
+    if(ex*ex+ey*ey<=1 && mask[y][x]) px(x,y,snout);
+  }
+  disk(12,15.2,1.4,(x,y)=>px(x,y,nose)); px(12,16.5,nose);
+  // eyes by mood
+  const lx=8, rx=15, ey=11;
+  const eye=(x,c)=>{px(x,ey,c);px(x+1,ey,c);px(x,ey+1,c);px(x+1,ey+1,c);};
+  if(state==='sleeping'){
+    for(let i=-1;i<=2;i++){px(lx+i,ey+1,dark);px(rx+i,ey+1,dark);}
+  } else if(state==='error'){
+    px(lx,ey,'#8a8a8a');px(lx+1,ey+1,'#8a8a8a');px(lx+1,ey,'#8a8a8a');px(lx,ey+1,'#8a8a8a');
+    px(rx,ey,'#8a8a8a');px(rx+1,ey+1,'#8a8a8a');px(rx+1,ey,'#8a8a8a');px(rx,ey+1,'#8a8a8a');
+  } else if(state==='alert'){
+    eye(lx,nose);eye(rx,nose);
+    px(lx,ey,'#ff5b5b');px(rx+1,ey,'#ff5b5b');
+    px(lx-1,ey-2,dark);px(lx,ey-1,dark);
+    px(rx+2,ey-2,dark);px(rx+1,ey-1,dark);
+  } else if(state==='suspicious'){
+    eye(lx,nose);eye(rx,nose);
+    px(lx,ey,fur);px(lx+1,ey,fur);px(rx,ey,fur);px(rx+1,ey,fur);
+    px(lx-1,ey-1,dark);px(rx+2,ey-1,dark);
+  } else {
+    eye(lx,nose);eye(rx,nose);
+    px(lx+1,ey,'#ffffff');px(rx+1,ey,'#ffffff');
+  }
 }
-// --- gauge --------------------------------------------------------------
+
 const lvl={low:1,medium:2,high:3,critical:4};
 function gauge(t){const n=lvl[t]||0,g=document.getElementById('gauge');g.innerHTML='';
   for(let i=0;i<SEG;i++){const s=document.createElement('div');s.className='seg';
@@ -186,7 +189,7 @@ function defenses(active){const d=document.getElementById('defenses');d.innerHTM
   DEFENSES.forEach(([k,label])=>{const el=document.createElement('div');
     el.className='def'+(active[k]?' hot':' armed');
     el.innerHTML='<span class="led"></span>'+label;d.appendChild(el);});}
-let lastApex=0;
+
 async function tick(){
   try{
     const s=await(await fetch('/api/status',{cache:'no-store'})).json();
