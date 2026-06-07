@@ -39,8 +39,8 @@ def bear_state() -> str:
         return "investigating"    # activity continuing
     if _recent_events():
         return "suspicious"       # sentinel: something noticed
-    # calm: ambient wander
-    return ("sleeping", "foraging", "honey_trap")[int(time.time() // 8) % 3]
+    # calm: DEFAULT is hibernate, with the occasional forage (gentle idle life)
+    return "foraging" if (int(time.time() // 6) % 5 == 0) else "sleeping"
 
 
 def _recent_events() -> bool:

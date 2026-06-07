@@ -272,8 +272,9 @@ async function tick(){
 function updateFace(s,events){
   if(!s){$('dot').className='dot off';$('dtx').textContent='OFFLINE';msg('backend unreachable.');return;}
   if(s.sprite_set)CUR_SET=s.sprite_set;
-  const ms=monState(s);
-  setMon(ms||['HIBERNATING','FORAGING','HONEY'][Math.floor(Date.now()/9000)%3]);
+  // single source of truth: show the backend's bear_state (default hibernate)
+  const BS={sleeping:'HIBERNATING',foraging:'FORAGING',honey_trap:'HONEY',suspicious:'SENTINEL',investigating:'INVESTIGATING',alert:'ALERT',apex_ready:'APEX'};
+  setMon(BS[s.bear_state]||'HIBERNATING');
   $('dot').className='dot';$('dtx').textContent='ONLINE';$('lv').textContent='Lv '+(s.level||1);
   $('up').textContent=hms(s.uptime_seconds);$('ev').textContent=s.events_last_10m;
   $('nw').textContent=s.network_count!=null?s.network_count:'-';$('sn').textContent=s.wifi_interface||'-';
