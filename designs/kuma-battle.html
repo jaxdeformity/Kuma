@@ -143,6 +143,7 @@
   <span id="hint" style="color:var(--dim)">tap once to enable audio</span>
 </div>
 
+<script src="audio/music.gen.js"></script>
 <script>
 // =====================================================================
 // KUMA Battle — front-end. Sprites: designs/sprites/{states,enemies}/.
@@ -215,35 +216,34 @@ const AUD={ctx:null,master:null,muted:false,vol:0.32,mTimer:null,mNext:0,
     this.mTimer=setInterval(()=>{this.mNext+=len/1000;play(this.mNext);},len);},
   stop(){if(this.mTimer){clearInterval(this.mTimer);this.mTimer=null;}}
 };
-// cue/sfx note data (original, E-minor; see kuma-audio-vgm.md)
-const SFX={
-  threat:[{n:'E5',d:90,v:.3},{n:'REST',d:40},{n:'D5',d:90,v:.3},{n:'REST',d:40},{n:'E4',d:220,v:.32}],
-  lock:[{n:'E4',d:80,v:.26},{n:'G4',d:80,v:.26},{n:'B4',d:80,v:.26},{n:'D5',d:80,v:.26},{n:'E5',d:180,v:.3,fx:'vibrato'}],
-  encounter:[{n:'E3',d:120,v:.3,w:'tri'},{n:'REST',d:40},{n:'B3',d:120,v:.3,w:'tri'},{n:'E4',d:180,v:.32},{n:'D4',d:120,v:.3},{n:'E4',d:240,v:.34}],
-  intro:[{n:'E4',d:100,v:.3},{n:'G4',d:100,v:.3},{n:'B4',d:100,v:.3},{n:'E5',d:180,v:.34},{n:'B4',d:100,v:.3},{n:'D5',d:160,v:.32},{n:'E5',d:260,v:.34,fx:'vibrato'}],
-  victory:[{n:'E4',d:120,v:.3},{n:'G4',d:120,v:.3},{n:'B4',d:120,v:.32},{n:'E5',d:240,v:.34},{n:'D5',d:120,v:.3},{n:'E5',d:360,v:.34}],
-  critical:[{n:'E5',d:120,v:.32},{n:'A#4',d:120,v:.3},{n:'E4',d:220,v:.32,fx:'slide_down'}],
-  signalMaul:[{n:'E4',d:40,v:.28},{n:'G4',d:40,v:.28},{n:'B4',d:40,v:.28},{n:'E5',d:80,v:.32,fx:'slide_up'},{n:'NOISE',d:60,v:.2}],
-  honeySnare:[{n:'G4',d:80,v:.28},{n:'E5',d:80,v:.3},{n:'REST',d:50},{n:'B4',d:80,v:.28},{n:'E5',d:160,v:.3}],
-  channelRoar:[{n:'E3',d:80,v:.3,w:'tri'},{n:'E3',d:80,v:.3,w:'tri'},{n:'D3',d:80,v:.3,w:'tri'},{n:'B2',d:80,v:.3,w:'tri'},{n:'E2',d:220,v:.32,w:'tri'},{n:'NOISE',d:100,v:.22}],
-  pawlock:[{n:'C4',d:60,v:.28},{n:'REST',d:40},{n:'C4',d:60,v:.28},{n:'REST',d:40},{n:'E3',d:180,v:.3,w:'tri'}],
-  MARKED:[{n:'G4',d:80,v:.26},{n:'E5',d:90,v:.3}],
-  SUPPRESSED:[{n:'B4',d:80,v:.26},{n:'F4',d:130,v:.26,fx:'slide_down'}],
-  CONTAINED:[{n:'C4',d:60,v:.26},{n:'E3',d:140,v:.3,w:'tri'}],
-  DESTABILIZED:[{n:'E4',d:60,v:.26},{n:'D#4',d:60,v:.26},{n:'F4',d:90,v:.28,fx:'vibrato'}],
-  select:[{n:'E5',d:40,v:.24}],cancel:[{n:'B3',d:60,v:.22}]
-};
-// battle loop: lead (square) + bass (triangle), both 3000ms -> clean loop
-const LEAD=[
- {n:'E4',d:120,v:.26},{n:'G4',d:120,v:.26},{n:'A4',d:120,v:.26},{n:'B4',d:240,v:.28},{n:'REST',d:120},
- {n:'E4',d:120,v:.26},{n:'D5',d:120,v:.26},{n:'B4',d:120,v:.26},{n:'A4',d:240,v:.28},{n:'REST',d:120},
- {n:'G4',d:120,v:.26},{n:'A4',d:120,v:.26},{n:'B4',d:120,v:.26},{n:'D5',d:240,v:.28},{n:'B4',d:120,v:.26},
- {n:'A4',d:120,v:.26},{n:'G4',d:120,v:.26},{n:'E4',d:120,v:.26},{n:'B3',d:120,v:.24},{n:'E4',d:360,v:.3}];
-const BASS=[
- {n:'E2',d:240,v:.3,w:'tri'},{n:'E2',d:240,v:.3,w:'tri'},{n:'B2',d:240,v:.3,w:'tri'},
- {n:'C3',d:240,v:.3,w:'tri'},{n:'C3',d:240,v:.3,w:'tri'},{n:'B2',d:240,v:.3,w:'tri'},
- {n:'G2',d:240,v:.3,w:'tri'},{n:'G2',d:240,v:.3,w:'tri'},{n:'D3',d:240,v:.3,w:'tri'},
- {n:'A2',d:240,v:.3,w:'tri'},{n:'B2',d:240,v:.3,w:'tri'},{n:'E2',d:240,v:.3,w:'tri'},{n:'E2',d:120,v:.28,w:'tri'}];
+// --- Jax's audio: BeepBox MIDIs (parsed in audio/music.gen.js) + WAV SFX ---
+function midiHz(n){return 440*Math.pow(2,(n-69)/12);}
+AUD.buf={};
+AUD.loadSamples=function(){if(this._loaded||!this.ctx)return;this._loaded=true;
+  const S={claw:'kuma_attack_cyber_claw_slash',charged:'kuma_attack_charged_bear_strike',full:'kuma_attack_full_action_cue'};
+  for(const k in S){fetch('audio/sfx/'+S[k]+'.wav').then(r=>r.arrayBuffer())
+    .then(b=>this.ctx.decodeAudioData(b)).then(buf=>{this.buf[k]=buf;}).catch(()=>{});}};
+AUD.sample=function(name,vol){const b=this.buf[name];if(!b||!this.ctx)return;
+  const s=this.ctx.createBufferSource();s.buffer=b;const g=this.ctx.createGain();
+  g.gain.value=(vol==null?0.85:vol);s.connect(g);g.connect(this.master);s.start();};
+AUD._tone=function(t,f,ms,wave,vol){if(!f)return;const d=ms/1000;
+  const o=this.ctx.createOscillator(),g=this.ctx.createGain();
+  o.type=(wave==='tri')?'triangle':(wave==='saw')?'sawtooth':'square';
+  o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+  o.connect(g);g.connect(this.master);o.start(t);o.stop(t+d+0.03);};
+AUD.WAVES=['square','tri','square','square'];
+AUD.VOLS=[0.20,0.24,0.15,0.16];
+AUD.playScore=function(score,loop){this.init();this.resume();this.stop();if(!score)return;
+  const sched=(base)=>{for(const e of score.ev){
+    this._tone(base+e.t/1000, midiHz(e.n), e.d, this.WAVES[e.k]||'square',
+               this.VOLS[e.k]!=null?this.VOLS[e.k]:0.16);}};
+  let next=this.ctx.currentTime+0.06; sched(next);
+  if(loop&&score.loopMs>0){this.mTimer=setInterval(()=>{next+=score.loopMs/1000;sched(next);},score.loopMs);}};
+// ability -> WAV sample (audio pack readme mapping)
+const ABIL_SFX={'SIGNAL MAUL':'claw','CHANNEL ROAR':'charged','PAWLOCK':'full','HONEY SNARE':'full'};
+const M=(typeof MUSIC!=='undefined')?MUSIC:{};
 
 // ---- sprite renderer -------------------------------------------------
 const $=id=>document.getElementById(id);
@@ -283,7 +283,7 @@ function rnd(a){return a[0]+Math.floor(Math.random()*(a[1]-a[0]+1));}
 let S=null,busy=false,turnTimer=null,turnRAF=null;
 
 function showFace(){ // non-battle: KUMA face + stat bar
-  S=null;stopIdle();setKuma('SENTINEL');ksp.classList.add('bob');
+  S=null;AUD.stop();stopIdle();setKuma('SENTINEL');ksp.classList.add('bob');
   $('einfo').style.display='none';$('kinfo').style.display='none';esp.style.opacity=0;
   $('menu').classList.add('hidden');$('menu').innerHTML='';$('statbar').style.display='flex';
   $('dot').className='dot';$('dtx').textContent='SENTINEL';center('');
@@ -297,7 +297,9 @@ function encounter(typeKey){ if(S)return; AUD.init();AUD.resume();
   $('statbar').style.display='none';$('dot').className='dot engaged';$('dtx').textContent='ENGAGED';
   stopIdle();ksp.classList.remove('bob');
   // P2 alert
-  setKuma('ALERT');flash(true);scanSweep();center('THREAT DETECTED',true);AUD.cue(SFX.threat);
+  setKuma('ALERT');flash(true);scanSweep();center('THREAT DETECTED',true);
+  AUD.playScore(M.encounter,false);                       // descending crescendo
+  setTimeout(()=>{if(S)AUD.playScore(M.battle,true);},(M.encounter&&M.encounter.loopMs)||1600);  // straight into vapor loop
   setTimeout(()=>{ // P3 lock-on
     center('HOSTILE SIGNAL LOCKED',true);
     playClip(['ALERT','INVESTIGATING','DEFENDING'],260);
@@ -344,7 +346,7 @@ function buildMenu(){const m=$('menu');m.innerHTML='';
   ORDER.forEach(name=>{const a=ABIL[name];const b=document.createElement('button');
     const eff=S.en.weak.includes(name)?' ▸':'';
     b.innerHTML=name+eff+'<span class="sub">'+a.sub+'</span>';
-    b.onclick=()=>{AUD.cue(SFX.select);doMove(name);};m.appendChild(b);});
+    b.onclick=()=>doMove(name);m.appendChild(b);});
   m.classList.remove('hidden');}
 function playerTurn(){if(S.k.cur<=0||S.en.cur<=0)return;
   S.phase='menu';msg('What will <span class="jp">クマ</span> do?');buildMenu();startTurnTimer();}
@@ -360,7 +362,7 @@ function autoPick(){ // KUMA auto-chooses a super-effective move (else SIGNAL MA
 function doMove(name){ if(busy||S.phase!=='menu')return; busy=true;clearTurnTimer();
   $('menu').classList.add('hidden');const a=ABIL[name];
   msg('<span class="jp">クマ</span> used <b>'+name+'</b>!');
-  AUD.cue(SFX[a.cue]);
+  AUD.sample(ABIL_SFX[name]||'full');
   playClip(a.clip,180);
   setTimeout(()=>{ once(ksp,'lungeK');
     setTimeout(()=>{ // impact
@@ -394,7 +396,7 @@ function enemyTurn(){ if(S.en.cur<=0){checkEnd();return;}
 function checkEnd(){
   if(S.en.cur<=0){ busy=false;S.phase='win';AUD.stop();clearTurnTimer();
     esp.classList.remove('ebob');once(esp,'faint');
-    playClip(['DEFENDING','VICTORY'],300);AUD.cue(SFX.victory);
+    playClip(['DEFENDING','VICTORY'],300);AUD.playScore(M.victory,false);
     msg('<b>'+S.en.name+'</b> was contained.','');
     setTimeout(()=>{ center('THREAT CONTAINED');setKuma('VICTORY');
       setTimeout(()=>{ msg('<span class="jp">クマ</span> defended the network.'); setTimeout(showFace,1600);},1400);},700);
@@ -409,10 +411,10 @@ function checkEnd(){
 const sel=$('pick');
 Object.keys(ENEMIES).forEach(k=>{const o=document.createElement('option');o.value=k;o.textContent=ENEMIES[k].name+' ('+k+')';sel.appendChild(o);});
 function trigger(){const k=sel.value||Object.keys(ENEMIES)[Math.floor(Math.random()*Object.keys(ENEMIES).length)];encounter(k);}
-$('go').onclick=()=>{AUD.init();AUD.resume();trigger();};
+$('go').onclick=()=>{AUD.init();AUD.resume();AUD.loadSamples();trigger();};
 $('mute').onclick=()=>{AUD.init();AUD.mute(!AUD.muted);$('mute').textContent='audio: '+(AUD.muted?'off':'on');};
-document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();AUD.init();AUD.resume();if(!S)trigger();}});
-document.body.addEventListener('click',()=>{AUD.init();AUD.resume();$('hint').textContent='';},{once:true});
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();AUD.init();AUD.resume();AUD.loadSamples();if(!S)trigger();}});
+document.body.addEventListener('click',()=>{AUD.init();AUD.resume();AUD.loadSamples();$('hint').textContent='';},{once:true});
 
 showFace();
 </script></body></html>
