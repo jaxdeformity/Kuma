@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import PlainTextResponse
 
 from kuma_core import database, progress
@@ -108,6 +108,19 @@ def post_mode(req: schemas.ModeRequest):
         "message": f"mode -> {req.mode}", "raw_json": {},
     })
     return state.engine.describe()
+
+
+@router.post("/shell")
+def post_shell(req: schemas.ShellRequest,
+               x_kuma_shell_token: str = Header(default="")) -> dict:
+    """Run a real shell command on the Pi. Disabled unless KUMA_SHELL_TOKEN is set
+    in the backend environment and the caller presents it."""
+    token = settings.shell_token
+    if not token:
+        raise HTTPException(status_code=503, detail="shell disabled (no token set)")
+    if x_kuma_shell_token != token:
+        raise HTTPException(status_code=403, detail="bad shell token")
+    return state.run_shell(req.cmd)
 
 
 @router.post("/action", response_model=schemas.ActionResponse)

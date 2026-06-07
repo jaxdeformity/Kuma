@@ -57,6 +57,10 @@ class FormRequest(BaseModel):
     form: int = Field(..., description="KUMA form index to make active (0..unlocked-1)")
 
 
+class ShellRequest(BaseModel):
+    cmd: str
+
+
 class ActionRequest(BaseModel):
     action: str
     target: str | None = None

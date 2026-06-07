@@ -7,6 +7,7 @@ diffable. No secrets live here.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,11 @@ class Settings:
     @property
     def default_mode(self) -> str:
         return self.settings.get("default_mode", "sentinel")
+
+    @property
+    def shell_token(self) -> str:
+        # secret comes from the environment (systemd), never committed config
+        return os.environ.get("KUMA_SHELL_TOKEN", "")
 
     @property
     def lab_mode(self) -> bool:

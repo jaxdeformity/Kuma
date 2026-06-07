@@ -6,6 +6,8 @@ instance.
 """
 from __future__ import annotations
 
+import os
+import subprocess
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -51,6 +53,40 @@ def _recent_events() -> bool:
 
 def threat_level() -> str:
     return scoring.threat_level_for(database.get_events(limit=50))
+
+
+# --- real shell (driven from the T-Deck terminal) -----------------------
+_shell_cwd = os.path.expanduser("~")
+
+
+def run_shell(cmd: str) -> dict:
+    """Run a command on the Pi and return its combined output + the live cwd.
+
+    Persists cwd across calls and handles `cd` itself so the shell feels real.
+    Guarded by a token at the route layer.
+    """
+    global _shell_cwd
+    cmd = (cmd or "").strip()
+    if not cmd:
+        return {"out": "", "code": 0, "cwd": _shell_cwd}
+    if cmd == "cd" or cmd.startswith("cd "):
+        target = cmd[2:].strip() or os.path.expanduser("~")
+        target = os.path.expanduser(target)
+        newdir = target if os.path.isabs(target) else os.path.join(_shell_cwd, target)
+        newdir = os.path.abspath(newdir)
+        if os.path.isdir(newdir):
+            _shell_cwd = newdir
+            return {"out": "", "code": 0, "cwd": _shell_cwd}
+        return {"out": f"cd: {target}: no such file or directory", "code": 1, "cwd": _shell_cwd}
+    try:
+        p = subprocess.run(cmd, shell=True, cwd=_shell_cwd, capture_output=True,
+                           text=True, timeout=20)
+        out = (p.stdout or "") + (p.stderr or "")
+        return {"out": out[:6000], "code": p.returncode, "cwd": _shell_cwd}
+    except subprocess.TimeoutExpired:
+        return {"out": "(command timed out after 20s)", "code": 124, "cwd": _shell_cwd}
+    except Exception as e:  # noqa: BLE001
+        return {"out": f"(error: {e})", "code": 1, "cwd": _shell_cwd}
 
 
 def run_action(action: str, target: str | None, confirm: bool):
