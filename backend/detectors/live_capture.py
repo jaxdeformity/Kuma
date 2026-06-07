@@ -21,6 +21,8 @@ import time
 
 from scapy.all import AsyncSniffer, Dot11, Dot11Deauth, Dot11Disas  # type: ignore
 
+from detectors.responder import ApexResponder
+
 # Updated by the channel-hopper thread; used to label events with where we were.
 _current_channel = 0
 
@@ -113,8 +115,13 @@ def _hopper(iface: str, channels: list[int], dwell: float, stop: threading.Event
             stop.wait(dwell)
 
 
-def run(iface: str, channel: int, channels: list[int] | None) -> None:
+def run(iface: str, channel: int, channels: list[int] | None,
+        apex: bool = False) -> None:
     global _current_channel
+    responder = ApexResponder() if apex else None
+    if responder:
+        print(f"[live_capture] Apex responder loaded (armed={responder.armed()})",
+              flush=True)
     stop = threading.Event()
     hopper = None
     if channels:
@@ -149,6 +156,8 @@ def run(iface: str, channel: int, channels: list[int] | None) -> None:
             print(f"[{ev['severity'].upper()}] {ev['event_type']} "
                   f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
                   flush=True)
+            if responder:
+                responder.on_deauth(ev)   # Apex active defense (gated)
 
     print(f"[live_capture] sniffing {iface} "
           f"(deauth/disassoc, window={WINDOW_SECONDS}s, thresh={BURST_THRESHOLD})",
@@ -174,9 +183,11 @@ def main() -> None:
                     help="lock to this channel (0 = leave as-is)")
     ap.add_argument("--hop", default="",
                     help="comma-separated channels to hop, e.g. 1,6,10,11")
+    ap.add_argument("--apex", action="store_true",
+                    help="enable Apex active-defense responses (gated by lab_mode)")
     args = ap.parse_args()
     channels = [int(c) for c in args.hop.split(",") if c.strip()] if args.hop else None
-    run(args.iface, args.channel, channels)
+    run(args.iface, args.channel, channels, apex=args.apex)
 
 
 if __name__ == "__main__":

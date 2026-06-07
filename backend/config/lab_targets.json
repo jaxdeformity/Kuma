@@ -1,5 +1,27 @@
 {
   "lab_mode": false,
+  "apex_active_response": false,
+  "response_cooldown": 30,
+
+  "protect_bssids": [],
+
+  "protected_connection": "",
+  "backup_connection": "",
+
+  "responses": {
+    "harden_pmf": false,
+    "redirect": false,
+    "contain": false
+  },
+
+  "containment": {
+    "blacklist_url": "",
+    "method": "POST",
+    "headers": { "Content-Type": "application/json" },
+    "payload": {}
+  },
+
   "approved_targets": [],
-  "notes": "Future Apex Mode lab action allowlist. NO disruptive actions in Sprint 1. Any future action requires lab_mode=true, an explicit target in approved_targets, and per-action confirmation."
+
+  "notes": "Apex Mode = automated active DEFENSE only (detect deauth -> harden PMF / redirect link / dispatch containment to a managed AP/controller / log evidence). It never transmits attack frames. To arm: set lab_mode=true AND apex_active_response=true, run the detector with --apex. harden_pmf/redirect modify the protected NetworkManager connection (set protected_connection/backup_connection) and can drop that link, so keep a separate management path (ethernet). contain POSTs the attacker MAC to your controller's blacklist API (set containment.blacklist_url). protect_bssids are never acted against."
 }
