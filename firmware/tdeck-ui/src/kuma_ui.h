@@ -11,5 +11,5 @@ namespace kuma_ui {
   void drawHome(const KumaStatus& s);
   void drawModeSelect(int selectedIndex, KumaMode current);
   void drawEventList(const KumaEvent* ev, int n);
-  void drawBear(BearState st, int cx, int cy, int r);
+  void drawBear(lgfx::LovyanGFX* g, BearState st, int cx, int cy, int r);
 }

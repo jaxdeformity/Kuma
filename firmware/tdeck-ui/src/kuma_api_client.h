@@ -11,6 +11,10 @@ struct KumaStatus {
   BearState bearState = BearState::Error;
   uint32_t  uptimeSeconds = 0;
   uint16_t  eventsLast10m = 0;
+  uint16_t  level = 1;
+  uint16_t  networkCount = 0;
+  String    spriteSet = "states"; // active form's sprite pack
+  String    wifiInterface;        // sensor iface
   bool      online = false;       // false => backend unreachable
 };
 

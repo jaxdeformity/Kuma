@@ -3,6 +3,8 @@
 
 namespace {
 LGFX_TDeck* D = nullptr;
+lgfx::LGFX_Sprite fb;       // off-screen framebuffer (PSRAM) -> push once = no flicker
+bool fbReady = false;
 
 // RGB565 palette
 constexpr uint16_t BG     = 0x0000;  // black
@@ -37,6 +39,11 @@ void begin(LGFX_TDeck* d) {
   D->setRotation(1);            // landscape 320x240
   D->fillScreen(BG);
   D->setTextWrap(false);
+  // off-screen framebuffer in PSRAM: render the whole screen, blit once (no flicker)
+  fb.setColorDepth(16);
+  fb.setPsram(true);
+  fbReady = fb.createSprite(320, 240);
+  if (fbReady) fb.setTextWrap(false);
 }
 
 void splash() {
@@ -49,11 +56,11 @@ void splash() {
   D->setTextColor(GREY, BG);
   D->setCursor(70, 120);
   D->print("Guard");
-  drawBear(BearState::Sleeping, 250, 110, 40);
+  drawBear(D, BearState::Sleeping, 250, 110, 40);
 }
 
 // --- the bear -----------------------------------------------------------
-void drawBear(BearState st, int cx, int cy, int r) {
+void drawBear(lgfx::LovyanGFX* g, BearState st, int cx, int cy, int r) {
   uint16_t tint = FUR;
   switch (st) {
     case BearState::Alert:      tint = RED;   break;
@@ -65,73 +72,88 @@ void drawBear(BearState st, int cx, int cy, int r) {
   }
   // ears
   int er = r / 3;
-  D->fillCircle(cx - r + er, cy - r + er, er, FURDK);
-  D->fillCircle(cx + r - er, cy - r + er, er, FURDK);
+  g->fillCircle(cx - r + er, cy - r + er, er, FURDK);
+  g->fillCircle(cx + r - er, cy - r + er, er, FURDK);
   // head
-  D->fillCircle(cx, cy, r, tint);
+  g->fillCircle(cx, cy, r, tint);
   // snout
-  D->fillCircle(cx, cy + r / 4, r / 2, SNOUT);
+  g->fillCircle(cx, cy + r / 4, r / 2, SNOUT);
   // nose
-  D->fillCircle(cx, cy + r / 6, r / 8, BG);
+  g->fillCircle(cx, cy + r / 6, r / 8, BG);
 
   // eyes by mood
   int ex = r / 2, ey = cy - r / 4, eye = r / 8;
   switch (st) {
     case BearState::Sleeping:                 // closed (lines)
-      D->drawFastHLine(cx - ex - eye, ey, 2 * eye, BG);
-      D->drawFastHLine(cx + ex - eye, ey, 2 * eye, BG);
+      g->drawFastHLine(cx - ex - eye, ey, 2 * eye, BG);
+      g->drawFastHLine(cx + ex - eye, ey, 2 * eye, BG);
       break;
     case BearState::Alert:                     // wide
-      D->fillCircle(cx - ex, ey, eye + 1, BG);
-      D->fillCircle(cx + ex, ey, eye + 1, BG);
-      D->fillCircle(cx - ex, ey, 2, RED);
-      D->fillCircle(cx + ex, ey, 2, RED);
+      g->fillCircle(cx - ex, ey, eye + 1, BG);
+      g->fillCircle(cx + ex, ey, eye + 1, BG);
+      g->fillCircle(cx - ex, ey, 2, RED);
+      g->fillCircle(cx + ex, ey, 2, RED);
       break;
     case BearState::Suspicious:                // half-lidded
-      D->fillCircle(cx - ex, ey, eye, BG);
-      D->fillCircle(cx + ex, ey, eye, BG);
-      D->fillRect(cx - ex - eye, ey - eye, 2 * eye, eye, tint);
-      D->fillRect(cx + ex - eye, ey - eye, 2 * eye, eye, tint);
+      g->fillCircle(cx - ex, ey, eye, BG);
+      g->fillCircle(cx + ex, ey, eye, BG);
+      g->fillRect(cx - ex - eye, ey - eye, 2 * eye, eye, tint);
+      g->fillRect(cx + ex - eye, ey - eye, 2 * eye, eye, tint);
       break;
     default:                                   // normal dots
-      D->fillCircle(cx - ex, ey, eye, BG);
-      D->fillCircle(cx + ex, ey, eye, BG);
+      g->fillCircle(cx - ex, ey, eye, BG);
+      g->fillCircle(cx + ex, ey, eye, BG);
       break;
   }
 }
 
 // --- screens ------------------------------------------------------------
 void drawHome(const KumaStatus& s) {
-  D->fillScreen(BG);
-  D->setTextSize(3);
-  D->setTextColor(CYAN, BG);
-  D->setCursor(10, 8);
-  D->print("KUMA GUARD");
+  // Draw the whole dashboard into the off-screen framebuffer, then blit once.
+  lgfx::LovyanGFX* g = fbReady ? static_cast<lgfx::LovyanGFX*>(&fb)
+                               : static_cast<lgfx::LovyanGFX*>(D);
+  g->fillScreen(BG);
 
-  D->setTextSize(2);
-  D->setTextColor(s.online ? FG : GREY, BG);
-  D->setCursor(10, 48);
-  D->printf("%s", s.online ? modeLabel(s.mode) : "-- offline --");
+  // --- top bar: KUMA + level, online dot ---------------------------------
+  g->setTextSize(2); g->setTextColor(FG, BG); g->setCursor(8, 5); g->print("KUMA");
+  g->setTextSize(1); g->setTextColor(GREEN, BG); g->setCursor(72, 12);
+  g->printf("Lv %u", s.level);
+  g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
+  g->setTextColor(s.online ? GREEN : GREY, BG); g->setCursor(254, 9);
+  g->print(s.online ? "ONLINE" : "OFFLINE");
+  g->drawFastHLine(0, 26, 320, 0x2945);
 
-  int y = 86;
-  D->setCursor(10, y);
-  D->setTextColor(threatColor(s.threatLevel), BG);
-  D->printf("Threat: %s", s.online ? s.threatLevel.c_str() : "--");
+  // --- bear, centered ----------------------------------------------------
+  drawBear(g, s.online ? s.bearState : BearState::Error, 160, 112, 58);
 
-  D->setTextColor(FG, BG);
-  D->setCursor(10, y + 28);  D->printf("Events: %u", s.eventsLast10m);
+  // --- status / say line (centered) --------------------------------------
+  String say = !s.online ? "backend offline"
+             : (s.eventsLast10m > 0 ? s.threatLevel : String("all quiet"));
+  say.toUpperCase();
+  g->setTextSize(2);
+  g->setTextColor(s.online ? threatColor(s.threatLevel) : GREY, BG);
+  g->setCursor(160 - (int)say.length() * 6, 178); g->print(say.c_str());
+
+  // --- stat bar ----------------------------------------------------------
+  g->drawFastHLine(0, 206, 320, 0x2945);
+  const int   cxs[5]    = {32, 96, 160, 224, 288};
+  const char* labels[5] = {"THREAT", "UPTIME", "EVENTS", "NETWRK", "SENSOR"};
   char up[16]; hms(s.uptimeSeconds, up);
-  D->setCursor(10, y + 56);  D->printf("Uptime: %s", up);
-  D->setCursor(10, y + 84);
-  D->setTextColor(s.online ? GREEN : RED, BG);
-  D->printf("Backend: %s", s.online ? "ONLINE" : "OFFLINE");
+  char ev[8]; snprintf(ev, sizeof ev, "%u", s.eventsLast10m);
+  char nw[8]; snprintf(nw, sizeof nw, "%u", s.networkCount);
+  String thr = s.online ? s.threatLevel : String("--"); thr.toUpperCase();
+  const char* vals[5] = {thr.c_str(), up, ev, nw,
+                         s.online ? s.wifiInterface.c_str() : "--"};
+  uint16_t vcol[5] = {threatColor(s.threatLevel), FG, FG, CYAN, FG};
+  g->setTextSize(1);
+  for (int i = 0; i < 5; ++i) {
+    g->setTextColor(GREY, BG);
+    g->setCursor(cxs[i] - (int)strlen(labels[i]) * 3, 212); g->print(labels[i]);
+    g->setTextColor(vcol[i], BG);
+    g->setCursor(cxs[i] - (int)strlen(vals[i]) * 3, 226); g->print(vals[i]);
+  }
 
-  drawBear(s.online ? s.bearState : BearState::Error, 255, 130, 50);
-
-  D->setTextSize(1);
-  D->setTextColor(GREY, BG);
-  D->setCursor(10, 228);
-  D->print("trackball: move   click/enter: menu");
+  if (fbReady) fb.pushSprite(D, 0, 0);
 }
 
 void drawModeSelect(int selectedIndex, KumaMode current) {

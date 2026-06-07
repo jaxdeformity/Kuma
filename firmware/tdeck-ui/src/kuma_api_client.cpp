@@ -44,6 +44,10 @@ bool fetchStatus(KumaStatus& out) {
   out.bearState     = bearStateFromString(doc["bear_state"] | "");
   out.uptimeSeconds = doc["uptime_seconds"] | 0;
   out.eventsLast10m = doc["events_last_10m"] | 0;
+  out.level         = doc["level"]          | 1;
+  out.networkCount  = doc["network_count"]  | 0;
+  out.spriteSet     = doc["sprite_set"]     | "states";
+  out.wifiInterface = doc["wifi_interface"] | "wlan1mon";
   out.online        = true;
   return true;
 }
