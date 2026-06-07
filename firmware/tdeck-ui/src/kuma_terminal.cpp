@@ -5,6 +5,8 @@
 #include "kuma_types.h"
 #include "kuma_logo_data.h"
 #include "config.h"
+#include "tdeck_pins.h"
+#include <Arduino.h>
 
 namespace {
 LGFX_TDeck* D = nullptr;
@@ -121,18 +123,20 @@ void begin(LGFX_TDeck* d) {
 void run() {
   g_count = 0;
   putLine("KUMA terminal ready. type 'help'.");
+  putLine("(ESC or trackball-click to exit)");
   String input = "";
   bool dirty = true;
+  unsigned long tEnter = millis();
   for (;;) {
     if (dirty) { render(input); dirty = false; }
-    // keyboard
-    char c = input::lastKey();
+    char c = input::lastKey();            // single fresh read per loop, consumed
     if (c) {
-      if (c == '\r' || c == '\n') {
+      if (c == 27) return;                              // ESC exits
+      else if (c == '\r' || c == '\n') {
         String cmd = input; input = "";
         if (cmd == "exit" || cmd == "quit") return;
         exec(cmd); dirty = true;
-      } else if (c == 8 || c == 127) {              // backspace
+      } else if (c == 8 || c == 127) {                  // backspace
         if (input.length()) input.remove(input.length()-1);
         dirty = true;
       } else if (c >= 32 && c < 127) {
@@ -140,9 +144,9 @@ void run() {
         dirty = true;
       }
     }
-    // trackball Back also exits
-    if (input::poll() == InputEvent::Back) return;
-    delay(15);
+    // physical exit: trackball click (after a short guard so entry doesn't bounce)
+    if (millis() - tEnter > 500 && digitalRead(TDECK_TB_CLICK) == LOW) return;
+    delay(20);
   }
 }
 

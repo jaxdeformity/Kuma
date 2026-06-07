@@ -70,6 +70,8 @@ InputEvent poll() {
   return InputEvent::None;
 }
 
-char lastKey() { return g_lastKey; }
+// Read a fresh key from the keyboard FIFO and consume it (0 = none). Do NOT
+// return a cached value or it repeats forever.
+char lastKey() { return readKeyboard(); }
 
 }  // namespace input
