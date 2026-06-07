@@ -37,6 +37,7 @@ Mock end-to-end so the architecture is demonstrable on a desk with no Wi-Fi hard
 - Honey Mode: real (lab-only) decoy services.
 - Apex Mode: first authorized lab action behind the full safety gate (`lab_mode` + allowlist + confirm + logging + rate limit + human review).
 - BLE / Sub-GHz passive sensing modules.
+- **HashMonster (M5Core) — proper port.** Upstream `G4lile0/ESP32-WiFi-Hash-Monster` is bitrotted: LovyanGFX 0.4.3 + Chimera-Core 1.2.4 won't build on any current toolchain, and modernizing the deps surfaces a Chimera-Core ↔ M5Stack-SD-Updater font-API clash. Needs an exact compatible lib matrix (or source patches). Low priority — it's a *passive* capture tool, so it's a weak KUMA test source vs. Bruce/Pwnagotchi.
 
 ## Non-goals (still, and on purpose)
 
