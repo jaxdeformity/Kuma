@@ -1,254 +1,92 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>KUMA</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>クマ</title>
 <style>
-  :root{
-    --bg:#070a09; --panel:#0c110f; --ink:#bfcabf; --dim:#566; --faint:#2a322d;
-    --grn:#46e07a; --cyn:#3fd0d8; --amb:#f2a23c; --red:#ff4747; --wht:#e8f0e8;
-    --scan:rgba(0,0,0,.22);
-  }
-  *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg)}
-  body{
-    color:var(--ink);
-    font:13px/1.45 "JetBrains Mono","Cascadia Mono","SF Mono",ui-monospace,Consolas,monospace;
-    letter-spacing:.04em; padding:14px; max-width:860px; margin:0 auto;
-    text-shadow:0 0 1px rgba(120,255,170,.08);
-  }
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#5d6f63;--faint:#222a25;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec}
+  *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg)}
+  body{color:var(--ink);font:13px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
+    letter-spacing:.05em;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:18px}
   body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9;
-    background:repeating-linear-gradient(0deg,transparent 0 2px,var(--scan) 2px 3px);
-    mix-blend-mode:multiply;opacity:.5}
-  a{color:var(--cyn);text-decoration:none}
-
-  header{display:flex;justify-content:space-between;align-items:center;
-    border:1px solid var(--faint);border-bottom-width:2px;padding:7px 11px;background:var(--panel)}
-  .wordmark{font-weight:700;letter-spacing:.42em;color:var(--wht)}
-  .wordmark .g{color:var(--grn)}
-  .hdr-r{color:var(--dim);font-size:11px;display:flex;gap:14px;align-items:center}
-  .live{display:inline-flex;align-items:center;gap:6px}
-  .blip{width:7px;height:7px;background:var(--red);border-radius:1px}
-  .ok .blip{background:var(--grn);box-shadow:0 0 7px var(--grn);animation:pulse 1.6s infinite}
-  @keyframes pulse{50%{opacity:.35}}
-
-  .core{display:grid;grid-template-columns:200px 1fr;gap:0;border:1px solid var(--faint);border-top:0}
-  @media(max-width:600px){.core{grid-template-columns:1fr}}
-  .viewport{position:relative;
-    background:radial-gradient(120% 120% at 50% 32%,rgba(70,224,122,.06),transparent 60%);
-    background-color:#050807;display:flex;align-items:center;justify-content:center;
-    padding:16px;border-right:1px solid var(--faint);min-height:200px}
-  @media(max-width:600px){.viewport{border-right:0;border-bottom:1px solid var(--faint)}}
-  #bear{image-rendering:pixelated;height:172px;width:auto;max-width:188px}
-  .vp-tag{position:absolute;bottom:6px;left:8px;font-size:10px;color:var(--dim);letter-spacing:.2em}
-
-  .readout{padding:13px 15px;display:flex;flex-direction:column;gap:9px}
-  .mode{font-size:13px;letter-spacing:.34em;color:var(--cyn)}
-  .threat-l{font-size:10px;letter-spacing:.3em;color:var(--dim)}
-  .threat{font-size:34px;font-weight:700;letter-spacing:.04em;line-height:1;margin-top:-3px}
-  .gauge{display:flex;gap:3px;margin-top:2px}
-  .seg{height:7px;flex:1;background:var(--faint)}
-  .kv{display:flex;justify-content:space-between;font-size:12px;border-top:1px dotted var(--faint);padding:3px 0}
-  .kv b{color:var(--wht);font-weight:400}
-  .kv span{color:var(--dim)}
-
-  .defenses{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--faint);border-top:0}
-  .def{flex:1 0 33%;display:flex;align-items:center;gap:7px;padding:6px 10px;
-    border-right:1px solid var(--faint);border-top:1px solid var(--faint);font-size:11px;color:var(--dim)}
-  .def .led{width:6px;height:6px;background:var(--grn);box-shadow:0 0 5px var(--grn)}
-  .def.armed{color:var(--ink)}
-  .def.hot{color:var(--amb)} .def.hot .led{background:var(--amb);box-shadow:0 0 6px var(--amb)}
-
-  #apex{display:none;border:1px solid var(--red);border-top:0;background:rgba(255,71,71,.08);
-    color:var(--red);padding:7px 11px;font-size:12px;letter-spacing:.1em;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:flash 1s steps(2) infinite}
-  #apex.on{display:block}
-  @keyframes flash{50%{background:rgba(255,71,71,.02)}}
-
-  .console{border:1px solid var(--faint);border-top:0;background:var(--panel)}
-  .ctitle{font-size:10px;letter-spacing:.3em;color:var(--dim);padding:6px 11px;border-bottom:1px solid var(--faint)}
-  table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px}
-  td{padding:4px 11px;border-bottom:1px solid var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  td.t{color:var(--dim);width:64px}
-  td.s{width:54px;font-weight:700}
-  td.ty{color:var(--cyn);width:170px}
-  td.m{color:var(--ink)}
-  .lo{color:var(--grn)} .me{color:var(--amb)} .hi,.cr{color:var(--red)}
-  .apexrow td{color:var(--red)!important;background:rgba(255,71,71,.05)}
-  tr.grp{cursor:pointer}
-  tr.grp:hover td{background:rgba(70,224,122,.06)}
-  td.t .car{color:var(--dim);display:inline-block;width:11px}
-  .cnt{color:var(--amb);font-weight:700}
-  tr.child td{color:var(--dim);font-size:11px;background:rgba(255,255,255,.012)}
-  tr.child td.m{padding-left:20px}
-  tr.child td.ty::before{content:"└";color:var(--faint)}
-  .foot{display:flex;justify-content:space-between;color:var(--dim);font-size:10px;padding:6px 2px}
-  .cur::after{content:"\2588";color:var(--grn);animation:pulse 1s steps(2) infinite}
-</style>
-</head>
-<body>
-  <header>
-    <div class="wordmark">KUMA</div>
-    <div class="hdr-r">
-      <span id="ver">v0.0.1</span>
-      <span id="chan">wlan</span>
-      <span class="live" id="live"><span class="blip"></span><span id="livetxt">LINK</span></span>
-    </div>
-  </header>
-
-  <div class="core">
-    <div class="viewport">
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.18) 2px 3px)}
+  .unit{width:440px;max-width:100%;border:1px solid var(--faint);background:#0a0e0c;position:relative}
+  .top{display:flex;justify-content:space-between;align-items:center;padding:8px 13px;border-bottom:1px solid var(--faint)}
+  .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif}
+  .mark{font-size:18px;letter-spacing:.1em;color:var(--wht)}
+  .dot{font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px}
+  .dot i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:p 1.7s infinite}
+  .dot.off i{background:var(--red);box-shadow:none;animation:none}
+  @keyframes p{50%{opacity:.4}}
+  .stage{padding:22px 18px 10px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  #bear{image-rendering:pixelated;height:188px;width:auto;max-width:220px}
+  .say{font-size:14px;color:var(--ink);text-align:center;min-height:20px;letter-spacing:.04em}
+  .say.hot{color:var(--red)}.say.warn{color:var(--amb)}
+  .say b{color:var(--wht);font-weight:400}
+  .bar{display:flex;border-top:1px solid var(--faint);font-size:11px}
+  .bar div{flex:1;padding:7px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
+  .bar div:last-child{border-right:0}
+  .bar b{display:block;color:var(--ink);font-weight:400;font-size:13px;margin-top:2px;letter-spacing:.02em}
+  .bar b.hot{color:var(--red)}.bar b.warn{color:var(--amb)}.bar b.ok{color:var(--grn)}
+</style></head><body>
+  <div class="unit">
+    <div class="top"><div class="mark"><span class="jp">クマ</span></div>
+      <div class="dot" id="dot"><i></i><span id="dtx">ONLINE</span></div></div>
+    <div class="stage">
       <img id="bear" alt="KUMA">
-      <div class="vp-tag" id="bstate">--</div>
+      <div class="say" id="say">. . .</div>
     </div>
-    <div class="readout">
-      <div class="mode" id="mode">- MODE</div>
-      <div class="threat-l">THREAT LEVEL</div>
-      <div class="threat" id="threat">-</div>
-      <div class="gauge" id="gauge"></div>
-      <div class="kv"><span>events / 10m</span><b id="ev10">-</b></div>
-      <div class="kv"><span>uptime</span><b id="uptime">-</b></div>
-      <div class="kv"><span>sensor</span><b id="iface">-</b></div>
+    <div class="bar">
+      <div>THREAT<b id="th" class="ok">-</b></div>
+      <div>UPTIME<b id="up">-</b></div>
+      <div>EVENTS/10m<b id="ev">-</b></div>
+      <div>SENSOR<b id="sn">-</b></div>
     </div>
   </div>
-
-  <div class="defenses" id="defenses"></div>
-  <div id="apex"> APEX ENGAGED - <span id="apexmsg"></span></div>
-
-  <div class="console">
-    <div class="ctitle">EVENT LOG <span class="cur"></span></div>
-    <table><tbody id="events"><tr><td class="m" style="color:var(--dim)">awaiting backend...</td></tr></tbody></table>
-  </div>
-  <div class="foot"><span id="footstat">connecting</span><span>KUMA · read-only · <a href="/docs">api</a></span></div>
-
 <script>
-const TC={low:"var(--grn)",medium:"var(--amb)",high:"var(--red)",critical:"var(--red)"};
-const SEG=4;
-const DEFENSES=[
-  ["deauth","deauth flood"],["beacon_flood","beacon spam"],
-  ["evil_twin","evil twin"],["karma","karma/pineap"],
-  ["handshake","handshake harvest"],["apex","apex defense"]
-];
-
-// ---- KUMA animated face (Jax's animation frames) ---------------------
-// bear_state from /api/status picks a looping animation; motion escalates
-// with the threat (calm idle -> walk -> guard -> special).
-const BEAR_IMG=document.getElementById("bear");
-const ANIM={idle:5,walk:5,run:5,attack:5,special:5,hurt:5,guard:5,victory:5,ko:5,turn:5};
-function aframes(act){return Array.from({length:ANIM[act]},(_,i)=>'sprites/anim/'+act+'/'+i+'.png');}
-for(const a in ANIM)aframes(a).forEach(u=>{const im=new Image();im.src=u;});  // preload
-// bear_state -> [action, fps]
-const STATE_ANIM={
-  sleeping:['idle',3], foraging:['walk',6], honey_trap:['idle',5],
-  suspicious:['idle',6], alert:['guard',8], apex_ready:['special',7],
-  investigating:['walk',6], defending:['guard',8], attacking:['attack',9],
-  victory:['victory',6], error:['idle',3]};
-let _curAct=null,_timer=null,_fi=0;
-function tint(t){return getComputedStyle(document.documentElement).getPropertyValue(({low:'--grn',medium:'--amb',high:'--red',critical:'--red'})[t]||'--cyn').trim();}
-function drawBear(state,threat){
-  const [act,fps]=STATE_ANIM[state]||STATE_ANIM.error;
-  if(act===_curAct)return;                 // already looping this action
-  _curAct=act; _fi=0;
-  if(_timer)clearInterval(_timer);
-  const f=aframes(act);
-  const step=()=>{BEAR_IMG.src=f[_fi];_fi=(_fi+1)%f.length;};
-  step(); _timer=setInterval(step,1000/fps);
+// ---- bear face (Jax's state portraits, one per bear_state) ------------
+const BEAR_IMG=document.getElementById('bear');
+const STATE_SPRITE={                      // bear_state -> state portrait
+  sleeping:'01_hibernating', foraging:'02_foraging', honey_trap:'04_honey', honey:'04_honey',
+  suspicious:'03_sentinel', alert:'06_alert', apex_ready:'05_apex', apex:'05_apex',
+  investigating:'07_investigating', defending:'08_defending',
+  attacking:'09_attacking', victory:'10_victory', error:'03_sentinel'};
+for(const k of Object.values(STATE_SPRITE)){const im=new Image();im.src='sprites/states/'+k+'.png';}
+function drawBear(state){
+  const key=STATE_SPRITE[state]||STATE_SPRITE.error;
+  const src='sprites/states/'+key+'.png';
+  if(!BEAR_IMG.getAttribute('src')||!BEAR_IMG.getAttribute('src').endsWith(src))BEAR_IMG.src=src;
 }
 
-const lvl={low:1,medium:2,high:3,critical:4};
-function gauge(t){const n=lvl[t]||0,g=document.getElementById('gauge');g.innerHTML='';
-  for(let i=0;i<SEG;i++){const s=document.createElement('div');s.className='seg';
-    if(i<n)s.style.background=tint(t);g.appendChild(s);}}
+// ---- live data -------------------------------------------------------
+const SAMPLE={status:{version:"0.0.1",mode:"sentinel",threat_level:"low",bear_state:"foraging",events_last_10m:0,uptime_seconds:9123,wifi_interface:"wlan1mon"},events:[]};
+const ATTACK={status:{mode:"sentinel",threat_level:"high",bear_state:"alert",events_last_10m:14,uptime_seconds:9240,wifi_interface:"wlan1mon"},events:[{event_type:"deauth_burst",severity:"high",channel:10,raw_json:{frame_count:1640}}]};
+async function getData(){if(location.protocol==='file:'){const d=new Date();return (Math.floor(d.getSeconds()/6)%2)?ATTACK:SAMPLE;}
+  try{const[s,e]=await Promise.all([fetch('/api/status',{cache:'no-store'}).then(r=>r.json()),fetch('/api/events?limit=20',{cache:'no-store'}).then(r=>r.json())]);return{status:s,events:e,live:true};}catch(_){return SAMPLE;}}
 function hms(s){s=s||0;const p=n=>String(n).padStart(2,'0');return p(s/3600|0)+':'+p((s%3600)/60|0)+':'+p(s%60);}
-function defenses(active){const d=document.getElementById('defenses');d.innerHTML='';
-  DEFENSES.forEach(([k,label])=>{const el=document.createElement('div');
-    el.className='def'+(active[k]?' hot':' armed');
-    el.innerHTML='<span class="led"></span>'+label;d.appendChild(el);});}
-
-// --- grouped, collapsible event log ------------------------------------
-let lastEvents = [];
-const expanded = new Set();
-const SEVRANK = {low:0, medium:1, high:2, critical:3};
-const SEVNAME = ['low','medium','high','critical'];
-const scls = s => ({low:'lo',medium:'me',high:'hi',critical:'cr'}[s]||'lo');
-const detail = e => e.message || ((e.bssid||'') + ' ' + (e.ssid||'')).trim();
-function renderEvents(){
-  const tb = document.getElementById('events');
-  if(!lastEvents.length){
-    tb.innerHTML = '<tr><td class="m" style="color:var(--dim)">no events - all quiet</td></tr>';
-    return;
-  }
-  const order = []; const g = {};
-  lastEvents.forEach(e => {
-    const k = e.event_type || '?';
-    if(!g[k]){ g[k] = {items:[], sev:0, latest:e}; order.push(k); }
-    g[k].items.push(e);
-    g[k].sev = Math.max(g[k].sev, SEVRANK[e.severity]||0);
-  });
-  let html = '';
-  order.forEach(k => {
-    const grp = g[k]; const sev = SEVNAME[grp.sev]; const open = expanded.has(k);
-    const apex = k==='apex_response' ? ' apexrow' : '';
-    html += `<tr class="grp${apex}" data-type="${k}">`+
-      `<td class="t"><span class="car">${open?'▾':'▸'}</span></td>`+
-      `<td class="s ${scls(sev)}">${sev.toUpperCase().slice(0,4)}</td>`+
-      `<td class="ty">${k}</td>`+
-      `<td class="m"><span class="cnt">×${grp.items.length}</span> ${detail(grp.latest)}</td></tr>`;
-    if(open) grp.items.forEach(e => {
-      html += `<tr class="child"><td class="t">${(e.timestamp||'').slice(11,19)}</td>`+
-        `<td class="s ${scls(e.severity)}">${(e.severity||'').toUpperCase().slice(0,4)}</td>`+
-        `<td class="ty"></td><td class="m">${detail(e)}</td></tr>`;
-    });
-  });
-  tb.innerHTML = html;
+const SEV={low:0,medium:1,high:2,critical:3};
+function phrase(e){const t=e.event_type||'',r=e.raw_json||{};
+  if(t.includes('deauth'))return ['deauth flood',e.channel?'ch'+e.channel:'',r.frame_count?r.frame_count+' frames':''].filter(Boolean).join(' · ');
+  if(t.includes('disassoc'))return 'disassoc flood';
+  if(t.includes('beacon'))return 'beacon flood';
+  if(t.includes('twin')||t.includes('bssid')||t.includes('rogue'))return 'evil twin'+(e.ssid?' · '+e.ssid:'');
+  if(t.includes('karma'))return 'karma / pineapple';
+  if(t.includes('handshake'))return 'handshake harvest';
+  if(t==='apex_response')return 'apex engaged';
+  return e.message||t;}
+async function render(){
+  const d=await getData(),s=d.status,events=d.events||[],live=d.live!==false&&location.protocol!=='file:';
+  const tl=s.threat_level||'low',hi=(tl==='high'||tl==='critical'),med=tl==='medium';
+  drawBear(s.bear_state||'foraging');
+  document.getElementById('dot').className='dot'+(live?'':' off');
+  document.getElementById('dtx').textContent=live?'ONLINE':'DEMO';
+  const th=document.getElementById('th');th.textContent=tl.toUpperCase();th.className=hi?'hot':med?'warn':'ok';
+  document.getElementById('up').textContent=hms(s.uptime_seconds);
+  document.getElementById('ev').textContent=s.events_last_10m;
+  document.getElementById('sn').textContent=s.wifi_interface||'-';
+  const say=document.getElementById('say');
+  if(!events.length){say.textContent='all quiet';say.className='say';}
+  else{const top=events.slice().sort((a,b)=>(SEV[b.severity]||0)-(SEV[a.severity]||0))[0];
+    say.innerHTML='<b>'+phrase(top)+'</b>';
+    say.className='say '+((top.severity==='high'||top.severity==='critical')?'hot':top.severity==='medium'?'warn':'');}
 }
-document.getElementById('events').addEventListener('click', e => {
-  const row = e.target.closest('tr.grp'); if(!row) return;
-  const k = row.getAttribute('data-type');
-  expanded.has(k) ? expanded.delete(k) : expanded.add(k);
-  renderEvents();
-});
-
-async function tick(){
-  try{
-    const s=await(await fetch('/api/status',{cache:'no-store'})).json();
-    document.getElementById('ver').textContent='v'+s.version;
-    document.getElementById('chan').textContent=(s.wifi_interface||'wlan');
-    document.getElementById('mode').textContent=(s.mode||'-').toUpperCase()+' MODE';
-    document.getElementById('ev10').textContent=s.events_last_10m;
-    document.getElementById('uptime').textContent=hms(s.uptime_seconds);
-    document.getElementById('iface').textContent=s.wifi_interface;
-    document.getElementById('bstate').textContent=(s.bear_state||'--').toUpperCase();
-    const t=document.getElementById('threat');t.textContent=(s.threat_level||'-').toUpperCase();t.style.color=TC[s.threat_level]||'var(--ink)';
-    gauge(s.threat_level); drawBear(s.bear_state,s.threat_level);
-    document.getElementById('live').className='live ok';document.getElementById('livetxt').textContent='ONLINE';
-    document.getElementById('footstat').textContent='live · 2s poll';
-
-    const ev=await(await fetch('/api/events?limit=60',{cache:'no-store'})).json();
-    const active={}; let apexHot=false, apexMsg='';
-    ev.forEach(e=>{const tp=e.event_type||'';
-      if(tp.includes('deauth'))active.deauth=1;
-      if(tp.includes('beacon'))active.beacon_flood=1;
-      if(tp.includes('twin')||tp.includes('bssid')||tp.includes('rogue'))active.evil_twin=1;
-      if(tp.includes('karma'))active.karma=1;
-      if(tp.includes('handshake'))active.handshake=1;
-      if(tp==='apex_response'){active.apex=1;apexHot=true;apexMsg=e.message;}
-    });
-    defenses(active);
-    const ab=document.getElementById('apex');
-    if(apexHot){ab.classList.add('on');document.getElementById('apexmsg').textContent=apexMsg;}
-    else ab.classList.remove('on');
-
-    lastEvents = ev;
-    renderEvents();
-  }catch(err){
-    document.getElementById('live').className='live';document.getElementById('livetxt').textContent='OFFLINE';
-    document.getElementById('footstat').textContent='backend unreachable';
-    drawBear('error','low');document.getElementById('bstate').textContent='ERROR';
-  }
-}
-tick();setInterval(tick,2000);
-</script>
-</body>
-</html>
+render();setInterval(render,2000);
+</script></body></html>
