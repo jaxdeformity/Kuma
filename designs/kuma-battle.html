@@ -1,0 +1,201 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>クマ // battle</title>
+<style>
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;--amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec;--box:#0c1410}
+  *{box-sizing:border-box}html,body{margin:0;height:100%;background:#000}
+  body{color:var(--ink);font:14px/1.5 "JetBrains Mono","Cascadia Mono",ui-monospace,monospace;
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;letter-spacing:.04em}
+  .jp{font-family:"Yu Gothic","Hiragino Kaku Gothic Pro","MS Gothic",sans-serif}
+  .unit{width:560px;max-width:100%;border:2px solid var(--faint);background:var(--bg);position:relative;overflow:hidden}
+  .unit::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:30;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.16) 2px 3px)}
+  .top{display:flex;justify-content:space-between;align-items:center;padding:8px 13px;border-bottom:1px solid var(--faint)}
+  .mark{font-size:18px;color:var(--wht);letter-spacing:.1em}
+  .pill{font-size:10px;color:var(--dim);display:flex;align-items:center;gap:6px}
+  .pill i{width:7px;height:7px;background:var(--grn);box-shadow:0 0 7px var(--grn);animation:p 1.7s infinite}
+  @keyframes p{50%{opacity:.4}}
+
+  #idle{padding:22px 18px 0;display:flex;flex-direction:column;align-items:center;gap:12px}
+  #idle canvas{image-rendering:pixelated;width:200px;height:200px}
+  .say{font-size:15px;min-height:20px}.hint{font-size:11px;color:var(--dim);letter-spacing:.1em}
+  .strip{display:flex;width:100%;border-top:1px solid var(--faint);font-size:11px;margin-top:6px}
+  .strip div{flex:1;padding:7px 4px;text-align:center;border-right:1px solid var(--faint);color:var(--dim)}
+  .strip div:last-child{border-right:0}.strip b{display:block;color:var(--ink);font-size:13px;margin-top:2px}
+
+  #battle{display:none}
+  .scene{position:relative;height:280px;overflow:hidden;background:
+    radial-gradient(140% 90% at 70% 18%,rgba(255,59,48,.07),transparent 55%),
+    radial-gradient(120% 90% at 30% 86%,rgba(70,224,122,.06),transparent 55%),
+    linear-gradient(180deg,#0a0f0c,#06090a)}
+  .plat{position:absolute;width:150px;height:34px;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(120,150,130,.18),transparent)}
+  .plat.e{top:96px;right:34px}.plat.k{bottom:24px;left:34px}
+  .spr{position:absolute;image-rendering:pixelated}
+  .spr.e{top:24px;right:54px;width:124px;height:124px}
+  .spr.k{bottom:14px;left:42px;width:158px;height:158px;transform:scaleX(-1)}
+  .spr.e.lunge{animation:lungeE .4s ease-in-out}
+  .spr.k.lunge{animation:lungeK .4s ease-in-out}
+  @keyframes lungeE{50%{transform:translate(-26px,40px)}}
+  @keyframes lungeK{50%{transform:scaleX(-1) translate(-26px,-40px)}}
+  .info{position:absolute;background:var(--box);border:1px solid var(--faint);padding:6px 10px;min-width:206px;z-index:5}
+  .info.e{top:22px;left:22px}.info.k{bottom:96px;right:22px}
+  .info .nm{display:flex;justify-content:space-between;font-size:12px;color:var(--wht)}
+  .info .nm b{color:var(--dim);font-weight:400;font-size:10px}
+  .hp{height:7px;background:#1c241e;border:1px solid var(--faint);margin-top:5px}
+  .hp i{display:block;height:100%;background:var(--grn);transition:width .45s,background .3s}
+  .info .hpn{font-size:10px;color:var(--dim);text-align:right;margin-top:2px}
+  .console{display:grid;grid-template-columns:1fr 240px;border-top:2px solid var(--faint);min-height:96px}
+  .msg{padding:14px 16px;font-size:14px;align-self:center}
+  .msg .nxt{color:var(--dim);font-size:11px;float:right;animation:p 1s infinite}
+  .menu{display:grid;grid-template-columns:1fr 1fr;border-left:2px solid var(--faint)}
+  .menu button{background:var(--box);border:1px solid var(--faint);color:var(--ink);font:inherit;font-size:12px;
+    padding:9px 7px;cursor:pointer;text-align:left}
+  .menu button:hover{background:#13201a;color:var(--grn)}
+  .menu.hidden{display:none}
+  .menu .sub{display:block;font-size:9px;color:var(--dim);margin-top:2px}
+  #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:60}
+  #flash.go{animation:fl 1.1s ease-out forwards}
+  @keyframes fl{0%{opacity:0}8%{opacity:1}16%{opacity:0}24%{opacity:1}32%{opacity:0}55%{opacity:1}100%{opacity:0}}
+</style></head><body>
+<div class="unit">
+  <div class="top"><div class="mark"><span class="jp">クマ</span></div>
+    <div class="pill"><i></i><span id="pill">SENTINEL</span></div></div>
+
+  <div id="idle">
+    <canvas id="cub" width="32" height="32"></canvas>
+    <div class="say" id="isay">all quiet</div>
+    <div class="hint">[ space ] simulate an attack</div>
+    <div class="strip">
+      <div>THREAT<b id="ith" style="color:var(--grn)">LOW</b></div>
+      <div>UPTIME<b>02:31</b></div><div>EVENTS/10m<b id="iev">0</b></div><div>SENSOR<b>wlan1mon</b></div>
+    </div>
+  </div>
+
+  <div id="battle">
+    <div class="scene">
+      <div class="plat e"></div><div class="plat k"></div>
+      <canvas class="spr e" id="esp" width="32" height="32"></canvas>
+      <canvas class="spr k" id="ksp" width="32" height="32"></canvas>
+      <div class="info e"><div class="nm"><span id="enm">ROGUE AP</span><b id="elv">Lv —</b></div>
+        <div class="hp"><i id="ehp" style="width:100%"></i></div></div>
+      <div class="info k"><div class="nm"><span class="jp">クマ</span><b>Lv 12</b></div>
+        <div class="hp"><i id="khp" style="width:100%"></i></div><div class="hpn" id="khpn">120 / 120</div></div>
+    </div>
+    <div class="console">
+      <div class="msg" id="msg">A wild threat appeared!</div>
+      <div class="menu hidden" id="menu"></div>
+    </div>
+  </div>
+</div>
+<div id="flash"></div>
+<script>
+// ---------- sprite art ----------
+const ART=[
+"................................",".....oooo..........oooo.........","....oBBBBo........oBBBBo........","....oBbbBo........oBbbBo........",
+"...oBBBBBBoo....ooBBBBBBo.......","..oBBBBBBBBBooooBBBBBBBBBo......",".oBBBBBBBBBBBBBBBBBBBBBBBBo.....",".oBBBBBBBBBBBBBBBBBBBBBBBBo.....",
+"oBBBBBBBBBBBBBBBBBBBBBBBBBBo....","oBBBBBBBBBBBBBBBBBBBBBBBBBBo....","oBBBBBBweBBBBBBBBBBweBBBBBBo....","oBBBBBBeeBBBBBBBBBBeeBBBBBBo....",
+"oBBBBppBBBBTTTTBBBBBppBBBBBo....","oBBBBppBBBTTnnTTBBBBppBBBBBo....",".oBBBBBBBBTTnnTTBBBBBBBBBBo.....",".oBBBBBBBBBTTTTBBBBBBBBBBo......",
+"..oBBBBBBBBBBBBBBBBBBBBBBo......","...oBBBBBBBBBBBBBBBBBBBo........","....oBBBBBBBBBBBBBBBBBo.........",".....oBBBBBBBBBBBBBBBo.........",
+"....oBBBBBBBBBBBBBBBBBBo........","...oBBBBoTTTTTTTTooBBBBBo.......","..oBBBBoTTTTTTTTTToBBBBBBo......","..oBBBBoTTTTTTTTTToBBBBBBo......",
+"..oBBBBoTTTTTTTTTToBBBBBBo......","..oBBBBBoTTTTTTTToBBBBBBBo......","..oBBBBBBoTTTTTToBBBBBBBBo......","...oBBBBBBBBBBBBBBBBBBBBo.......",
+"..ooBBBoooBBBBBBoooBBBBoo.......",".oBBBBBBoTToBBBBoTToBBBBBBo.....",".oBBbbBBoTToBBBBoTToBBbbBBo.....","..oooooo..oooooo..oooooo......."];
+// eye-row overrides for blink / squint
+const EYE_OPEN =["oBBBBBBweBBBBBBBBBBweBBBBBBo....","oBBBBBBeeBBBBBBBBBBeeBBBBBBo...."];
+const EYE_SHUT =["oBBBBBBBBBBBBBBBBBBBBBBBBBBo....","oBBBBBBeeBBBBBBBBBBeeBBBBBBo...."];
+const EYE_SQNT =["oBBBBBBe.BBBBBBBBBB.eBBBBBBBo....","oBBBBBB.eBBBBBBBBBBe.BBBBBBo...."];
+const PAL={
+  kuma:{o:'#3a2418',B:'#9a6a3e',b:'#754d2c',T:'#e6c89a',e:'#1a120c',n:'#1a120c',p:'#f0a0a8',w:'#fff'},
+  enemy:{o:'#120b14',B:'#3b3040',b:'#2a2230',T:'#4c3c4a',e:'#ff2a2a',n:'#0a0a0a',p:'#ff3344',w:'#ff7a7a'}
+};
+function drawCub(ctx,pal,o){o=o||{};ctx.clearRect(0,0,32,32);const P=PAL[pal];const dy=o.dy||0;
+  for(let y=0;y<ART.length;y++){let row=ART[y];
+    if(y===10||y===11){row = o.eyes==='shut'?EYE_SHUT[y-10]:o.eyes==='squint'?EYE_SQNT[y-10]:EYE_OPEN[y-10];}
+    for(let x=0;x<row.length;x++){const c=P[row[x]];if(c){ctx.fillStyle=c;ctx.fillRect(x,y+dy,1,1);}}}
+  if(o.flash){ctx.globalAlpha=.55;ctx.fillStyle=o.flash;
+    for(let y=0;y<ART.length;y++)for(let x=0;x<ART[y].length;x++)if(P[ART[y][x]])ctx.fillRect(x,y+dy,1,1);
+    ctx.globalAlpha=1;}}
+
+// ---------- animation engine ----------
+function Animator(canvas,pal){const ctx=canvas.getContext('2d');
+  let state='idle',t=0,blink=1200+Math.random()*1500;
+  return {el:canvas,
+    set(s){state=s;t=0;},
+    get state(){return state;},
+    tick(dt){t+=dt;let dy=0,eyes='open',flash=null;
+      if(state==='idle'){dy=Math.round(Math.sin(performance.now()/360)*1.4);
+        blink-=dt;if(blink<0){eyes='shut';if(blink<-150)blink=1400+Math.random()*2200;}}
+      else if(state==='menace'){dy=Math.round(Math.sin(performance.now()/300)*1.2);}
+      else if(state==='hurt'){eyes='squint';const k=Math.max(0,1-t/420);dy=Math.round(Math.sin(t/45)*4*k);flash=(Math.floor(t/70)%2)?'#fff':null;if(t>420)this.set(state2||'idle');}
+      else if(state==='faint'){eyes='shut';dy=Math.min(34,t/12);}
+      drawCub(ctx,pal,{dy,eyes,flash});}};
+}
+let state2=null;
+const A=[];
+const cubA=Animator(document.getElementById('cub'),'kuma');A.push(cubA);
+const kA=Animator(document.getElementById('ksp'),'kuma');
+const eA=Animator(document.getElementById('esp'),'enemy');
+let last=performance.now();
+function loop(now){const dt=Math.min(60,now-last);last=now;for(const a of A)a.tick(dt);requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+
+// ---------- battle data ----------
+const THREATS=[
+ {name:'ROGUE AP',lv:14,hp:120,attacks:[{n:'EVIL TWIN',m:'It spins up a fake DemoNet_2G!',d:18},{n:'BEACON FLOOD',m:'It spams fake SSIDs!',d:14}]},
+ {name:'DEAUTHER',lv:16,hp:135,attacks:[{n:'DEAUTH FLOOD',m:'It floods 1600 deauth frames!',d:22},{n:'DISASSOC',m:'It blasts disassoc frames!',d:16}]},
+ {name:'PINEAPPLE',lv:18,hp:150,attacks:[{n:'KARMA',m:'It lures clients with fake SSIDs!',d:17},{n:'HANDSHAKE HARVEST',m:'It rips a handshake from the air!',d:21}]}];
+const MOVES=[
+ {n:'HARDEN PMF',s:'block forged deauth',d:[20,26],m:'<span class="jp">クマ</span> hardened the link. Forged frames bounce off!'},
+ {n:'REDIRECT',s:'fail to a clean band',d:[12,18],m:'<span class="jp">クマ</span> slipped the link to a clean channel!'},
+ {n:'CONTAIN',s:'blacklist the attacker',d:[30,40],m:'<span class="jp">クマ</span> handed the MAC to the controller. Blacklisted!'},
+ {n:'SCAN',s:'log evidence, find a weak point',d:[8,12],mark:true,m:'<span class="jp">クマ</span> logged the evidence and tagged a weak point!'}];
+let S=null,busy=false;
+const $=id=>document.getElementById(id);
+function setHP(el,cur,max){const pct=Math.max(0,cur/max*100);el.style.width=pct+'%';el.style.background=pct>50?'var(--grn)':pct>22?'var(--amb)':'var(--red)';}
+function msg(t,n){$('msg').innerHTML=t+(n?' <span class="nxt">'+n+'</span>':'');}
+function rnd(a){return a[0]+Math.floor(Math.random()*(a[1]-a[0]+1));}
+function lunge(el){el.classList.remove('lunge');void el.offsetWidth;el.classList.add('lunge');}
+
+function trigger(){if($('battle').style.display==='block')return;
+  $('isay').textContent='! incoming...';$('ith').textContent='HIGH';$('ith').style.color='var(--red)';$('iev').textContent=1;
+  setTimeout(startBattle,450);}
+function startBattle(){const t=THREATS[Math.floor(Math.random()*THREATS.length)];
+  S={enemy:{...t,max:t.hp},kuma:{hp:120,max:120},mark:false};
+  $('pill').textContent='ENGAGED';$('flash').className='go';
+  setTimeout(()=>{
+    $('idle').style.display='none';$('battle').style.display='block';
+    A.length=0;A.push(kA,eA);kA.set('idle');eA.set('menace');
+    $('esp').style.opacity=1;
+    $('enm').textContent=t.name;$('elv').textContent='Lv '+t.lv;
+    setHP($('ehp'),t.hp,t.hp);setHP($('khp'),120,120);$('khpn').textContent='120 / 120';
+    $('menu').classList.add('hidden');
+    msg('A wild <b>'+t.name+'</b> appeared!','next');
+    setTimeout(playerTurn,1300);},560);}
+function buildMenu(){const m=$('menu');m.innerHTML='';
+  MOVES.forEach((mv,i)=>{const b=document.createElement('button');b.innerHTML=mv.n+'<span class="sub">'+mv.s+'</span>';b.onclick=()=>doMove(i);m.appendChild(b);});
+  m.classList.remove('hidden');}
+function playerTurn(){msg('What will <span class="jp">クマ</span> do?');buildMenu();}
+function doMove(i){if(busy)return;busy=true;$('menu').classList.add('hidden');
+  const mv=MOVES[i];let dmg=rnd(mv.d);if(S.mark){dmg=Math.round(dmg*1.5);}
+  msg('<span class="jp">クマ</span> used <b>'+mv.n+'</b>!');
+  setTimeout(()=>{lunge($('ksp'));
+    setTimeout(()=>{eA.set('hurt');state2='menace';S.enemy.hp-=dmg;setHP($('ehp'),S.enemy.hp,S.enemy.max);if(mv.mark)S.mark=true;
+      setTimeout(()=>{msg(mv.m,'next');
+        if(S.enemy.hp<=0)return setTimeout(victory,800);
+        setTimeout(enemyTurn,1100);},700);},170);},350);}
+function enemyTurn(){const a=S.enemy.attacks[Math.floor(Math.random()*S.enemy.attacks.length)];S.mark=false;
+  msg('<b>'+S.enemy.name+'</b> used <b>'+a.n+'</b>!');
+  setTimeout(()=>{lunge($('esp'));
+    setTimeout(()=>{kA.set('hurt');state2='idle';S.kuma.hp-=a.d;if(S.kuma.hp<0)S.kuma.hp=0;
+      setHP($('khp'),S.kuma.hp,S.kuma.max);$('khpn').textContent=S.kuma.hp+' / '+S.kuma.max;
+      setTimeout(()=>{msg(a.m,'next');if(S.kuma.hp<=0)return setTimeout(faint,800);busy=false;setTimeout(playerTurn,850);},700);},170);},350);}
+function victory(){eA.set('faint');msg('<b>'+S.enemy.name+'</b> was contained!');
+  setTimeout(()=>{msg('<span class="jp">クマ</span> defended the network.');setTimeout(toIdle,1500);},1500);}
+function faint(){msg('The link dropped... <span class="jp">クマ</span> regroups.');setTimeout(toIdle,1800);}
+function toIdle(){busy=false;$('battle').style.display='none';$('idle').style.display='flex';
+  A.length=0;A.push(cubA);cubA.set('idle');
+  $('pill').textContent='SENTINEL';$('isay').textContent='all quiet';$('ith').textContent='LOW';$('ith').style.color='var(--grn)';$('iev').textContent=0;}
+
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();trigger();}});
+$('idle').addEventListener('click',trigger);
+</script></body></html>
