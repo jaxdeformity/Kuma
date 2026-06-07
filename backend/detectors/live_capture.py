@@ -19,14 +19,16 @@ import subprocess
 import threading
 import time
 
-from scapy.all import AsyncSniffer, Dot11, Dot11Deauth, Dot11Disas  # type: ignore
+from scapy.all import (  # type: ignore
+    AsyncSniffer, Dot11, Dot11Deauth, Dot11Disas, Dot11Beacon, Dot11Elt,
+)
 
 from detectors.responder import ApexResponder
 
 # Updated by the channel-hopper thread; used to label events with where we were.
 _current_channel = 0
 
-from kuma_core import database, events
+from kuma_core import database, events, scoring
 
 # Subtype 12 = deauthentication, 10 = disassociation.
 WINDOW_SECONDS = 10
@@ -99,6 +101,68 @@ class BurstTracker:
         return ev
 
 
+class BeaconFloodTracker:
+    """Detect beacon / fake-SSID floods (Bruce/Marauder/PineAP signature).
+
+    Two passive signals over a rolling window:
+      - a burst of NEW BSSIDs never seen before (spoofed-AP spam), or
+      - a single BSSID advertising many distinct SSIDs (karma / SSID spam).
+    Normal environments introduce only a handful of new BSSIDs per window, so a
+    spike is a strong flood indicator. Confidence-scored, never absolute.
+    """
+
+    NEW_BSSID_THRESHOLD = 25     # new BSSIDs in the window
+    SSIDS_PER_BSSID = 5          # distinct SSIDs from one radio
+    WINDOW = 10
+    COOLDOWN = 15
+
+    def __init__(self) -> None:
+        self.seen_bssids: set[str] = set()
+        self.events: collections.deque[tuple[float, str, str]] = collections.deque()
+        self.last_emit = 0.0
+
+    def add(self, bssid: str, ssid: str) -> dict | None:
+        now = time.time()
+        self.seen_bssids.add(bssid)
+        self.events.append((now, bssid, ssid))
+        cutoff = now - self.WINDOW
+        while self.events and self.events[0][0] < cutoff:
+            self.events.popleft()
+        if now - self.last_emit < self.COOLDOWN:
+            return None
+
+        window_bssids = {b for _, b, _ in self.events}
+        # distinct SSIDs advertised per BSSID (karma / SSID-spam signal)
+        per_bssid: dict[str, set[str]] = collections.defaultdict(set)
+        for _, b, s in self.events:
+            if s:
+                per_bssid[b].add(s)
+        max_ssids = max((len(v) for v in per_bssid.values()), default=0)
+        worst_bssid = max(per_bssid, key=lambda k: len(per_bssid[k]), default=bssid)
+
+        distinct_bssids = len(window_bssids)
+        flood = distinct_bssids >= self.NEW_BSSID_THRESHOLD or max_ssids >= self.SSIDS_PER_BSSID
+        if not flood:
+            return None
+        self.last_emit = now
+        conf = scoring.clamp_confidence(
+            40 + min(distinct_bssids, 50) + (max_ssids * 4))
+        ev = events.make_event(
+            mode="sentinel",
+            event_type="beacon_flood",
+            confidence=conf,
+            message=f"Suspected beacon/SSID flood: {distinct_bssids} BSSIDs / "
+                    f"{max_ssids} SSIDs-per-radio in {self.WINDOW}s",
+            source=worst_bssid, bssid=worst_bssid,
+            channel=_current_channel or None,
+            raw_json={"distinct_bssids": distinct_bssids,
+                      "max_ssids_one_bssid": max_ssids,
+                      "window_seconds": self.WINDOW,
+                      "detector": "beacon_flood"},
+        )
+        return ev
+
+
 def set_channel(iface: str, channel: int) -> None:
     global _current_channel
     subprocess.run(["iw", "dev", iface, "set", "channel", str(channel)],
@@ -134,9 +198,26 @@ def run(iface: str, channel: int, channels: list[int] | None,
         set_channel(iface, channel)
     deauth = BurstTracker("deauth_burst", "deauth")
     disassoc = BurstTracker("disassoc_burst", "disassoc")
+    beacons = BeaconFloodTracker()
 
     def handle(pkt) -> None:
         if not pkt.haslayer(Dot11):
+            return
+        # --- beacon / SSID flood ------------------------------------------
+        if pkt.haslayer(Dot11Beacon):
+            ssid = ""
+            elt = pkt.getlayer(Dot11Elt)
+            if elt is not None and getattr(elt, "ID", None) == 0:
+                try:
+                    ssid = bytes(elt.info).decode(errors="ignore")
+                except Exception:  # noqa: BLE001
+                    ssid = ""
+            ev = beacons.add(pkt[Dot11].addr2 or "?", ssid)
+            if ev:
+                eid = database.insert_event(ev)
+                print(f"[{ev['severity'].upper()}] {ev['event_type']} "
+                      f"conf={ev['confidence']} -> event #{eid}: {ev['message']}",
+                      flush=True)
             return
         tracker = None
         reason = None
