@@ -1,78 +1,117 @@
 {
+  "_comment": "Maps KUMA event_type -> battle enemy. sprite = file in designs/sprites/enemies/ (also mirrored into the dashboard static dir). weakTo = abilities that are super-effective. Source: Jax's enemymapping.md.",
+  "_default": {
+    "enemyName": "UNKNOWN THREAT",
+    "sprite": "01_rogue_ap",
+    "battleText": "An unknown hostile signal appeared.",
+    "weakTo": ["PAWLOCK"]
+  },
   "rogue_ap": {
     "enemyName": "ROGUE AP",
+    "sprite": "01_rogue_ap",
     "battleText": "A rogue access point appeared.",
     "weakTo": ["SIGNAL MAUL", "PAWLOCK"]
   },
   "evil_twin": {
     "enemyName": "EVIL TWIN",
+    "sprite": "02_evil_twin",
     "battleText": "A fractured twin is mimicking the network.",
     "weakTo": ["SIGNAL MAUL", "HONEY SNARE"]
   },
   "deauth": {
     "enemyName": "DEAUTHER",
+    "sprite": "03_deauther",
+    "battleText": "A deauther is flooding disconnect frames.",
+    "weakTo": ["CHANNEL ROAR"]
+  },
+  "deauth_burst": {
+    "enemyName": "DEAUTHER",
+    "sprite": "03_deauther",
     "battleText": "A deauther is flooding disconnect frames.",
     "weakTo": ["CHANNEL ROAR"]
   },
   "disassoc": {
     "enemyName": "DEAUTHER",
+    "sprite": "03_deauther",
+    "battleText": "A disassociation burst is active.",
+    "weakTo": ["CHANNEL ROAR"]
+  },
+  "disassoc_burst": {
+    "enemyName": "DEAUTHER",
+    "sprite": "03_deauther",
     "battleText": "A disassociation burst is active.",
     "weakTo": ["CHANNEL ROAR"]
   },
   "wifi_pineapple": {
     "enemyName": "WIFI PINEAPPLE",
+    "sprite": "04_pineapple",
     "battleText": "A lure device is baiting nearby clients.",
     "weakTo": ["HONEY SNARE", "SIGNAL MAUL"]
   },
   "beacon_flood": {
     "enemyName": "BEACON FLOODER",
+    "sprite": "05_beacon_flooder",
     "battleText": "Fake SSIDs are flooding the air.",
     "weakTo": ["CHANNEL ROAR", "SIGNAL MAUL"]
   },
   "ssid_flood": {
     "enemyName": "BEACON FLOODER",
+    "sprite": "05_beacon_flooder",
     "battleText": "Fake SSIDs are flooding the air.",
     "weakTo": ["CHANNEL ROAR", "SIGNAL MAUL"]
   },
   "karma_lure": {
     "enemyName": "KARMA LURE",
+    "sprite": "06_karma_lure",
     "battleText": "A lure is answering probe requests.",
+    "weakTo": ["HONEY SNARE"]
+  },
+  "karma_suspected": {
+    "enemyName": "KARMA LURE",
+    "sprite": "06_karma_lure",
+    "battleText": "PineAP-style lure behavior detected.",
     "weakTo": ["HONEY SNARE"]
   },
   "pineap": {
     "enemyName": "KARMA LURE",
+    "sprite": "06_karma_lure",
     "battleText": "PineAP-style lure behavior detected.",
     "weakTo": ["HONEY SNARE"]
   },
   "handshake_harvester": {
     "enemyName": "HANDSHAKE HARVESTER",
+    "sprite": "07_handshake_harvester",
+    "battleText": "A harvester is trying to capture handshakes.",
+    "weakTo": ["PAWLOCK", "HONEY SNARE"]
+  },
+  "handshake_harvest": {
+    "enemyName": "HANDSHAKE HARVESTER",
+    "sprite": "07_handshake_harvester",
     "battleText": "A harvester is trying to capture handshakes.",
     "weakTo": ["PAWLOCK", "HONEY SNARE"]
   },
   "eapol": {
     "enemyName": "HANDSHAKE HARVESTER",
+    "sprite": "07_handshake_harvester",
     "battleText": "Suspicious EAPOL harvesting behavior detected.",
     "weakTo": ["PAWLOCK", "HONEY SNARE"]
   },
   "sniffer": {
     "enemyName": "SNIFFER",
+    "sprite": "08_sniffer",
     "battleText": "A passive listener is lurking nearby.",
     "weakTo": ["PAWLOCK"]
   },
   "rf_jammer": {
     "enemyName": "RF JAMMER",
+    "sprite": "09_rf_jammer",
     "battleText": "RF denial behavior is disrupting the channel.",
     "weakTo": ["CHANNEL ROAR"]
   },
   "botnet_worm": {
     "enemyName": "BOTNET WORM",
+    "sprite": "10_botnet_worm",
     "battleText": "Linked infected nodes are spreading.",
     "weakTo": ["CHANNEL ROAR", "PAWLOCK"]
   }
-}
-
-{
-  "enemyName": "UNKNOWN THREAT",
-  "battleText": "An unknown hostile signal appeared.",
-  "weakTo": ["PAWLOCK"]
 }
