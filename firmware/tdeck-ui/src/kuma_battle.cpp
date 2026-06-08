@@ -33,6 +33,10 @@ const char* AB_TYPE[4] = {"DISRUPT","LURE","RF","CONTAIN"};   // move types
 const char* CMD_OPT[4] = {"FIGHT","BAG","RUN","AUTO"};        // top-level command menu
 enum { MENU_NONE = 0, MENU_CMD = 1, MENU_ABIL = 2 };
 
+// Sustained-attack gate: high threat must persist this many polls (~2s each)
+// before the "DEPLOY COUNTERMEASURES?" prompt appears. Low on purpose.
+constexpr int SUSTAIN_POLLS = 1;   // ~2nd consecutive high poll (~4s)
+
 int eventToEnemy(const String& etRaw) {
   String e = etRaw; e.toLowerCase();
   if (e.indexOf("deauth")>=0 || e.indexOf("disassoc")>=0) return 2;
@@ -261,6 +265,47 @@ void run(int en, uint16_t lvl) {
   }
   audio::stopMusic();
 }
+
+// "DEPLOY COUNTERMEASURES?" gate, shown on a sustained attack. YES -> battle,
+// NO -> stay in ALERT (the detection is already logged). Default on timeout = NO.
+bool deployPrompt(int en, uint16_t lvl) {
+  audio::sfx(audio::SFX_CLAW_ID);
+  int sel = 0; bool dirty = true; unsigned long t0 = millis();
+  for (;;) {
+    if (dirty) {
+      lgfx::LovyanGFX* g = G();
+      drawBg();
+      g->setFont(&fonts::Font0);
+      g->setTextSize(2); g->setTextColor(RED, BG);
+      g->setCursor(14, 8); g->print("! SUSTAINED ATTACK");
+      g->setTextSize(1); g->setTextColor(AMBER, BG);
+      g->setCursor(14, 34); g->printf("Hostile %s locked on", EN_NAME[en]);
+      const BearSprite& es = ENEMY_SPRITES[en]; spr(es, 318 - es.w, 44);
+      spr(BEAR_SPRITES[5], 6, 238 - BEAR_SPRITES[5].h);   // alert KUMA
+      g->setTextSize(2); g->setTextColor(CYAN, BG);
+      g->setCursor(120, 92);  g->print("DEPLOY");
+      g->setCursor(120, 116); g->print("COUNTER-");
+      g->setCursor(120, 140); g->print("MEASURES?");
+      const char* yn[2] = {"YES", "NO"};
+      for (int i = 0; i < 2; ++i) {
+        bool s = (i == sel); int x = 124 + i * 100, y = 176;
+        g->fillRect(x, y, 90, 48, s ? 0x13E6 : BOX);
+        g->drawRect(x, y, 90, 48, s ? CYAN : DIM);
+        g->setTextSize(3); g->setTextColor(s ? CYAN : FG, s ? 0x13E6 : BOX);
+        g->setCursor(x + (i ? 26 : 14), y + 12); g->print(yn[i]);
+      }
+      g->setTextSize(1);
+      push(); dirty = false;
+    }
+    InputEvent e = input::poll();
+    if (e == InputEvent::Left || e == InputEvent::Up)         { sel = 0; dirty = true; }
+    else if (e == InputEvent::Right || e == InputEvent::Down) { sel = 1; dirty = true; }
+    else if (e == InputEvent::Select)                          return sel == 0;
+    else if (e == InputEvent::Back)                            return false;
+    if (millis() - t0 >= 20000) return false;    // timeout -> NO (stay in alert)
+    delay(20);
+  }
+}
 }  // namespace
 
 namespace battle {
@@ -279,20 +324,29 @@ void begin(LGFX_TDeck* d) {
 }
 
 bool maybeStart(const KumaStatus& s) {
-  // Fire once per threat episode: re-arm only after the threat drops back down,
-  // so a sustained/repeated same-type attack rolls into a single encounter.
-  static bool armed = true;
-  if (!s.online) return false;
+  // Flow: attack -> ALERT (the bear face, driven by bear_state). If the attack
+  // is SUSTAINED (high threat across a few polls), prompt "DEPLOY
+  // COUNTERMEASURES?". YES -> battle, then reset to calm (drop alert). NO ->
+  // stay in ALERT (detection already logged). One prompt per episode; re-arms
+  // when the threat clears (e.g. after a battle's reset, or a mode pick).
+  static int  sustain = 0;
+  static bool decided = false;
+  if (!s.online) { sustain = 0; decided = false; return false; }
   bool high = (s.threatLevel == "high" || s.threatLevel == "critical");
-  if (!high) { armed = true; return false; }   // threat cleared -> ready for the next
-  if (!armed) return false;                     // already battled this episode
+  if (!high) { sustain = 0; decided = false; return false; }   // calm -> re-arm
+  if (decided) return false;                    // already decided this episode
+  if (sustain < SUSTAIN_POLLS) { sustain++; return false; }    // not sustained yet
   KumaEvent ev[8];
   int n = kuma_api::fetchEvents(ev, 8);
   int en = -1;
   for (int i=0;i<n;i++) { en = eventToEnemy(ev[i].eventType); if (en>=0) break; }
   if (en < 0) return false;
-  armed = false;                                // consume this episode
-  run(en, s.level);
+  decided = true;                               // consume the decision for this episode
+  if (deployPrompt(en, s.level)) {              // YES -> engage
+    run(en, s.level);
+    kuma_api::sendAction("clear_mock_events", true);   // battle over -> reset to calm
+  }
+  // NO -> remain in ALERT; the detection event is already logged. No reset.
   return true;
 }
 

@@ -1,6 +1,7 @@
 // KUMA Guard T-Deck - UI implementation (LovyanGFX).
 #include "kuma_ui.h"
 #include "bear_sprites_data.h"
+#include "offline_sprites_data.h"   // reuses BearSprite; include AFTER bear sprites
 #include "kuma_logo_data.h"
 #include "kuma_bg_data.h"
 
@@ -47,6 +48,19 @@ int bearSpriteIndex(BearState st) {
     case BearState::Alert:      return 5;
     case BearState::Logging:    return 6;  // investigating
     default:                    return -1; // Error / offline -> fallback
+  }
+}
+
+// Calm face by operator-chosen mode. Sentinel/Apex are never chosen manually -
+// they only surface as threat faces (bearSpriteIndex) when an attack hits.
+int modeSpriteIndex(KumaMode m) {
+  switch (m) {
+    case KumaMode::Hibernate: return 0;  // sleeping
+    case KumaMode::Foraging:  return 1;  // foraging
+    case KumaMode::Honey:     return 3;  // honey
+    case KumaMode::Sentinel:  return 2;  // (auto) sentinel
+    case KumaMode::Apex:      return 4;  // (auto) apex
+    default:                  return 1;  // foraging
   }
 }
 }  // namespace
@@ -144,27 +158,57 @@ void drawHome(const KumaStatus& s) {
   else if (!fbReady && bgReady) g->drawPng(KUMA_BG_DASH, KUMA_BG_DASH_LEN, 0, 0);
   else                          g->fillScreen(BG);
 
+  // HUD legibility: semi-opaque dark bands behind the top status bar and the
+  // bottom stat strip so the text stays readable over the bright cyber-space
+  // background. Alpha-blend on the framebuffer; opaque fallback if no PSRAM fb.
+  if (fbReady) {
+    g->fillRectAlpha(0,   0, 320, 27, 0xCC, 0x000000);
+    g->fillRectAlpha(0, 205, 320, 35, 0xCC, 0x000000);
+  } else {
+    g->fillRect(0,   0, 320, 27, BG);
+    g->fillRect(0, 205, 320, 35, BG);
+  }
+
   // --- top bar: クマ wordmark + level, online dot ------------------------
   g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);   // katakana wordmark
   g->setTextSize(1); g->setTextColor(GREEN);
   g->setCursor(8 + KUMA_LOGO_W + 8, 11);
   g->printf("Lv %u", s.level);
   g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
-  g->setTextColor(s.online ? GREEN : GREY); g->setCursor(254, 9);
+  g->setTextColor(s.online ? GREEN : RED); g->setCursor(254, 9);
   g->print(s.online ? "ONLINE" : "OFFLINE");
   g->drawFastHLine(0, 26, 320, 0x2945);
 
-  // --- bear, centered (real sprite, algorithmic fallback) ----------------
-  BearState bs = s.online ? s.bearState : BearState::Error;
+  // --- bear, centered + scaled up to fill the face -----------------------
   static const int BOB[4] = {0, -3, -4, -3};
   int bob = BOB[(millis() / 240) % 4];           // gentle idle bob, like the web
-  int si = bearSpriteIndex(bs);
-  if (si >= 0) {
-    const BearSprite& sp = BEAR_SPRITES[si];
-    if (!g->drawPng(sp.data, sp.len, 160 - sp.w / 2, 112 - sp.h / 2 + bob))
-      drawBear(g, bs, 160, 112 + bob, 58);   // decode hiccup -> algorithmic fallback
+  const float SC = 1.35f;                         // upscale so the bear fills the screen
+  const int   CY = 118;                           // vertical center between the HUD bands
+  if (!s.online) {
+    // OFFLINE: Kuma paces around hunting for a signal - a 6-frame loop
+    // (idle/check/no-link/retry/frustrated) plus a slow horizontal walk.
+    int f = (millis() / 240) % OFFLINE_SPRITE_COUNT;   // ~4 fps, calm
+    uint32_t t = millis() % 6000;                       // slow 6s walk cycle
+    int pace = (t < 3000) ? (int)t : 6000 - (int)t;     // 0..3000..0
+    int cx = 115 + pace * 90 / 3000;                    // drift x=115..205 gently
+    const BearSprite& sp = OFFLINE_SPRITES[f];
+    int dw = (int)(sp.w * SC), dh = (int)(sp.h * SC);
+    if (!g->drawPng(sp.data, sp.len, cx - dw / 2, CY - dh / 2 + bob, 0, 0, 0, 0, SC, SC))
+      drawBear(g, BearState::Error, cx, CY + bob, 72);   // decode hiccup fallback
   } else {
-    drawBear(g, bs, 160, 112 + bob, 58);
+    BearState bs = s.bearState;
+    // Calm states reflect the chosen mode; threat states use the attack face.
+    bool calm = (bs == BearState::Sleeping || bs == BearState::Foraging
+                 || bs == BearState::HoneyTrap);
+    int si = calm ? modeSpriteIndex(s.mode) : bearSpriteIndex(bs);
+    if (si >= 0) {
+      const BearSprite& sp = BEAR_SPRITES[si];
+      int dw = (int)(sp.w * SC), dh = (int)(sp.h * SC);
+      if (!g->drawPng(sp.data, sp.len, 160 - dw / 2, CY - dh / 2 + bob, 0, 0, 0, 0, SC, SC))
+        drawBear(g, bs, 160, CY + bob, 78);   // decode hiccup -> algorithmic fallback
+    } else {
+      drawBear(g, bs, 160, CY + bob, 78);
+    }
   }
 
   // (no mood/threat text - the bear's state conveys what's going on)
@@ -195,15 +239,20 @@ void drawModeSelect(int selectedIndex, KumaMode current) {
   D->setTextColor(CYAN, BG);
   D->setCursor(10, 10);
   D->print("Select Mode");
-  for (int i = 0; i < 5; ++i) {
-    int yy = 50 + i * 34;
+  // Only the operator-chosen modes are selectable. Sentinel + Apex are
+  // automatic - they engage on their own when an attack is detected.
+  for (int i = 0; i < 3; ++i) {
+    int yy = 56 + i * 40;
     bool sel = (i == selectedIndex);
-    if (sel) D->fillRoundRect(6, yy - 4, 308, 30, 4, 0x18E3);
+    if (sel) D->fillRoundRect(6, yy - 6, 308, 34, 4, 0x18E3);
     D->setTextColor(sel ? RED : GREEN, sel ? 0x18E3 : BG);
     D->setCursor(16, yy);
     bool isCur = ((int)current == i);
     D->printf("%s %s%s", sel ? ">" : " ", MODE_LABELS[i], isCur ? "  *" : "");
   }
+  D->setTextSize(1); D->setTextColor(GREY, BG);
+  D->setCursor(10, 196); D->print("Sentinel + Apex auto-engage on attack.");
+  D->setCursor(10, 210); D->print("Select applies + resets KUMA to calm.");
 }
 
 void drawEventList(const KumaEvent* ev, int n) {

@@ -34,7 +34,7 @@ static int        g_netCount = 0;
 static int        g_netScroll = 0;
 
 static Screen g_screen = Screen::Home;
-static int    g_modeIndex = 3;             // default highlight: Sentinel
+static int    g_modeIndex = 1;             // default highlight: Foraging (manual modes 0..2)
 static uint32_t g_lastStatusPoll = 0;
 static uint8_t  g_statusFails = 0;         // tolerate transient poll failures
 
@@ -130,6 +130,8 @@ static void enterScreen(Screen s) {
 void loop() {
   const uint32_t now = millis();
 
+  kuma_api::reconnectIfDown();   // self-heal Wi-Fi if a deauth kicked us off
+
   // --- poll backend (Home screen refresh) --------------------------------
   if (now - g_lastStatusPoll >= KUMA_STATUS_POLL_MS) {
     g_lastStatusPoll = now;
@@ -146,9 +148,10 @@ void loop() {
     }
   }
 
-  // --- idle bob: redraw the home bear a few times/sec so it gently moves ---
+  // --- idle/anim redraw: ~10fps so the idle bob and the offline walk cycle
+  //     animate smoothly (drawHome is a cheap PSRAM-framebuffer blit) ---------
   static uint32_t g_lastBob = 0;
-  if (g_screen == Screen::Home && now - g_lastBob >= 240) {
+  if (g_screen == Screen::Home && now - g_lastBob >= 100) {
     g_lastBob = now;
     kuma_ui::drawHome(g_status);
   }
@@ -167,14 +170,16 @@ void loop() {
       break;
 
     case Screen::ModeSelect:
+      // Only the 3 manual modes (Hibernate/Foraging/Honey = enum 0..2) are here.
       if (ev == InputEvent::Up) {
-        g_modeIndex = (g_modeIndex + 4) % 5;
+        g_modeIndex = (g_modeIndex + 2) % 3;
         kuma_ui::drawModeSelect(g_modeIndex, g_status.mode);
       } else if (ev == InputEvent::Down) {
-        g_modeIndex = (g_modeIndex + 1) % 5;
+        g_modeIndex = (g_modeIndex + 1) % 3;
         kuma_ui::drawModeSelect(g_modeIndex, g_status.mode);
       } else if (ev == InputEvent::Select) {
-        kuma_api::setMode(static_cast<KumaMode>(g_modeIndex));
+        kuma_api::setMode(static_cast<KumaMode>(g_modeIndex));   // switch mode
+        kuma_api::sendAction("clear_mock_events", true);         // reset KUMA to calm
         kuma_api::fetchStatus(g_status);
         enterScreen(Screen::Home);
       } else if (ev == InputEvent::Back || ev == InputEvent::Left) {

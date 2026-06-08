@@ -16,10 +16,25 @@ namespace kuma_api {
 void begin() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
+  WiFi.setAutoReconnect(true);          // recover automatically after a drop
+  WiFi.persistent(true);
   WiFi.begin(KUMA_WIFI_SSID, KUMA_WIFI_PASSWORD);
 }
 
 bool wifiConnected() { return WiFi.status() == WL_CONNECTED; }
+
+// Call every loop tick. If the link is down (e.g. a deauth kicked us off the
+// protected AP), force a fresh association attempt, throttled so we don't spam
+// WiFi.begin(). Without this the face stays OFFLINE until a reboot.
+void reconnectIfDown() {
+  if (WiFi.status() == WL_CONNECTED) return;
+  static uint32_t lastTry = 0;
+  uint32_t now = millis();
+  if (now - lastTry < 3000) return;     // retry at most every 3s
+  lastTry = now;
+  WiFi.disconnect();
+  WiFi.begin(KUMA_WIFI_SSID, KUMA_WIFI_PASSWORD);
+}
 
 bool fetchStatus(KumaStatus& out) {
   out.online = false;

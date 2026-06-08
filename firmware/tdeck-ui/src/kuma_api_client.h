@@ -37,6 +37,7 @@ struct KumaNetwork {
 namespace kuma_api {
   void begin();                                   // Wi-Fi STA connect
   bool wifiConnected();
+  void reconnectIfDown();                          // re-associate if link dropped
   bool fetchStatus(KumaStatus& out);              // GET /api/status
   int  fetchEvents(KumaEvent* out, int maxN);     // GET /api/events -> count
   int  fetchNetworks(KumaNetwork* out, int maxN); // GET /api/networks -> count
