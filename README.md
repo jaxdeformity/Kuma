@@ -8,6 +8,26 @@ Five modes: Hibernate (conserve), Foraging (discover), Sentinel (detect), Honey 
 
 Built from parts you can buy. No custom PCB, no sealed product. Ugly and working first.
 
+![KUMA on the LilyGo T-Deck](docs/media/tdeck_home_alert.png)
+
+> The T-Deck face mid-attack: a deauth burst detected, threat HIGH, bear on alert. Composed from the device's actual embedded sprites and cyber-space background at native 320x240.
+
+## The face
+
+KUMA's mood *is* the UI. Each mode wears a different face; an attack flips it to alert and arms countermeasures.
+
+![KUMA modes](docs/media/bears.png)
+
+Lose the link to the Pi and the bear paces the screen hunting for a signal:
+
+![Offline search animation](docs/media/offline_walk.png)
+
+### The threats it knows
+
+Every live detector maps to an on-device "enemy" you can engage from the alert screen:
+
+![Threat roster](docs/media/enemies.png)
+
 ## Status
 
 Live on hardware. KUMA runs as an autonomous sensor on a Raspberry Pi under systemd and arms itself on boot. The whole path works on real attack traffic, proven by catching a live WiFi Pineapple deauth flood: 1640 frames in ten seconds, threat HIGH, bear on alert, all on the dashboard.
