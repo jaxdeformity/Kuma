@@ -103,9 +103,11 @@ class BurstTracker:
         (top_pair, top_n) = (self.pairs.most_common(1) or [((None, None), 0)])[0]
         src, dst = top_pair
         # Confidence scales with how far past threshold + target repetition.
-        conf = min(95, 40 + (count - BURST_THRESHOLD) * 3 + min(top_n, 20))
-        # Severity floor: repeated frames at one target is the high-impact case.
-        severity = "high" if top_n >= 15 else None
+        conf = min(95, 55 + (count - BURST_THRESHOLD) * 3 + min(top_n, 20))
+        # An active deauth/disassoc burst is hostile: escalate to ALERT
+        # immediately so the bear reacts and countermeasures can arm. (Routine
+        # APs don't sustain >=BURST_THRESHOLD frames in the window.)
+        severity = "high"
         reasons = [r for r, _ in self.reasons.most_common(3)]
         ev = events.make_event(
             mode="sentinel",
