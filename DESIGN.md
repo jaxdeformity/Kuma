@@ -95,15 +95,15 @@ mood-specific eyes and mouth. Fur grizzles grey→warm as threat rises.
 
 Mood by state:
 
-| `bear_state` | Eyes | When |
-|--------------|------|------|
-| `sleeping` | closed lines | Hibernate |
-| `foraging` | dots + highlight | Foraging |
-| `suspicious` | half-lidded | Sentinel, calm |
-| `alert` | wide + red glint + angry brows | Sentinel, high threat |
-| `honey_trap` | dots | Honey |
-| `apex_ready` | dots | Apex |
-| `error` | grey X | backend unreachable |
+| `bear_state` | Eyes                           | When                  |
+| ------------ | ------------------------------ | --------------------- |
+| `sleeping`   | closed lines                   | Hibernate             |
+| `foraging`   | dots + highlight               | Foraging              |
+| `suspicious` | half-lidded                    | Sentinel, calm        |
+| `alert`      | wide + red glint + angry brows | Sentinel, high threat |
+| `honey_trap` | dots                           | Honey                 |
+| `apex_ready` | dots                           | Apex                  |
+| `error`      | grey X                         | backend unreachable   |
 
 Fierce-but-readable is the target - menacing in `alert`, watchful when calm.
 Preview every state at once with `designs/bear-preview.html`. The art must never

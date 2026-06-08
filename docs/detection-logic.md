@@ -65,3 +65,12 @@ Hard gates: never acts against `protect_bssids` (your own gear), only on high-se
 ## Channel strategy
 
 The dongle captures on one channel at a time. KUMA locks to the protected network's channel by default (the `--channel` flag on `kuma-capture`); `--hop` cycles channels for broader coverage at the cost of lower per-channel frame counts. The Realtek WN722N v2/v3 does monitor RX fine once NetworkManager is told to leave it alone (`unmanaged-devices`).
+
+### Coverage limits (be honest about the blind spots)
+
+KUMA only sees what reaches the radio on the channel it is tuned to. Two real blind spots, both *physics, not bugs*:
+
+- **2.4 GHz only.** The WN722N v2/v3 (RTL8188EUS) is a 2.4 GHz radio. **It cannot see any 5 GHz traffic at all** - a deauth/evil-twin/flood against a 5 GHz AP is completely invisible. Confirmed the hard way: a manual `aireplay-ng` deauth against a 5 GHz target produced zero events because the frames never hit the dongle. For 5 GHz coverage you need a 5 GHz-capable monitor NIC (and even then, one band/channel at a time unless you run a second radio).
+- **One channel at a time.** Locked mode is deaf on every channel except the one watched; auto-channel routers can also drift off the pinned channel. `--hop` widens coverage but dilutes per-channel frame counts (a short low-volume burst can fall entirely between dwells).
+
+Diagnostic when an attack isn't caught: run `sudo tcpdump -i wlan1 -e -n type mgt subtype deauth` during the attack. Frames in tcpdump but no KUMA event = software bug. No frames = wrong channel/band (the frames never reached the radio).

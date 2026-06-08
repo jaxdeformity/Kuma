@@ -4,6 +4,7 @@
 #include "kuma_api_client.h"
 #include "kuma_types.h"
 #include "kuma_logo_data.h"
+#include "kuma_bg_data.h"
 #include "config.h"
 #include "tdeck_pins.h"
 #include <Arduino.h>
@@ -11,46 +12,86 @@
 namespace {
 LGFX_TDeck* D = nullptr;
 lgfx::LGFX_Sprite FB;
+lgfx::LGFX_Sprite bgTerm;     // heavily-dimmed night-watch bg (shows behind text)
 bool fbReady = false;
+bool bgReady = false;
 
 constexpr uint16_t BG=0x0000, FG=0xC67A, GREEN=0x07E0, CYAN=0x07FF,
                    AMBER=0xFD20, RED=0xF800, GREY=0x5ACB, DIM=0x2945;
-constexpr int ROWS = 21, COLW = 52;
+constexpr int VIEW_ROWS = 21, COLW = 52;   // visible text rows / wrap width
+constexpr int SCROLLBACK = 300;            // retained history lines (real scrollback)
 
-String g_buf[ROWS];
-int g_count = 0;
-String g_cwd = "~";          // tracked from the Pi shell responses
+String  g_lines[SCROLLBACK];               // ring buffer of output lines
+int     g_start  = 0;                      // ring index of the oldest retained line
+int     g_count  = 0;                      // number of valid lines (<= SCROLLBACK)
+int     g_scroll = 0;                      // lines scrolled up from bottom (0 = live)
+String  g_cwd = "~";                       // tracked from the Pi shell responses
 
 lgfx::LovyanGFX* G() { return fbReady ? (lgfx::LovyanGFX*)&FB : (lgfx::LovyanGFX*)D; }
 
+int     maxScroll()   { return g_count > VIEW_ROWS ? g_count - VIEW_ROWS : 0; }
+String& lineAt(int k) { return g_lines[(g_start + k) % SCROLLBACK]; }
+
 void putLine(const String& s) {
-  // wrap to COLW chars per row
+  // wrap to COLW chars per row, append into the scrollback ring
   int i = 0, n = s.length();
   do {
     String chunk = s.substring(i, min(n, i + COLW));
-    if (g_count < ROWS) g_buf[g_count++] = chunk;
-    else { for (int r = 1; r < ROWS; ++r) g_buf[r-1] = g_buf[r]; g_buf[ROWS-1] = chunk; }
+    if (g_count < SCROLLBACK) {
+      g_lines[(g_start + g_count) % SCROLLBACK] = chunk;
+      ++g_count;
+    } else {                                  // full: overwrite + drop the oldest
+      g_lines[g_start] = chunk;
+      g_start = (g_start + 1) % SCROLLBACK;
+    }
+    // if the user is reading history, keep their view anchored to the same text
+    if (g_scroll > 0) g_scroll = min(g_scroll + 1, maxScroll());
     i += COLW;
   } while (i < n);
 }
 
 void render(const String& input) {
   lgfx::LovyanGFX* g = G();
-  g->fillScreen(BG);
+  // semi-opaque night-watch backdrop; text drawn transparent over it
+  if (bgReady && fbReady)       bgTerm.pushSprite(&FB, 0, 0);
+  else if (bgReady)             g->drawPng(KUMA_BG_TERM, KUMA_BG_TERM_LEN, 0, 0);
+  else                          g->fillScreen(BG);
   g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 6, 2);
   g->setFont(&fonts::Font0); g->setTextSize(1);
-  g->setTextColor(CYAN, BG); g->setCursor(64, 8); g->print("// TERMINAL");
+  g->setTextColor(CYAN); g->setCursor(64, 8); g->print("// TERMINAL");
   g->drawFastHLine(0, 24, 320, DIM);
-  for (int r = 0; r < g_count; ++r) {
+
+  // viewport: VIEW_ROWS lines ending g_scroll lines above the newest
+  int first = g_count - g_scroll - VIEW_ROWS;
+  if (first < 0) first = 0;
+  int row = 0;
+  for (int k = first; k < g_count && row < VIEW_ROWS; ++k, ++row) {
+    const String& ln = lineAt(k);
     uint16_t c = FG;
-    if (g_buf[r].startsWith("kuma>")) c = GREY;
-    else if (g_buf[r].startsWith("!")) c = RED;
-    else if (g_buf[r].startsWith("*")) c = AMBER;
-    g->setTextColor(c, BG); g->setCursor(4, 28 + r * 9); g->print(g_buf[r]);
+    if (ln.startsWith("kuma>")) c = GREY;
+    else if (ln.startsWith("!")) c = RED;
+    else if (ln.startsWith("*")) c = AMBER;
+    g->setTextColor(c); g->setCursor(4, 28 + row * 9); g->print(ln);
   }
-  String pr = g_cwd; if (pr.length() > 16) pr = "~" + pr.substring(pr.length() - 13);
-  g->setTextColor(GREEN, BG); g->setCursor(4, 230);
-  g->printf("%s$ %s_", pr.c_str(), input.c_str());
+
+  // scrollbar: only when history exceeds the viewport
+  if (g_count > VIEW_ROWS) {
+    const int X = 317, Y0 = 28, H = 198;            // track spans the text area
+    g->drawFastVLine(X, Y0, H, DIM);
+    int thumb  = max(8, H * VIEW_ROWS / g_count);
+    int travel = H - thumb;
+    int top = Y0 + travel - (maxScroll() ? travel * g_scroll / maxScroll() : 0);
+    g->fillRect(X - 1, top, 3, thumb, g_scroll ? AMBER : GREY);
+  }
+
+  if (g_scroll > 0) {                                // reading history, not live
+    g->setTextColor(AMBER); g->setCursor(4, 230);
+    g->printf("-- history -%d  (roll down to live) --", g_scroll);
+  } else {
+    String pr = g_cwd; if (pr.length() > 16) pr = "~" + pr.substring(pr.length() - 13);
+    g->setTextColor(GREEN); g->setCursor(4, 230);
+    g->printf("%s$ %s_", pr.c_str(), input.c_str());
+  }
   if (fbReady) FB.pushSprite(D, 0, 0);
 }
 
@@ -74,7 +115,7 @@ void exec(const String& raw) {
   cmd.toLowerCase();
 
   if (cmd == "help") { for (auto h : HELP) putLine(h); }
-  else if (cmd == "clear") { g_count = 0; }
+  else if (cmd == "clear") { g_count = 0; g_start = 0; g_scroll = 0; }
   else if (cmd == "status") {
     KumaStatus s;
     if (!kuma_api::fetchStatus(s)) { putLine("! backend offline"); return; }
@@ -131,15 +172,21 @@ void begin(LGFX_TDeck* d) {
   D = d;
   FB.setColorDepth(16); FB.setPsram(true);
   fbReady = FB.createSprite(320, 240);
+  bgTerm.setColorDepth(16); bgTerm.setPsram(true);
+  if (bgTerm.createSprite(320, 240)) {
+    bgReady = bgTerm.drawPng(KUMA_BG_TERM, KUMA_BG_TERM_LEN, 0, 0);
+    if (!bgReady) bgTerm.deleteSprite();
+  }
 }
 
 void run() {
-  g_count = 0;
+  g_start = 0; g_count = 0; g_scroll = 0;
   putLine("KUMA terminal ready. type 'help'.");
-  putLine("(ESC or trackball-click to exit)");
+  putLine("(roll trackball to scroll | ESC or click to exit)");
   String input = "";
   bool dirty = true;
   unsigned long tEnter = millis();
+  uint8_t tbUp = digitalRead(TDECK_TB_UP), tbDn = digitalRead(TDECK_TB_DOWN);
   for (;;) {
     if (dirty) { render(input); dirty = false; }
     char c = input::lastKey();            // single fresh read per loop, consumed
@@ -148,6 +195,7 @@ void run() {
       else if (c == '\r' || c == '\n') {
         String cmd = input; input = "";
         if (cmd == "exit" || cmd == "quit") return;
+        g_scroll = 0;                                   // jump to live on a new command
         exec(cmd); dirty = true;
       } else if (c == 8 || c == 127) {                  // backspace
         if (input.length()) input.remove(input.length()-1);
@@ -157,6 +205,11 @@ void run() {
         dirty = true;
       }
     }
+    // trackball roll = scroll through scrollback (HIGH->LOW edge per detent)
+    uint8_t u = digitalRead(TDECK_TB_UP), d = digitalRead(TDECK_TB_DOWN);
+    if (tbUp == HIGH && u == LOW) { g_scroll = min(g_scroll + 3, maxScroll()); dirty = true; }
+    if (tbDn == HIGH && d == LOW) { g_scroll = max(g_scroll - 3, 0);           dirty = true; }
+    tbUp = u; tbDn = d;
     // physical exit: trackball click (after a short guard so entry doesn't bounce)
     if (millis() - tEnter > 500 && digitalRead(TDECK_TB_CLICK) == LOW) return;
     delay(20);

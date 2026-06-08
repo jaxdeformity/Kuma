@@ -2,11 +2,14 @@
 #include "kuma_ui.h"
 #include "bear_sprites_data.h"
 #include "kuma_logo_data.h"
+#include "kuma_bg_data.h"
 
 namespace {
 LGFX_TDeck* D = nullptr;
 lgfx::LGFX_Sprite fb;       // off-screen framebuffer (PSRAM) -> push once = no flicker
+lgfx::LGFX_Sprite bgDash;   // night-watch background, decoded once + blitted each frame
 bool fbReady = false;
+bool bgReady = false;
 
 // RGB565 palette
 constexpr uint16_t BG     = 0x0000;  // black
@@ -60,6 +63,14 @@ void begin(LGFX_TDeck* d) {
   fb.setPsram(true);
   fbReady = fb.createSprite(320, 240);
   if (fbReady) fb.setTextWrap(false);
+  // Decode the dashboard background once; blitting the sprite each bob tick is
+  // far cheaper than re-decoding the PNG ~4x/second.
+  bgDash.setColorDepth(16);
+  bgDash.setPsram(true);
+  if (bgDash.createSprite(320, 240)) {
+    bgReady = bgDash.drawPng(KUMA_BG_DASH, KUMA_BG_DASH_LEN, 0, 0);
+    if (!bgReady) bgDash.deleteSprite();
+  }
 }
 
 void splash() {
@@ -128,15 +139,18 @@ void drawHome(const KumaStatus& s) {
   // Draw the whole dashboard into the off-screen framebuffer, then blit once.
   lgfx::LovyanGFX* g = fbReady ? static_cast<lgfx::LovyanGFX*>(&fb)
                                : static_cast<lgfx::LovyanGFX*>(D);
-  g->fillScreen(BG);
+  // night-watch background (text drawn transparent so the scene shows through)
+  if (fbReady && bgReady)      bgDash.pushSprite(&fb, 0, 0);
+  else if (!fbReady && bgReady) g->drawPng(KUMA_BG_DASH, KUMA_BG_DASH_LEN, 0, 0);
+  else                          g->fillScreen(BG);
 
   // --- top bar: クマ wordmark + level, online dot ------------------------
   g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);   // katakana wordmark
-  g->setTextSize(1); g->setTextColor(GREEN, BG);
+  g->setTextSize(1); g->setTextColor(GREEN);
   g->setCursor(8 + KUMA_LOGO_W + 8, 11);
   g->printf("Lv %u", s.level);
   g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
-  g->setTextColor(s.online ? GREEN : GREY, BG); g->setCursor(254, 9);
+  g->setTextColor(s.online ? GREEN : GREY); g->setCursor(254, 9);
   g->print(s.online ? "ONLINE" : "OFFLINE");
   g->drawFastHLine(0, 26, 320, 0x2945);
 
@@ -166,9 +180,9 @@ void drawHome(const KumaStatus& s) {
   uint16_t vcol[4] = {FG, FG, CYAN, FG};
   g->setTextSize(1);
   for (int i = 0; i < 4; ++i) {
-    g->setTextColor(GREY, BG);
+    g->setTextColor(GREY);
     g->setCursor(cxs[i] - (int)strlen(labels[i]) * 3, 212); g->print(labels[i]);
-    g->setTextColor(vcol[i], BG);
+    g->setTextColor(vcol[i]);
     g->setCursor(cxs[i] - (int)strlen(vals[i]) * 3, 226); g->print(vals[i]);
   }
 
@@ -215,30 +229,66 @@ void drawEventList(const KumaEvent* ev, int n) {
   }
 }
 
-void drawSettings(int volPct, int brightPct, int sel) {
+void drawSettings(const SettingsView& v) {
   lgfx::LovyanGFX* g = fbReady ? static_cast<lgfx::LovyanGFX*>(&fb)
                                : static_cast<lgfx::LovyanGFX*>(D);
   g->fillScreen(BG);
   g->setFont(&fonts::Font0);
-  g->setTextSize(2); g->setTextColor(CYAN, BG); g->setCursor(10, 10); g->print("SETTINGS");
+  g->setTextSize(2); g->setTextColor(CYAN, BG); g->setCursor(10, 8); g->print("SETTINGS");
+  g->drawFastHLine(0, 32, 320, 0x2945);
 
-  const char* labels[2] = {"Volume", "Brightness"};
-  const int   vals[2]   = {volPct, brightPct};
-  for (int i = 0; i < 2; ++i) {
-    int y = 70 + i * 60;
-    bool s = (i == sel);
-    if (s) { g->fillRect(6, y - 8, 308, 46, 0x10A2); g->drawRect(6, y - 8, 308, 46, CYAN); }
-    g->setTextSize(2); g->setTextColor(s ? CYAN : FG, s ? 0x10A2 : BG);
-    g->setCursor(16, y - 2); g->print(labels[i]);
-    // bar
-    int bx = 16, by = y + 22, bw = 240;
-    g->drawRect(bx, by, bw, 12, GREY);
-    g->fillRect(bx + 1, by + 1, (bw - 2) * vals[i] / 100, 10, s ? CYAN : GREEN);
-    g->setTextSize(1); g->setTextColor(FG, s ? 0x10A2 : BG);
-    g->setCursor(bx + bw + 12, by + 2); g->printf("%d%%", vals[i]);
+  const char* labels[SET_COUNT] = {
+    "Volume", "Brightness", "Wi-Fi / IP", "Firmware", "Reboot", "Power Off"};
+  const int top = 42, rowH = 28;
+
+  for (int i = 0; i < SET_COUNT; ++i) {
+    int y = top + i * rowH;
+    bool s = (i == v.sel);
+    uint16_t rowBg = s ? 0x10A2 : BG;
+    if (s) { g->fillRect(6, y, 308, rowH - 4, rowBg); g->drawRect(6, y, 308, rowH - 4, CYAN); }
+    g->setTextSize(1); g->setTextColor(s ? CYAN : FG, rowBg);
+    g->setCursor(14, y + 7); g->print(labels[i]);
+
+    const int cx = 140;   // where the right-hand value/control starts
+    switch (i) {
+      case SET_VOLUME:
+      case SET_BRIGHT: {
+        int val = (i == SET_VOLUME) ? v.vol : v.bright;
+        int bx = cx, by = y + 6, bw = 120, bh = 11;
+        g->drawRect(bx, by, bw, bh, GREY);
+        g->fillRect(bx + 1, by + 1, (bw - 2) * val / 100, bh - 2, s ? CYAN : GREEN);
+        g->setTextColor(FG, rowBg); g->setCursor(bx + bw + 8, y + 7); g->printf("%d%%", val);
+        break;
+      }
+      case SET_WIFI: {
+        g->setTextColor(v.backendOnline ? GREEN : AMBER, rowBg);
+        g->setCursor(cx, y + 7);
+        if (v.wifiSsid && v.wifiSsid[0]) g->printf("%.12s %s", v.wifiSsid, v.ip);
+        else                             g->print(v.ip);
+        break;
+      }
+      case SET_ABOUT: {
+        g->setTextColor(GREY, rowBg); g->setCursor(cx, y + 7);
+        if (v.backendVersion && v.backendVersion[0])
+          g->printf("v%s  api %s", v.fwVersion, v.backendVersion);
+        else
+          g->printf("v%s", v.fwVersion);
+        break;
+      }
+      case SET_REBOOT:
+      case SET_POWEROFF: {
+        if (v.confirm == i) {
+          g->setTextColor(RED, rowBg); g->setCursor(cx, y + 7); g->print("click to confirm");
+        } else {
+          g->setTextColor(GREY, rowBg); g->setCursor(cx, y + 7); g->print("click");
+        }
+        break;
+      }
+    }
   }
-  g->setTextSize(1); g->setTextColor(GREY, BG); g->setCursor(10, 224);
-  g->print("up/down: row   left/right: adjust   back: save");
+
+  g->setTextColor(GREY, BG); g->setCursor(10, 224);
+  g->print("up/dn row  L/R adjust  click action  back save");
   if (fbReady) fb.pushSprite(D, 0, 0);
 }
 

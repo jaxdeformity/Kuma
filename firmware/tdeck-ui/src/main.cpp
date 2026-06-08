@@ -3,12 +3,17 @@
 // Boot: power-enable -> I2C -> display -> Wi-Fi -> poll the Pi backend and
 // render the bear. Trackball/keyboard drive a small screen state machine.
 //
-//   Home        : status + bear. Click/Enter -> Mode select. Right -> Events.
+//   Home        : status + bear. Click/Enter -> Mode select. Right -> Events,
+//                 Left -> Settings, Up -> Networks, Down -> Terminal.
 //   ModeSelect  : Up/Down choose, Click/Enter applies (POST /api/mode), Back.
 //   EventList   : recent events from /api/events. Back -> Home.
+//   Settings    : Up/Down row; L/R adjust sliders; click fires actions
+//                 (Reboot/Power Off, click-to-confirm); Back saves -> Home.
 #include <Arduino.h>
 #include <Wire.h>
+#include <WiFi.h>
 #include <Preferences.h>
+#include <esp_sleep.h>
 
 #include "tdeck_pins.h"
 #include "config.h"
@@ -36,9 +41,42 @@ static uint8_t  g_statusFails = 0;         // tolerate transient poll failures
 static Preferences g_prefs;
 static int g_setVol = 22;                  // %
 static int g_setBright = 80;               // %
-static int g_setSel = 0;                   // selected settings row
+static int g_setSel = 0;                   // selected settings row (SettingsRow)
+static int g_setConfirm = -1;              // action row awaiting click-to-confirm
 
 static uint8_t brightRaw(int pct) { return (uint8_t)(30 + pct * 225 / 100); }  // never fully dark
+
+// Assemble the live Settings view (Wi-Fi/IP, version) and render it. Strings are
+// locals kept alive across the synchronous draw call.
+static void drawSettingsScreen() {
+  String ip   = (WiFi.status() == WL_CONNECTED) ? WiFi.localIP().toString()
+                                                : String("offline");
+  String ssid = WiFi.SSID();
+  SettingsView v;
+  v.vol = g_setVol; v.bright = g_setBright; v.sel = g_setSel; v.confirm = g_setConfirm;
+  v.wifiSsid = ssid.c_str(); v.ip = ip.c_str();
+  v.backendOnline = g_status.online;
+  v.fwVersion = KUMA_FW_VERSION; v.backendVersion = g_status.version.c_str();
+  kuma_ui::drawSettings(v);
+}
+
+static void saveSettings() {
+  g_prefs.putUChar("vol", g_setVol);
+  g_prefs.putUChar("bright", g_setBright);
+}
+
+// Real power-off on the T-Deck: cut the board power-enable rail and deep-sleep
+// (no wake source -> stays off until reset / power button). Save first.
+static void powerOff() {
+  saveSettings();
+  display.fillScreen(0x0000);
+  display.setTextColor(0x07FF); display.setTextSize(2);
+  display.setCursor(48, 108); display.print("Powering off...");
+  delay(800);
+  display.setBrightness(0);
+  digitalWrite(TDECK_POWERON, LOW);   // drop the peripheral power rail
+  esp_deep_sleep_start();             // minimal draw; wake on reset/power
+}
 
 void setup() {
   Serial.begin(115200);
@@ -84,7 +122,7 @@ static void enterScreen(Screen s) {
       kuma_ui::drawNetworks(g_nets, g_netCount, g_netCount, g_netScroll);
       break;
     case Screen::Settings:
-      kuma_ui::drawSettings(g_setVol, g_setBright, g_setSel);
+      drawSettingsScreen();
       break;
   }
 }
@@ -123,7 +161,7 @@ void loop() {
     case Screen::Home:
       if (ev == InputEvent::Select) enterScreen(Screen::ModeSelect);
       else if (ev == InputEvent::Right) enterScreen(Screen::EventList);
-      else if (ev == InputEvent::Left) { g_setSel = 0; enterScreen(Screen::Settings); }
+      else if (ev == InputEvent::Left) { g_setSel = 0; g_setConfirm = -1; enterScreen(Screen::Settings); }
       else if (ev == InputEvent::Down) { terminal::run(); enterScreen(Screen::Home); }
       else if (ev == InputEvent::Up) enterScreen(Screen::Networks);
       break;
@@ -160,20 +198,33 @@ void loop() {
       break;
 
     case Screen::Settings: {
-      int* val = (g_setSel == 0) ? &g_setVol : &g_setBright;
-      if (ev == InputEvent::Up)        { g_setSel = (g_setSel + 1) % 2; }
-      else if (ev == InputEvent::Down) { g_setSel = (g_setSel + 1) % 2; }
-      else if (ev == InputEvent::Right){ *val = min(100, *val + 5); }
-      else if (ev == InputEvent::Left) { *val = max(0,   *val - 5); }
-      else if (ev == InputEvent::Back || ev == InputEvent::Select) {
-        g_prefs.putUChar("vol", g_setVol);
-        g_prefs.putUChar("bright", g_setBright);
-        enterScreen(Screen::Home);
-        break;
+      bool slider = (g_setSel == SET_VOLUME || g_setSel == SET_BRIGHT);
+      bool action = (g_setSel == SET_REBOOT || g_setSel == SET_POWEROFF);
+
+      if (ev == InputEvent::Up)   { g_setSel = (g_setSel + SET_COUNT - 1) % SET_COUNT; g_setConfirm = -1; }
+      else if (ev == InputEvent::Down) { g_setSel = (g_setSel + 1) % SET_COUNT; g_setConfirm = -1; }
+      else if ((ev == InputEvent::Left || ev == InputEvent::Right) && slider) {
+        int* val = (g_setSel == SET_VOLUME) ? &g_setVol : &g_setBright;
+        *val = (ev == InputEvent::Right) ? min(100, *val + 5) : max(0, *val - 5);
+        audio::setVolume(g_setVol);                 // apply live
+        display.setBrightness(brightRaw(g_setBright));
+        g_setConfirm = -1;
       }
-      audio::setVolume(g_setVol);                 // apply live
-      display.setBrightness(brightRaw(g_setBright));
-      kuma_ui::drawSettings(g_setVol, g_setBright, g_setSel);
+      else if (ev == InputEvent::Left) {            // non-slider row: leave + save
+        saveSettings(); enterScreen(Screen::Home); break;
+      }
+      else if (ev == InputEvent::Select && action) {
+        if (g_setConfirm == g_setSel) {             // second click = do it
+          if (g_setSel == SET_REBOOT) { saveSettings(); ESP.restart(); }
+          else                        { powerOff(); }   // never returns
+        } else {
+          g_setConfirm = g_setSel;                  // arm confirm
+        }
+      }
+      else if (ev == InputEvent::Back) {            // save + home from anywhere
+        saveSettings(); enterScreen(Screen::Home); break;
+      }
+      drawSettingsScreen();
       break;
     }
   }

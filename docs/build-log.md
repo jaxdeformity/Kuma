@@ -4,6 +4,14 @@ Running log of what works, what doesn't, and setup gotchas. Newest first.
 
 ---
 
+## 2026-06-07 - 5GHz blind-spot + T-Deck UI pass
+
+- **Manual deauth "miss" diagnosed (not a bug):** a hand-run `aireplay-ng` deauth from a Kali box went undetected. Root cause = the target was on **5 GHz**, and the WN722N v2/v3 dongle is 2.4 GHz only, so the frames never reached the radio. Detection code is fine (fires at 8 frames/10s). Documented the coverage limits + a `tcpdump` triage step in `detection-logic.md`. Fix path is a 5 GHz monitor NIC or testing on 2.4 GHz.
+- **T-Deck Settings menu (trackball-Left) expanded:** added Wi-Fi/IP, Firmware/version, Reboot, and Power Off rows beside the existing Volume/Brightness sliders. Reboot/Power Off use click-to-confirm; Power Off drops `TDECK_POWERON` and deep-sleeps. (`firmware/tdeck-ui/src/{main.cpp,kuma_ui.cpp,kuma_ui.h}`)
+- **T-Deck background reskin:** `assets/gen_bg.py` now renders a cyber-space scene (nebula + dense starfield + ringed planet + synthwave perspective grid) instead of the night-watch pine forest. Regenerated `kuma_bg_data.h` (47.3 KB embedded).
+
+---
+
 ## 2026-06-07 - Sprint 2: live on hardware, full detector suite
 
 **Shipped (running on the Pi 5 `kuma1`, all systemd-managed, auto-start):**

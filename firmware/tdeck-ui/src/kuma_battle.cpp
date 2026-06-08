@@ -5,11 +5,14 @@
 #include "bear_sprites_data.h"     // BearSprite, BEAR_SPRITES[] (shared KUMA states)
 #include "battle_sprites_data.h"   // ENEMY_SPRITES[], KB_*_S, SKULL_S
 #include "kuma_logo_data.h"        // クマ wordmark
+#include "kuma_bg_data.h"          // night-watch backgrounds
 
 namespace {
 LGFX_TDeck* D = nullptr;
 lgfx::LGFX_Sprite FB;
+lgfx::LGFX_Sprite bgBattle;        // night-watch arena bg, decoded once + blitted
 bool fbReady = false;
+bool bgReady = false;
 
 constexpr uint16_t BG=0x0000, FG=0xFFFF, RED=0xF800, GREEN=0x07E0,
                    AMBER=0xFD20, CYAN=0x07FF, GREY=0x7BEF, DIM=0x2945, BOX=0x10A2;
@@ -47,6 +50,13 @@ int eventToEnemy(const String& etRaw) {
 
 lgfx::LovyanGFX* G() { return fbReady ? (lgfx::LovyanGFX*)&FB : (lgfx::LovyanGFX*)D; }
 void push() { if (fbReady) FB.pushSprite(D, 0, 0); }
+// night-watch arena background; falls back to black if the decode failed
+void drawBg() {
+  if (bgReady && fbReady) { bgBattle.pushSprite(&FB, 0, 0); return; }
+  lgfx::LovyanGFX* g = G();
+  if (!(bgReady && g->drawPng(KUMA_BG_BATTLE, KUMA_BG_BATTLE_LEN, 0, 0)))
+    g->fillScreen(BG);
+}
 void spr(const BearSprite& s, int x, int y) { G()->drawPng(s.data, s.len, x, y); }
 
 void hpbar(int x, int y, int w, int cur, int mx) {
@@ -60,7 +70,7 @@ void hpbar(int x, int y, int w, int cur, int mx) {
 void scene(const char* msg, int menuMode, int sel, const BearSprite& kuma,
            int kHp, int kMax, int eHp, int eMax, int en, uint16_t lvl) {
   lgfx::LovyanGFX* g = G();
-  g->fillScreen(BG);
+  drawBg();
   // message strip
   g->setFont(&fonts::Font0); g->setTextSize(1); g->setTextColor(FG, BG);
   g->setCursor(6, 3); g->print(msg);
@@ -238,14 +248,14 @@ void run(int en, uint16_t lvl) {
     String w = String("KUMA decrypted the ") + EN_NAME[en] + ".";
     scene(w.c_str(), MENU_NONE, 0, KB_VICTORY_S, kHp, kMax, 0, eMax, en, lvl);
     delay(1500);
-    lgfx::LovyanGFX* g2 = G(); g2->fillScreen(BG);
-    g2->setTextSize(3); g2->setTextColor(GREEN, BG); g2->setCursor(70, 40); g2->print("VICTORY!");
-    g2->setTextSize(1); g2->setTextColor(CYAN, BG); g2->setCursor(96, 76); g2->print("DATA SECURED");
+    lgfx::LovyanGFX* g2 = G(); drawBg();
+    g2->setTextSize(3); g2->setTextColor(GREEN); g2->setCursor(70, 40); g2->print("VICTORY!");
+    g2->setTextSize(1); g2->setTextColor(CYAN); g2->setCursor(96, 76); g2->print("DATA SECURED");
     spr(KB_VICTORY_S, 110, 96); push();
     delay(13000);                          // hold through the victory track
   } else {
-    lgfx::LovyanGFX* g2 = G(); g2->fillScreen(BG);
-    g2->setTextSize(1); g2->setTextColor(AMBER, BG); g2->setCursor(20, 110);
+    lgfx::LovyanGFX* g2 = G(); drawBg();
+    g2->setTextSize(1); g2->setTextColor(AMBER); g2->setCursor(20, 110);
     g2->print("Link dropped... KUMA regroups."); push();
     delay(2500);
   }
@@ -260,6 +270,12 @@ void begin(LGFX_TDeck* d) {
   FB.setColorDepth(16);
   FB.setPsram(true);
   fbReady = FB.createSprite(320, 240);
+  bgBattle.setColorDepth(16);
+  bgBattle.setPsram(true);
+  if (bgBattle.createSprite(320, 240)) {
+    bgReady = bgBattle.drawPng(KUMA_BG_BATTLE, KUMA_BG_BATTLE_LEN, 0, 0);
+    if (!bgReady) bgBattle.deleteSprite();
+  }
 }
 
 bool maybeStart(const KumaStatus& s) {
