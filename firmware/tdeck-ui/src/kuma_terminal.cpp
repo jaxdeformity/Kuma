@@ -2,6 +2,7 @@
 #include "kuma_terminal.h"
 #include "input.h"
 #include "kuma_api_client.h"
+#include "kuma_rf.h"
 #include "kuma_types.h"
 #include "kuma_logo_data.h"
 #include "kuma_bg_data.h"
@@ -103,7 +104,8 @@ const char* HELP[] = {
   "built-ins:",
   " status / events / net   KUMA summaries",
   " mode <name>             switch KUMA mode",
-  " kuroshuna [arm|broadcast|off]  gloves off (confirm)",
+  " kuroshuna [arm|broadcast|off|deauth]  gloves off",
+  "   deauth <bssid> <ch> [client]   own-radio (gated)",
   " clear / exit",
 };
 
@@ -156,25 +158,49 @@ void exec(const String& raw) {
     putLine(ok ? (String("* mode -> ") + arg) : "! mode change failed");
   }
   else if (cmd == "kuroshuna" || cmd == "kuro") {
-    String a = arg; a.toLowerCase();
-    if (a == "status" || a == "") {
+    // split arg into up to 4 space-separated tokens (preserve case for MACs)
+    String t[4]; int nt = 0; { String w = arg; w.trim();
+      while (w.length() && nt < 4) { int sp = w.indexOf(' ');
+        t[nt++] = (sp < 0) ? w : w.substring(0, sp);
+        w = (sp < 0) ? "" : w.substring(sp + 1); w.trim(); } }
+    String sub = t[0]; sub.toLowerCase();
+
+    if (sub == "deauth") {
+      KumaStatus s;
+      if (!kuma_api::fetchStatus(s) || !s.kuroshunaArmed) {
+        putLine("! kuroshuna not armed (arm first)"); return; }
+      if (nt < 3) { putLine("! usage: kuroshuna deauth <bssid> <channel> [client]"); return; }
+      uint8_t bssid[6], client[6];
+      if (!kuma_rf::parseMac(t[1], bssid)) { putLine("! bad bssid"); return; }
+      int ch = t[2].toInt();
+      if (ch < 1 || ch > 14) { putLine("! channel 1-14"); return; }
+      if (nt >= 4) { if (!kuma_rf::parseMac(t[3], client)) { putLine("! bad client"); return; } }
+      else { for (int i = 0; i < 6; i++) client[i] = 0xFF; }   // broadcast
+      // AUTHORIZE FIRST (while still connected to the Pi)
+      if (!kuma_api::authorizeAction(t[1], "deauth")) {
+        putLine("! refused by Pi gate (not approved / disarmed)"); return; }
+      putLine(String("* authorized; injecting on ch") + ch + " (link will drop, self-heals)");
+      int sent = kuma_rf::deauth(bssid, client, (uint8_t)ch, 64);
+      putLine(String("* deauth sent ") + sent + " frames -> " + t[1]);
+      // the main loop's reconnectIfDown() restores the Pi link
+    } else if (sub == "status" || sub == "") {
       KumaStatus s;
       if (!kuma_api::fetchStatus(s)) { putLine("! backend offline"); return; }
       putLine(String("kuroshuna: ") + (s.kuroshunaArmed ? "ARMED" : "disarmed")
               + "  broadcast: " + (s.broadcastArmed ? "ARMED" : "off"));
-    } else if (a == "arm" || a == "on") {
+    } else if (sub == "arm" || sub == "on") {
       putLine("! KUROSHUNA = gloves off (active offense vs approved targets).");
       putLine("! type 'kuroshuna confirm' to arm.");
       g_kuroPending = 1;
-    } else if (a == "broadcast") {
+    } else if (sub == "broadcast") {
       putLine("! BROADCAST tier = INDISCRIMINATE: transmits to EVERYTHING in range.");
       putLine("! only with physical RF isolation. type 'kuroshuna confirm' to arm.");
       g_kuroPending = 2;
-    } else if (a == "off" || a == "disarm") {
+    } else if (sub == "off" || sub == "disarm") {
       bool ok = kuma_api::armKuroshuna(false);   // disarm also clears broadcast on the Pi
       putLine(ok ? "* KUROSHUNA disarmed" : "! disarm failed");
     } else {
-      putLine("! usage: kuroshuna [status|arm|broadcast|off]");
+      putLine("! usage: kuroshuna [status|arm|broadcast|off|deauth]");
     }
   }
   else if (cmd == "get") {
