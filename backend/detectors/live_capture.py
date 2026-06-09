@@ -16,6 +16,8 @@ from __future__ import annotations
 import argparse
 import collections
 import hashlib
+import json
+import re
 import subprocess
 import threading
 import time
@@ -437,6 +439,68 @@ class HandshakeHarvestTracker:
                       "window_seconds": self.WINDOW, "detector": "handshake"})
 
 
+# A Pwnagotchi broadcasts pwngrid peer-advertisement beacons from this fixed
+# source MAC. Catching one means a Pwnagotchi (an active deauth + handshake-
+# harvest tool) is physically in range - we flag it on sight, by presence,
+# before it even starts attacking.
+PWNAGOTCHI_MAC = "de:ad:be:ef:de:ad"
+
+
+class PwnagotchiTracker:
+    """Detect a Pwnagotchi by its pwngrid advertisement beacon and decode its
+    identity (name, captured-handshake count, version) for the event."""
+
+    COOLDOWN = 120   # one alert per pwnagotchi per 2 minutes
+
+    def __init__(self) -> None:
+        self.last_emit: dict[str, float] = {}
+
+    def add(self, pkt, channel: int) -> dict | None:
+        src = (pkt[Dot11].addr2 or "").lower()
+        if src != PWNAGOTCHI_MAC:
+            return None
+        now = time.time()
+        if now - self.last_emit.get(src, 0) < self.COOLDOWN:
+            return None
+        self.last_emit[src] = now
+        ident = self._decode(pkt)
+        name = ident.get("name", "pwnagotchi")
+        ver = ident.get("version")
+        pwnd = ident.get("pwnd_tot")
+        vtxt = f" v{ver}" if ver else ""
+        ptxt = f", {pwnd} handshakes captured" if pwnd is not None else ""
+        return events.make_event(
+            mode="sentinel", event_type="pwnagotchi_detected",
+            confidence=92, severity="high",
+            message=f"Pwnagotchi '{name}'{vtxt} advertising in range{ptxt} "
+                    f"(active deauth / handshake-harvest tool)",
+            source=src, bssid=src, channel=channel,
+            raw_json={"identity": ident, "advert_mac": src,
+                      "detector": "pwnagotchi"})
+
+    @staticmethod
+    def _decode(pkt) -> dict:
+        """Extract the JSON identity packed into the advertisement IEs."""
+        blob = b""
+        el = pkt.getlayer(Dot11Elt)
+        while el is not None:
+            try:
+                blob += bytes(el.info)
+            except Exception:  # noqa: BLE001
+                pass
+            el = el.payload.getlayer(Dot11Elt)
+        try:
+            m = re.search(rb"\{.*\}", blob, re.S)
+            if m:
+                d = json.loads(m.group(0).decode("utf-8", "replace"))
+                return {k: d[k] for k in
+                        ("name", "pwnd_tot", "pwnd_run", "version", "epoch")
+                        if k in d}
+        except Exception:  # noqa: BLE001
+            pass
+        return {}
+
+
 def set_channel(iface: str, channel: int) -> None:
     global _current_channel
     subprocess.run(["iw", "dev", iface, "set", "channel", str(channel)],
@@ -478,6 +542,7 @@ def run(iface: str, channel: int, channels: list[int] | None,
         bool(settings.settings.get("fingerprint_detection", False)))
     karma = KarmaTracker()
     harvest = HandshakeHarvestTracker()
+    pwnagotchi = PwnagotchiTracker()
 
     def _emit(ev: dict | None) -> None:
         if not ev:
@@ -501,6 +566,7 @@ def run(iface: str, channel: int, channels: list[int] | None,
                     ssid = ""
             bssid = pkt[Dot11].addr2 or "?"
             ch = _current_channel or channel
+            _emit(pwnagotchi.add(pkt, ch))   # flag a Pwnagotchi by its advert
             _emit(beacons.add(bssid, ssid))
             _emit(eviltwin.add(ssid, bssid, ch, beacon_security(pkt),
                                beacon_fingerprint(pkt)))
