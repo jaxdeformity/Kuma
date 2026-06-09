@@ -56,7 +56,11 @@ def _sendp(frames, iface, count):
 
 def _set_channel(iface, channel):
     import subprocess
-    subprocess.run(["iw", "dev", iface, "set", "channel", str(channel)], check=False)
+    r = subprocess.run(["iw", "dev", iface, "set", "channel", str(channel)],
+                       capture_output=True)
+    if r.returncode != 0:
+        raise RuntimeError(
+            f"channel set failed (ch{channel} on {iface}): {r.stderr.decode(errors='ignore').strip()}")
 
 
 def _ble_advert_send():
@@ -86,9 +90,11 @@ class BroadcastRF:
 
     def _cap_duration(self, requested) -> int:
         cap = self.gate.broadcast_limits()["max_burst_seconds"]
+        if cap is None or not isinstance(cap, (int, float)) or cap <= 0:
+            raise ValueError(f"invalid max_burst_seconds: {cap!r}")
         if requested is None:
-            return cap
-        return min(requested, cap)
+            return int(cap)
+        return min(int(requested), int(cap))
 
     def _run_burst(self, send_fn, duration, interval: float = 0.1) -> int:
         """Run send_fn in a time-boxed loop.
@@ -122,8 +128,7 @@ class BroadcastRF:
         """Gate check + return (ok, reason, pinned_channel). Returns (False, reason, None) on denial."""
         allowed, why = self.gate.broadcast_allowed()
         if not allowed:
-            self.gate.audit({"tier": "B", "action": action, "target": "*",
-                             "allowed": False, "reason": why})
+            # FIX N2: Gate.broadcast_allowed() already audits on denial; do NOT double-audit here.
             return False, why, None
         return True, why, self.gate.broadcast_limits()["channel"]
 
@@ -137,9 +142,13 @@ class BroadcastRF:
         ok, why, pinned = self._begin("deauth_flood")
         if not ok:
             return BroadcastResult(False, why, "deauth_flood")
-        ch = channel or pinned
+        # FIX I2: use 'is not None' so channel=0 is honoured
+        ch = channel if channel is not None else pinned
         dur = self._cap_duration(duration)
         if self.dry_run:
+            # FIX I1: audit dry-run before returning
+            self.gate.audit({"tier": "B", "action": "deauth_flood", "target": "*",
+                             "allowed": True, "reason": "dry-run (no tx)"})
             return BroadcastResult(True, "dry-run (no tx)", "deauth_flood",
                                    seconds=dur, dry_run=True)
         # honor protect_bssids: never deauth our own APs
@@ -147,7 +156,13 @@ class BroadcastRF:
             "honor_protect_bssids"] else set()
         targets = [b for b in (bssids or [BROADCAST]) if b.upper() not in protected]
 
-        (self._set_channel or _set_channel)(self.iface, ch)
+        # FIX C2: channel pin is fail-closed
+        try:
+            (self._set_channel or _set_channel)(self.iface, ch)
+        except Exception as e:
+            self.gate.audit({"tier": "B", "action": "deauth_flood", "target": "*",
+                             "allowed": False, "reason": f"channel pin failed: {e}"})
+            return BroadcastResult(False, f"channel pin failed: {e}", "deauth_flood")
 
         def _send():
             for b in targets:
@@ -167,9 +182,20 @@ class BroadcastRF:
         dur = self._cap_duration(duration)
         names = ssids or DEFAULT_SPAM_SSIDS
         if self.dry_run:
+            # FIX I1: audit dry-run before returning
+            self.gate.audit({"tier": "B", "action": "beacon_spam", "target": "*",
+                             "allowed": True, "reason": "dry-run (no tx)"})
             return BroadcastResult(True, "dry-run (no tx)", "beacon_spam",
                                    seconds=dur, dry_run=True)
-        (self._set_channel or _set_channel)(self.iface, pinned)
+
+        # FIX C2: channel pin is fail-closed
+        try:
+            (self._set_channel or _set_channel)(self.iface, pinned)
+        except Exception as e:
+            self.gate.audit({"tier": "B", "action": "beacon_spam", "target": "*",
+                             "allowed": False, "reason": f"channel pin failed: {e}"})
+            return BroadcastResult(False, f"channel pin failed: {e}", "beacon_spam")
+
         # deterministic fake BSSIDs (index-based, locally-administered 02: prefix);
         # never collide with a protected BSSID.
         protected = self._protected_macs()
@@ -199,12 +225,25 @@ class BroadcastRF:
             return BroadcastResult(False, "protected AP (refused)", "assoc_flood")
         dur = self._cap_duration(duration)
         if self.dry_run:
+            # FIX I1: audit dry-run before returning
+            self.gate.audit({"tier": "B", "action": "assoc_flood", "target": bssid,
+                             "allowed": True, "reason": "dry-run (no tx)"})
             return BroadcastResult(True, "dry-run (no tx)", "assoc_flood",
                                    seconds=dur, dry_run=True)
-        (self._set_channel or _set_channel)(self.iface, pinned)
-        # spoofed source MACs (locally-administered), rebuilt each burst
-        frames = [build_auth_frame(bssid, "02:00:00:%02x:%02x:%02x"
-                                   % (i & 0xff, (i >> 8) & 0xff, i & 0xff))
+
+        # FIX C2: channel pin is fail-closed
+        try:
+            (self._set_channel or _set_channel)(self.iface, pinned)
+        except Exception as e:
+            self.gate.audit({"tier": "B", "action": "assoc_flood", "target": bssid,
+                             "allowed": False, "reason": f"channel pin failed: {e}"})
+            return BroadcastResult(False, f"channel pin failed: {e}", "assoc_flood")
+
+        # FIX N1: spoofed source MACs — all bytes derive distinctly from i
+        frames = [build_auth_frame(bssid,
+                                   "02:%02x:%02x:%02x:%02x:%02x" % (
+                                       i >> 24 & 0xff, i >> 16 & 0xff,
+                                       i >> 8 & 0xff, i & 0xff, 0))
                   for i in range(clients)]
 
         def _send():
@@ -221,10 +260,19 @@ class BroadcastRF:
             return BroadcastResult(False, why, "ble_spam")
         dur = self._cap_duration(duration)
         if self.dry_run:
+            # FIX I1: audit dry-run before returning
+            self.gate.audit({"tier": "B", "action": "ble_spam", "target": "*",
+                             "allowed": True, "reason": "dry-run (no tx)"})
             return BroadcastResult(True, "dry-run (no tx)", "ble_spam",
                                    seconds=dur, dry_run=True)
         send = self._ble_sender or _ble_advert_send
-        bursts = self._run_burst(send, dur)
+        # FIX I4: ble errors surface as ok=False, not uncaught crash
+        try:
+            bursts = self._run_burst(send, dur)
+        except Exception as e:
+            self.gate.audit({"tier": "B", "action": "ble_spam", "target": "*",
+                             "allowed": False, "reason": f"ble error: {e}"})
+            return BroadcastResult(False, f"ble error: {e}", "ble_spam")
         self.gate.audit({"tier": "B", "action": "ble_spam", "target": "*",
                          "allowed": True, "reason": f"{bursts} adverts/{dur}s"})
         return BroadcastResult(True, why, "ble_spam", bursts, dur)

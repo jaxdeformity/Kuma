@@ -45,6 +45,28 @@ def test_cap_duration_to_max_burst_seconds(tmp_path):
     assert rf._cap_duration(None) == 3       # default to the cap
 
 
+# FIX C1: validate cap
+def test_cap_duration_rejects_invalid_max_burst(tmp_path):
+    import pytest
+    # max_burst_seconds = 0 must raise
+    cfg_zero = {"lab_mode": True, "allow_broadcast": True, "broadcast_armed": True,
+                "broadcast": {"channel": 6, "max_tx_power_dbm": 5,
+                               "max_burst_seconds": 0, "honor_protect_bssids": True}}
+    g_zero = Gate(config=cfg_zero, audit_file=tmp_path / "audit_zero.jsonl")
+    rf_zero = BroadcastRF(gate=g_zero)
+    with pytest.raises(ValueError, match="invalid max_burst_seconds"):
+        rf_zero._cap_duration(5)
+
+    # max_burst_seconds = None must raise
+    cfg_none = {"lab_mode": True, "allow_broadcast": True, "broadcast_armed": True,
+                "broadcast": {"channel": 6, "max_tx_power_dbm": 5,
+                               "max_burst_seconds": None, "honor_protect_bssids": True}}
+    g_none = Gate(config=cfg_none, audit_file=tmp_path / "audit_none.jsonl")
+    rf_none = BroadcastRF(gate=g_none)
+    with pytest.raises(ValueError, match="invalid max_burst_seconds"):
+        rf_none._cap_duration(5)
+
+
 # ---------------------------------------------------------------------------
 # Task 2: deauth_flood
 # ---------------------------------------------------------------------------
@@ -103,6 +125,75 @@ def test_deauth_flood_dry_run(tmp_path):
     assert sent == []
 
 
+# FIX C2: channel pin fail-closed — deauth_flood
+def test_deauth_flood_channel_pin_failure_is_fail_closed(tmp_path):
+    g = _bcast_gate(tmp_path)
+    sent = []
+
+    def bad_set_channel(iface, ch):
+        raise RuntimeError("iw not found")
+
+    rf = BroadcastRF(gate=g, sender=lambda *a: sent.append(a),
+                     set_channel=bad_set_channel,
+                     clock=_Clock(), sleep=lambda *_: None)
+    res = rf.deauth_flood(duration=3)
+    assert res.ok is False
+    assert "channel pin failed" in res.reason
+    assert sent == []
+
+
+# FIX I2: falsy-zero channel
+def test_deauth_flood_channel_zero_is_honoured(tmp_path):
+    g = _bcast_gate(tmp_path)
+    chans = []
+    rf = BroadcastRF(gate=g, sender=lambda *a: None,
+                     set_channel=lambda iface, ch: chans.append(ch),
+                     clock=_Clock(step=3.0), sleep=lambda *_: None)
+    rf.deauth_flood(channel=0, duration=3)
+    assert chans == [0]
+
+
+# FIX tests: default target is broadcast address
+def test_deauth_flood_default_target_is_broadcast(tmp_path):
+    from offense.rf_broadcast import BROADCAST  # re-exported via rf_targeted
+    g = _bcast_gate(tmp_path)
+    first_addr1 = []
+
+    def cap_sender(frames, iface, count):
+        if not first_addr1:
+            from scapy.all import Dot11  # type: ignore
+            first_addr1.append(frames[0][Dot11].addr1.lower())
+
+    rf = BroadcastRF(gate=g, sender=cap_sender,
+                     set_channel=lambda *a: None,
+                     clock=_Clock(step=3.0), sleep=lambda *_: None)
+    res = rf.deauth_flood(duration=3)
+    assert res.ok is True
+    assert first_addr1[0] == BROADCAST.lower()
+
+
+# FIX tests: honor_flag_off includes protected
+def test_deauth_flood_honor_flag_off_includes_protected(tmp_path):
+    cfg = {"lab_mode": True, "allow_broadcast": True, "broadcast_armed": True,
+           "protect_bssids": ["aa:bb:cc:dd:ee:ff"],
+           "broadcast": {"channel": 6, "max_tx_power_dbm": 5,
+                         "max_burst_seconds": 3, "honor_protect_bssids": False}}
+    g = Gate(config=cfg, audit_file=tmp_path / "audit.jsonl")
+    targets_seen = []
+
+    def cap_sender(frames, iface, count):
+        from scapy.all import Dot11  # type: ignore
+        targets_seen.append(frames[0][Dot11].addr2.upper())
+
+    rf = BroadcastRF(gate=g, sender=cap_sender,
+                     set_channel=lambda *a: None,
+                     clock=_Clock(step=3.0), sleep=lambda *_: None)
+    res = rf.deauth_flood(duration=3, bssids=["AA:BB:CC:DD:EE:FF"])
+    assert res.ok is True
+    # flag off → protected BSSID must NOT be excluded
+    assert "AA:BB:CC:DD:EE:FF" in targets_seen
+
+
 # ---------------------------------------------------------------------------
 # Task 3: beacon_spam
 # ---------------------------------------------------------------------------
@@ -138,6 +229,34 @@ def test_beacon_spam_armed_transmits(tmp_path):
     res = rf.beacon_spam(ssids=["FreeWiFi", "Starbucks"], duration=3)
     assert res.ok is True
     assert len(sent) == 1      # one burst sent the SSID set
+
+
+# FIX C2: channel pin fail-closed — beacon_spam
+def test_beacon_spam_channel_pin_failure_is_fail_closed(tmp_path):
+    g = _bcast_gate(tmp_path)
+    sent = []
+
+    def bad_set_channel(iface, ch):
+        raise RuntimeError("iw not found")
+
+    rf = BroadcastRF(gate=g, sender=lambda *a: sent.append(a),
+                     set_channel=bad_set_channel,
+                     clock=_Clock(), sleep=lambda *_: None)
+    res = rf.beacon_spam(duration=3)
+    assert res.ok is False
+    assert "channel pin failed" in res.reason
+    assert sent == []
+
+
+# FIX tests: denied when broadcast_armed off
+def test_beacon_spam_denied_when_broadcast_armed_off(tmp_path):
+    g = _bcast_gate(tmp_path, broadcast_armed=False)
+    sent = []
+    rf = BroadcastRF(gate=g, sender=lambda *a: sent.append(a),
+                     set_channel=lambda *a: None, clock=_Clock(), sleep=lambda *_: None)
+    res = rf.beacon_spam(duration=3)
+    assert res.ok is False
+    assert sent == []
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +296,61 @@ def test_assoc_flood_armed_transmits(tmp_path):
     assert len(sent) == 1
 
 
+# FIX C2: channel pin fail-closed — assoc_flood
+def test_assoc_flood_channel_pin_failure_is_fail_closed(tmp_path):
+    g = _bcast_gate(tmp_path)
+    sent = []
+
+    def bad_set_channel(iface, ch):
+        raise RuntimeError("iw not found")
+
+    rf = BroadcastRF(gate=g, sender=lambda *a: sent.append(a),
+                     set_channel=bad_set_channel,
+                     clock=_Clock(), sleep=lambda *_: None)
+    res = rf.assoc_flood("11:22:33:44:55:66", duration=3)
+    assert res.ok is False
+    assert "channel pin failed" in res.reason
+    assert sent == []
+
+
+# FIX I1: dry-run audit
+def test_assoc_flood_dry_run(tmp_path):
+    import json
+    g = _bcast_gate(tmp_path)
+    sent = []
+    rf = BroadcastRF(gate=g, sender=lambda *a: sent.append(a),
+                     set_channel=lambda *a: None, clock=_Clock(), sleep=lambda *_: None,
+                     dry_run=True)
+    res = rf.assoc_flood("11:22:33:44:55:66", duration=3)
+    assert res.ok is True and res.dry_run is True
+    assert res.bursts == 0
+    assert sent == []
+    # verify audit record was written for the dry-run
+    audit_path = tmp_path / "audit.jsonl"
+    lines = audit_path.read_text().splitlines()
+    dry_run_records = [json.loads(l) for l in lines
+                       if "dry-run" in json.loads(l).get("reason", "")]
+    assert any(r["action"] == "assoc_flood" for r in dry_run_records)
+
+
+# FIX N1: spoofed MAC uniqueness
+def test_assoc_flood_spoofed_macs_are_unique(tmp_path):
+    g = _bcast_gate(tmp_path)
+    captured_frames = []
+
+    def cap_sender(frames, iface, count):
+        if not captured_frames:
+            captured_frames.extend(frames)
+
+    rf = BroadcastRF(gate=g, sender=cap_sender,
+                     set_channel=lambda *a: None,
+                     clock=_Clock(step=3.0), sleep=lambda *_: None)
+    rf.assoc_flood("11:22:33:44:55:66", duration=3, clients=16)
+    from scapy.all import Dot11  # type: ignore
+    macs = [f[Dot11].addr2.upper() for f in captured_frames]
+    assert len(macs) == len(set(macs)), "spoofed MACs must be unique"
+
+
 # ---------------------------------------------------------------------------
 # Task 5: ble_spam
 # ---------------------------------------------------------------------------
@@ -211,6 +385,17 @@ def test_ble_spam_dry_run(tmp_path):
     res = rf.ble_spam(duration=3)
     assert res.ok is True and res.dry_run is True
     assert sent == []
+
+
+# FIX I4: ble_spam NotImplemented → clean result
+def test_ble_spam_no_sender_returns_error(tmp_path):
+    """Armed gate, no ble_sender injected → ok=False with 'ble error' in reason."""
+    g = _bcast_gate(tmp_path)
+    # No ble_sender injected; default _ble_advert_send raises NotImplementedError
+    rf = BroadcastRF(gate=g, clock=_Clock(step=3.0), sleep=lambda *_: None)
+    res = rf.ble_spam(duration=3)
+    assert res.ok is False
+    assert "ble error" in res.reason
 
 
 # ---------------------------------------------------------------------------
