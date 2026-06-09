@@ -18,6 +18,7 @@ from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import PlainTextResponse
 
 from kuma_core import authz, database, progress
+from kuma_core.authz import Gate
 from kuma_core.config import settings
 from . import schemas
 from . import state
@@ -148,3 +149,65 @@ def post_action(req: schemas.ActionRequest):
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# ---------------------------------------------------------------------------
+# Kuroshuna control surface
+# ---------------------------------------------------------------------------
+
+def _arm_response(lab: dict) -> schemas.KuroshunaArmResponse:
+    return schemas.KuroshunaArmResponse(
+        lab_mode=bool(lab.get("lab_mode")),
+        kuroshuna_armed=bool(lab.get("kuroshuna_armed")),
+        broadcast_armed=bool(lab.get("broadcast_armed")))
+
+
+@router.post("/kuroshuna/arm", response_model=schemas.KuroshunaArmResponse)
+def kuroshuna_arm(req: schemas.KuroshunaArmRequest):
+    lab = authz._load_lab()
+    if req.armed and not lab.get("lab_mode"):
+        raise HTTPException(status_code=409,
+                            detail="cannot arm: lab_mode is off")
+    lab["kuroshuna_armed"] = bool(req.armed)
+    if not req.armed:
+        lab["broadcast_armed"] = False   # disarming Kuroshuna drops broadcast too
+    authz.save_lab(lab)
+    database.insert_action({
+        "timestamp": _now(), "mode": "kuroshuna",
+        "action": "kuroshuna_arm", "target": "self",
+        "confirmed": 1, "result": "ok",
+        "message": f"kuroshuna_armed -> {bool(req.armed)}", "raw_json": {}})
+    return _arm_response(lab)
+
+
+@router.post("/kuroshuna/broadcast-arm", response_model=schemas.KuroshunaArmResponse)
+def kuroshuna_broadcast_arm(req: schemas.KuroshunaArmRequest):
+    lab = authz._load_lab()
+    if req.armed:
+        if not lab.get("lab_mode"):
+            raise HTTPException(status_code=409,
+                                detail="cannot arm broadcast: lab_mode is off")
+        if not lab.get("allow_broadcast"):
+            raise HTTPException(status_code=409,
+                                detail="cannot arm broadcast: allow_broadcast is off")
+    lab["broadcast_armed"] = bool(req.armed)
+    authz.save_lab(lab)
+    database.insert_action({
+        "timestamp": _now(), "mode": "kuroshuna",
+        "action": "broadcast_arm", "target": "self", "confirmed": 1,
+        "result": "ok", "message": f"broadcast_armed -> {bool(req.armed)}",
+        "raw_json": {}})
+    return _arm_response(lab)
+
+
+@router.post("/kuroshuna/authorize",
+             response_model=schemas.KuroshunaAuthorizeResponse)
+def kuroshuna_authorize(req: schemas.KuroshunaAuthorizeRequest):
+    """The T-Deck calls this BEFORE its own ESP32 radio transmits, so the Pi gate
+    stays authoritative. The gate audits every decision."""
+    gate = Gate()  # reads current lab_targets.json
+    if req.action == "broadcast":
+        allowed, reason = gate.broadcast_allowed()
+    else:
+        allowed, reason = gate.is_authorized(req.target, req.action)
+    return schemas.KuroshunaAuthorizeResponse(allowed=allowed, reason=reason)

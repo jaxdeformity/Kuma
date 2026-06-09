@@ -77,3 +77,23 @@ class ActionResponse(BaseModel):
     accepted: bool
     result: str
     message: str
+
+
+class KuroshunaArmRequest(BaseModel):
+    armed: bool
+
+
+class KuroshunaArmResponse(BaseModel):
+    lab_mode: bool
+    kuroshuna_armed: bool
+    broadcast_armed: bool
+
+
+class KuroshunaAuthorizeRequest(BaseModel):
+    target: str
+    action: str
+
+
+class KuroshunaAuthorizeResponse(BaseModel):
+    allowed: bool
+    reason: str
