@@ -1,6 +1,7 @@
 // KUMA Guard T-Deck - UI implementation (LovyanGFX).
 #include "kuma_ui.h"
 #include "bear_sprites_data.h"
+#include "evo_sprites_data.h"       // evo1..evo5 packs; reuses BearSprite, include AFTER base
 #include "offline_sprites_data.h"   // reuses BearSprite; include AFTER bear sprites
 #include "kuma_logo_data.h"
 #include "kuma_bg_data.h"
@@ -226,8 +227,11 @@ void drawHome(const KumaStatus& s) {
     bool calm = (bs == BearState::Sleeping || bs == BearState::Foraging
                  || bs == BearState::HoneyTrap);
     int si = calm ? modeSpriteIndex(s.mode) : bearSpriteIndex(bs);
+    // Pick the sprite pack for the active evolution form (states -> base pack).
+    const BearSprite* pack = evoPackFor(s.spriteSet.c_str());
+    if (!pack) pack = BEAR_SPRITES;
     if (si >= 0) {
-      const BearSprite& sp = BEAR_SPRITES[si];
+      const BearSprite& sp = pack[si];
       int dw = (int)(sp.w * SC), dh = (int)(sp.h * SC);
       if (!g->drawPng(sp.data, sp.len, 160 - dw / 2, CY - dh / 2 + bob, 0, 0, 0, 0, SC, SC))
         drawBear(g, bs, 160, CY + bob, 78);   // decode hiccup -> algorithmic fallback
@@ -353,7 +357,7 @@ void drawSettings(const SettingsView& v) {
       case SET_CREDITS: {
         // KUMA was designed & built by Jax. Tip of the hat on his own hardware.
         g->setTextColor(CYAN, rowBg); g->setCursor(cx, y + 7);
-        g->print("by Jax");
+        g->print("jaxdeformity");
         break;
       }
       case SET_REBOOT:
