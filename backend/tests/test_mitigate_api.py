@@ -37,4 +37,4 @@ def test_mitigate_attributes_newest_high_sev_bssid(client, temp_db):
     body = r.json()
     assert body["applied"] is True
     assert body["target"] == "AA:BB:CC:DD:EE:FF"
-    assert body["action"] == "harden+redirect"
+    assert body["action"] == "harden"   # zero-config default (no backup configured)
