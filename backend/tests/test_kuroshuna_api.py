@@ -25,7 +25,9 @@ def lab_file(tmp_path, monkeypatch):
 
 
 @pytest.fixture()
-def client(temp_db, lab_file):
+def client(temp_db, lab_file, tmp_path, monkeypatch):
+    from kuma_core import kuroshuna_stats
+    monkeypatch.setattr(kuroshuna_stats, "STATS_FILE", tmp_path / "ks.json")
     with TestClient(app) as c:
         yield c
 
