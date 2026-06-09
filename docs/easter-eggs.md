@@ -84,6 +84,27 @@ or `curl -X POST .../api/unlock -d token=...` -> backend adds `backgFLAG` to
 
 ---
 
+## 🥚🥚🥚 Shuna — "the waifu in the walls" (VERY hard, to design)
+
+Unlocking the **Shuna** character skin (sprite pack + シュナ wordmark, baked but
+gated) is the hardest egg. It changes the displayed name to シュナ on the dashboard
+and in battle and swaps the whole sprite set. Jax's own unit has it on by default
+(`character: shuna` in his Pi config); everyone else must earn it.
+
+Mechanic (to finalize): a multi-step chain that forces real work on the device
+terminal AND over SSH — e.g.:
+1. A breadcrumb only visible while a live deauth/handshake event is firing (the
+   detector logs a one-line hint to a rotating file).
+2. That hint points to a flag split across two places (defense-in-depth): part in
+   an `IEND`-appended PNG (carve), part in a systemd journal entry (`journalctl`
+   grep), XOR-combined.
+3. The combined token unlocks `character: shuna` via `POST /api/unlock`.
+
+Reward asset note: Shuna's sprites are **baked into the firmware** (bake-and-gate),
+so the unlock flips display only. Keeping the `designs/sprites/shuna/` source out
+of the public repo would preserve more surprise — **open decision** (currently the
+source IS committed).
+
 ## Notes
 - The reward pixels live in the firmware binary (decision: bake + gate). The
   challenge is earning the unlock flag, not extracting the asset.
