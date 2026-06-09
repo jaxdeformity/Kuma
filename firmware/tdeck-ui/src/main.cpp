@@ -137,6 +137,12 @@ void loop() {
     g_lastStatusPoll = now;
     KumaStatus tmp;
     if (kuma_api::fetchStatus(tmp)) {
+      // Toast when a new network appears between polls; guard s_lastNetCount
+      // nonzero so the very first poll doesn't toast the whole backlog.
+      static uint32_t s_lastNetCount = 0;
+      if (s_lastNetCount && tmp.networkCount > s_lastNetCount)
+        kuma_ui::toast(String("+1 EXP  new network (") + tmp.networkCount + ")");
+      s_lastNetCount = tmp.networkCount;
       g_status = tmp; g_statusFails = 0;          // good poll -> update
     } else if (++g_statusFails >= 3) {
       g_status.online = false;                    // only after 3 fails (~6s)
