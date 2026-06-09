@@ -102,3 +102,13 @@ class KuroshunaAuthorizeRequest(BaseModel):
 class KuroshunaAuthorizeResponse(BaseModel):
     allowed: bool
     reason: str
+
+
+class BroadcastAttackRequest(BaseModel):
+    attack: str   # gemini | deauth | aoi | rengoku | bankai
+
+
+class BroadcastAttackResponse(BaseModel):
+    started: bool
+    attack: str
+    reason: str = ""

