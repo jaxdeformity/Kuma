@@ -26,6 +26,7 @@ int     g_start  = 0;                      // ring index of the oldest retained 
 int     g_count  = 0;                      // number of valid lines (<= SCROLLBACK)
 int     g_scroll = 0;                      // lines scrolled up from bottom (0 = live)
 String  g_cwd = "~";                       // tracked from the Pi shell responses
+int     g_kuroPending = 0;                 // 0 none, 1 arm-kuroshuna, 2 arm-broadcast
 
 lgfx::LovyanGFX* G() { return fbReady ? (lgfx::LovyanGFX*)&FB : (lgfx::LovyanGFX*)D; }
 
@@ -102,6 +103,7 @@ const char* HELP[] = {
   "built-ins:",
   " status / events / net   KUMA summaries",
   " mode <name>             switch KUMA mode",
+  " kuroshuna [arm|broadcast|off]  gloves off (confirm)",
   " clear / exit",
 };
 
@@ -113,6 +115,16 @@ void exec(const String& raw) {
   String cmd = (sp < 0) ? line : line.substring(0, sp);
   String arg = (sp < 0) ? "" : line.substring(sp + 1); arg.trim();
   cmd.toLowerCase();
+
+  if (g_kuroPending && (cmd == "confirm" || cmd == "y" || cmd == "yes")) {
+    bool ok = (g_kuroPending == 1) ? kuma_api::armKuroshuna(true)
+                                   : kuma_api::armBroadcast(true);
+    putLine(ok ? "* KUROSHUNA armed - gloves off"
+               : "! arm refused (lab_mode/allow_broadcast off on the Pi?)");
+    g_kuroPending = 0;
+    return;
+  }
+  if (g_kuroPending) { g_kuroPending = 0; putLine("(kuroshuna confirm cancelled)"); }
 
   if (cmd == "help") { for (auto h : HELP) putLine(h); }
   else if (cmd == "clear") { g_count = 0; g_start = 0; g_scroll = 0; }
@@ -142,6 +154,28 @@ void exec(const String& raw) {
     if (arg.length() == 0) { putLine("! usage: mode <name>"); return; }
     bool ok = kuma_api::setMode(m);
     putLine(ok ? (String("* mode -> ") + arg) : "! mode change failed");
+  }
+  else if (cmd == "kuroshuna" || cmd == "kuro") {
+    String a = arg; a.toLowerCase();
+    if (a == "status" || a == "") {
+      KumaStatus s;
+      if (!kuma_api::fetchStatus(s)) { putLine("! backend offline"); return; }
+      putLine(String("kuroshuna: ") + (s.kuroshunaArmed ? "ARMED" : "disarmed")
+              + "  broadcast: " + (s.broadcastArmed ? "ARMED" : "off"));
+    } else if (a == "arm" || a == "on") {
+      putLine("! KUROSHUNA = gloves off (active offense vs approved targets).");
+      putLine("! type 'kuroshuna confirm' to arm.");
+      g_kuroPending = 1;
+    } else if (a == "broadcast") {
+      putLine("! BROADCAST tier = INDISCRIMINATE: transmits to EVERYTHING in range.");
+      putLine("! only with physical RF isolation. type 'kuroshuna confirm' to arm.");
+      g_kuroPending = 2;
+    } else if (a == "off" || a == "disarm") {
+      bool ok = kuma_api::armKuroshuna(false);   // disarm also clears broadcast on the Pi
+      putLine(ok ? "* KUROSHUNA disarmed" : "! disarm failed");
+    } else {
+      putLine("! usage: kuroshuna [status|arm|broadcast|off]");
+    }
   }
   else if (cmd == "get") {
     if (arg.length() == 0) { putLine("! usage: get <path>"); return; }
