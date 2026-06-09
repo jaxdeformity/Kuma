@@ -68,6 +68,9 @@ bool fetchStatus(KumaStatus& out) {
   out.wifiInterface    = doc["wifi_interface"]  | "wlan1mon";
   out.kuroshunaArmed   = doc["kuroshuna_armed"] | false;
   out.broadcastArmed   = doc["broadcast_armed"] | false;
+  out.pwnedCount       = doc["pwned_count"] | 0;
+  out.txFrames         = doc["tx_frames"]   | 0;
+  out.txActive         = doc["tx_active"]   | false;
   out.online           = true;
   return true;
 }

@@ -21,6 +21,9 @@ struct KumaStatus {
   bool      online = false;       // false => backend unreachable
   bool      kuroshunaArmed = false;  // Tier A offensive arm (gloves off)
   bool      broadcastArmed = false;  // Tier B broadcast arm
+  uint32_t  pwnedCount = 0;   // networks/hosts with any successful offense
+  uint32_t  txFrames = 0;     // attack frames transmitted this session
+  bool      txActive = false; // adapter injecting right now
 };
 
 struct KumaEvent {
