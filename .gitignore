@@ -53,3 +53,6 @@ designs/sprites/kuroshuna/hires/
 
 # Cloned source repos (pwnagotchi / Bjorn / Bruce), read-only reference only
 reference/
+
+# Captured WPA handshakes (sensitive; local only)
+backend/data/handshakes/
