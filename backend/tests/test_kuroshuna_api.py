@@ -156,3 +156,14 @@ def test_status_has_combat_stats(client):
     assert body["pwned_count"] == 0
     assert body["tx_frames"] == 0
     assert body["tx_active"] is False
+
+
+# ---------------------------------------------------------------------------
+# XP UI: /api/status exposes xp_into_level + xp_to_next
+# ---------------------------------------------------------------------------
+
+def test_status_has_xp_progress(client):
+    body = client.get("/api/status").json()
+    assert "xp_into_level" in body and "xp_to_next" in body
+    # default progress: level 1, 0 into level, 30 to next (creator_mode off in tests)
+    assert body["xp_into_level"] + body["xp_to_next"] == 30

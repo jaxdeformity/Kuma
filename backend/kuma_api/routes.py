@@ -52,6 +52,8 @@ def get_status() -> schemas.StatusResponse:
         backend_status="online",
         level=prog["level"],
         xp=prog["xp"],
+        xp_into_level=prog.get("xp_into_level", 0),
+        xp_to_next=prog.get("xp_to_next", 30),
         network_count=database.count_networks(),
         sprite_set=prog["sprite_set"],
         background=prog.get("background", "backg1"),

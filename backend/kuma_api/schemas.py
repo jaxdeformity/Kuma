@@ -20,6 +20,8 @@ class StatusResponse(BaseModel):
     backend_status: str = "online"
     level: int = 1
     xp: int = 0
+    xp_into_level: int = 0    # XP earned into the current level (0..XP_PER_LEVEL-1)
+    xp_to_next: int = 30      # XP remaining to the next level
     network_count: int = 0
     sprite_set: str = "states"
     background: str = "backg1"   # home background the firmware should show
