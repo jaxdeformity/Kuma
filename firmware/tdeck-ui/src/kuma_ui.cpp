@@ -200,19 +200,33 @@ void drawHome(const KumaStatus& s) {
   // --- top bar: クロシュナ/シュナ/クマ wordmark + level, online dot ------
   bool kuro  = s.kuroshunaArmed;
   bool shuna = (s.character == "shuna");
-  const uint16_t KURO_ACCENT = 0x901F;   // purple-magenta (RGB565)
-  uint16_t accent = kuro ? KURO_ACCENT : 0x2945;
-  uint16_t logoW = kuro ? KUROSHUNA_LOGO_W : (shuna ? SHUNA_LOGO_W : KUMA_LOGO_W);
-  if (kuro)        g->drawPng(KUROSHUNA_LOGO, sizeof KUROSHUNA_LOGO, 8, 3);
-  else if (shuna)  g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 8, 3);
-  else             g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);
-  g->setTextSize(1); g->setTextColor(kuro ? KURO_ACCENT : GREEN);
-  g->setCursor(8 + logoW + 8, 11);
-  g->printf("Lv %u", s.level);
-  g->fillCircle(244, 12, 4, s.online ? (kuro ? RED : GREEN) : RED);
-  g->setTextColor(s.online ? (kuro ? RED : GREEN) : RED); g->setCursor(254, 9);
-  g->print(s.online ? "ONLINE" : "OFFLINE");
-  g->drawFastHLine(0, 26, 320, accent);
+  const uint16_t KURO_RED  = 0xF800;   // blood red
+  const uint16_t KURO_HOT  = 0xFD20;   // hot orange-red (active inject light)
+  if (kuro) {
+    // MIRRORED top bar: status dot + ARMED on LEFT; wordmark + Lv on RIGHT
+    g->fillCircle(16, 12, 4, KURO_HOT);
+    g->setTextSize(1); g->setTextColor(KURO_RED); g->setCursor(26, 9);
+    g->print("ARMED");
+    // wordmark right-aligned
+    int wx = 320 - 8 - (int)KUROSHUNA_LOGO_W;
+    g->drawPng(KUROSHUNA_LOGO, sizeof KUROSHUNA_LOGO, wx, 3);
+    char lv[12]; snprintf(lv, sizeof lv, "Lv %u", s.level);
+    int lw = (int)strlen(lv) * 6;
+    g->setTextColor(KURO_RED); g->setCursor(wx - 8 - lw, 11); g->print(lv);
+    g->drawFastHLine(0, 26, 320, KURO_RED);
+  } else {
+    // Normal top bar: wordmark + level on LEFT, online dot + label on RIGHT
+    uint16_t logoW = shuna ? SHUNA_LOGO_W : KUMA_LOGO_W;
+    if (shuna) g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 8, 3);
+    else       g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);
+    g->setTextSize(1); g->setTextColor(GREEN);
+    g->setCursor(8 + logoW + 8, 11);
+    g->printf("Lv %u", s.level);
+    g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
+    g->setTextColor(s.online ? GREEN : RED); g->setCursor(254, 9);
+    g->print(s.online ? "ONLINE" : "OFFLINE");
+    g->drawFastHLine(0, 26, 320, 0x2945);
+  }
 
   // --- bear, centered + scaled up to fill the face -----------------------
   static const int BOB[4] = {0, -3, -4, -3};
@@ -262,20 +276,42 @@ void drawHome(const KumaStatus& s) {
   // (no mood/threat text - the bear's state conveys what's going on)
 
   // --- stat bar (no threat readout) --------------------------------------
-  g->drawFastHLine(0, 206, 320, accent);
-  const int   cxs[4]    = {40, 120, 200, 280};
-  const char* labels[4] = {"UPTIME", "EVENTS", "NETWORKS", "SENSOR"};
-  char up[16]; hms(s.uptimeSeconds, up);
-  char ev[8]; snprintf(ev, sizeof ev, "%u", s.eventsLast10m);
-  char nw[8]; snprintf(nw, sizeof nw, "%u", s.networkCount);
-  const char* vals[4] = {up, ev, nw, s.online ? s.wifiInterface.c_str() : "--"};
-  uint16_t vcol[4] = {FG, FG, CYAN, FG};
-  g->setTextSize(1);
-  for (int i = 0; i < 4; ++i) {
-    g->setTextColor(GREY);
-    g->setCursor(cxs[i] - (int)strlen(labels[i]) * 3, 212); g->print(labels[i]);
-    g->setTextColor(vcol[i]);
-    g->setCursor(cxs[i] - (int)strlen(vals[i]) * 3, 226); g->print(vals[i]);
+  if (kuro) {
+    // Kuroshuna combat stat strip: TX (live light + count) | PWNED | UPTIME
+    g->drawFastHLine(0, 206, 320, KURO_RED);
+    char up[16]; hms(s.uptimeSeconds, up);
+    char tx[8]; snprintf(tx, sizeof tx, "%u", s.txFrames);
+    char pw[8]; snprintf(pw, sizeof pw, "%u", s.pwnedCount);
+    const int cxs[3] = {60, 160, 270};
+    const char* labels[3] = {"TX", "PWNED", "UPTIME"};
+    const char* vals[3]   = {tx, pw, up};
+    g->setTextSize(1);
+    for (int i = 0; i < 3; ++i) {
+      g->setTextColor(0x9925);   // dim red label
+      g->setCursor(cxs[i] - (int)strlen(labels[i]) * 3, 212); g->print(labels[i]);
+      g->setTextColor(KURO_RED);
+      g->setCursor(cxs[i] - (int)strlen(vals[i]) * 3, 226); g->print(vals[i]);
+    }
+    // TX live light, just left of the TX value
+    uint16_t lit = s.txActive ? KURO_HOT : 0x5800;
+    g->fillCircle(cxs[0] - (int)strlen(tx) * 3 - 7, 229, 3, lit);
+  } else {
+    // Normal 4-cell stat bar: UPTIME | EVENTS | NETWORKS | SENSOR
+    g->drawFastHLine(0, 206, 320, 0x2945);
+    const int   cxs[4]    = {40, 120, 200, 280};
+    const char* labels[4] = {"UPTIME", "EVENTS", "NETWORKS", "SENSOR"};
+    char up[16]; hms(s.uptimeSeconds, up);
+    char ev[8]; snprintf(ev, sizeof ev, "%u", s.eventsLast10m);
+    char nw[8]; snprintf(nw, sizeof nw, "%u", s.networkCount);
+    const char* vals[4] = {up, ev, nw, s.online ? s.wifiInterface.c_str() : "--"};
+    uint16_t vcol[4] = {FG, FG, CYAN, FG};
+    g->setTextSize(1);
+    for (int i = 0; i < 4; ++i) {
+      g->setTextColor(GREY);
+      g->setCursor(cxs[i] - (int)strlen(labels[i]) * 3, 212); g->print(labels[i]);
+      g->setTextColor(vcol[i]);
+      g->setCursor(cxs[i] - (int)strlen(vals[i]) * 3, 226); g->print(vals[i]);
+    }
   }
 
   if (fbReady) fb.pushSprite(D, 0, 0);
