@@ -199,6 +199,22 @@ bool armBroadcast(bool armed) {
   return code == 200;
 }
 
+bool authorizeAction(const String& target, const String& action) {
+  if (!wifiConnected()) return false;
+  HTTPClient http;
+  http.setTimeout(2000);
+  if (!http.begin(baseUrl() + "/api/kuroshuna/authorize")) return false;
+  http.addHeader("Content-Type", "application/json");
+  String body = String("{\"target\":\"") + target + "\",\"action\":\"" + action + "\"}";
+  int code = http.POST(body);
+  if (code != 200) { http.end(); return false; }
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, http.getStream());
+  http.end();
+  if (err) return false;
+  return doc["allowed"] | false;
+}
+
 bool sendAction(const char* action, bool confirm) {
   if (!wifiConnected()) return false;
   HTTPClient http;
