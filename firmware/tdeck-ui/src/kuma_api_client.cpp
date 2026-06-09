@@ -65,8 +65,10 @@ bool fetchStatus(KumaStatus& out) {
   out.background    = doc["background"]      | "backg1";
   out.creator       = doc["creator"]         | false;
   out.character     = doc["character"]       | "kuma";
-  out.wifiInterface = doc["wifi_interface"] | "wlan1mon";
-  out.online        = true;
+  out.wifiInterface    = doc["wifi_interface"]  | "wlan1mon";
+  out.kuroshunaArmed   = doc["kuroshuna_armed"] | false;
+  out.broadcastArmed   = doc["broadcast_armed"] | false;
+  out.online           = true;
   return true;
 }
 
@@ -171,6 +173,30 @@ String shell(const String& cmd, String& cwdOut) {
   if (deserializeJson(rd, resp)) return resp;     // not JSON, show raw
   cwdOut = rd["cwd"] | cwdOut;
   return rd["out"] | "";
+}
+
+bool armKuroshuna(bool armed) {
+  if (!wifiConnected()) return false;
+  HTTPClient http;
+  http.setTimeout(2000);
+  if (!http.begin(baseUrl() + "/api/kuroshuna/arm")) return false;
+  http.addHeader("Content-Type", "application/json");
+  String body = String("{\"armed\":") + (armed ? "true" : "false") + "}";
+  int code = http.POST(body);
+  http.end();
+  return code == 200;
+}
+
+bool armBroadcast(bool armed) {
+  if (!wifiConnected()) return false;
+  HTTPClient http;
+  http.setTimeout(2000);
+  if (!http.begin(baseUrl() + "/api/kuroshuna/broadcast-arm")) return false;
+  http.addHeader("Content-Type", "application/json");
+  String body = String("{\"armed\":") + (armed ? "true" : "false") + "}";
+  int code = http.POST(body);
+  http.end();
+  return code == 200;
 }
 
 bool sendAction(const char* action, bool confirm) {

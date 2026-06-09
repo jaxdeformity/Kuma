@@ -19,6 +19,8 @@ struct KumaStatus {
   String    character = "kuma";    // character skin: kuma | shuna
   String    wifiInterface;        // sensor iface
   bool      online = false;       // false => backend unreachable
+  bool      kuroshunaArmed = false;  // Tier A offensive arm (gloves off)
+  bool      broadcastArmed = false;  // Tier B broadcast arm
 };
 
 struct KumaEvent {
@@ -49,4 +51,6 @@ namespace kuma_api {
   String get(const String& path);                 // raw GET (for the terminal)
   String shell(const String& cmd, String& cwdOut);// POST /api/shell -> combined output
   bool sendAction(const char* action, bool confirm);  // POST /api/action
+  bool armKuroshuna(bool armed);   // POST /api/kuroshuna/arm
+  bool armBroadcast(bool armed);   // POST /api/kuroshuna/broadcast-arm
 }
