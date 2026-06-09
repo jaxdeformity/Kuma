@@ -65,10 +65,17 @@ class Gate:
         t = _norm(target)
         if not t:
             return False, "empty target"
+        if self._matches(t, self._protected()):
+            return False, "protected/own-infra (hard deny)"
         approved = {_norm(a) for a in self.cfg.get("approved_targets", [])}
         if self._matches(t, approved):
             return True, "approved_targets allowlist"
         return False, "not in authorized set"
+
+    def _protected(self) -> set[str]:
+        prot = {_norm(b) for b in self.cfg.get("protect_bssids", [])}
+        prot |= {_norm(b) for b in self.cfg.get("own_infra", [])}
+        return prot
 
     def _matches(self, target: str, allow: set[str]) -> bool:
         if target in allow:

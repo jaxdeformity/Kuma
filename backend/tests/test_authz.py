@@ -29,3 +29,24 @@ def test_unlisted_target_denied_when_armed(tmp_path):
     allowed, reason = g.is_authorized("11:22:33:44:55:66", "deauth")
     assert allowed is False
     assert "not in authorized set" in reason
+
+
+def test_protect_bssid_hard_denied_even_if_approved(tmp_path):
+    # An own AP mistakenly also listed in approved_targets must STILL be denied.
+    g = Gate(config=_armed_cfg(
+        approved_targets=["aa:bb:cc:dd:ee:ff"],
+        protect_bssids=["aa:bb:cc:dd:ee:ff"]),
+        audit_file=tmp_path / "a.jsonl")
+    allowed, reason = g.is_authorized("AA:BB:CC:DD:EE:FF", "deauth")
+    assert allowed is False
+    assert "hard deny" in reason
+
+
+def test_own_infra_hard_denied(tmp_path):
+    g = Gate(config=_armed_cfg(
+        approved_targets=["192.168.50.0/24"],
+        own_infra=["192.168.50.225"]),       # the Lily
+        audit_file=tmp_path / "a.jsonl")
+    allowed, reason = g.is_authorized("192.168.50.225", "ssh_brute")
+    assert allowed is False
+    assert "hard deny" in reason
