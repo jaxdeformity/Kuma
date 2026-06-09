@@ -35,7 +35,8 @@ HIRES = os.path.join(ART, "hires")
 
 WHITE = (255, 255, 255)
 FLOOD_TOL = 60            # border flood-fill radius around white -> transparent
-TARGET_H = 128
+TARGET_H = 192            # bake near display res; firmware draws ~1:1 (no blocky upscale)
+POCKET_MIN = 1100         # hi-res pocket cutoff: her whites <=731px, bg pockets >=1633px
 
 # (source filename stem, output frame name) in firmware order
 SOURCES = [
@@ -79,12 +80,15 @@ def flood_key(cell, tol=FLOOD_TOL):
     return cell
 
 
-def remove_white_pockets(cell, min_size=25, tol=58):
+def remove_white_pockets(cell, min_size=POCKET_MIN, tol=58):
     """Clear near-white components LARGER than min_size that the border flood
     couldn't reach - trapped pockets like the apex/defend shield interiors and
-    the gap under her arm. Her own highlights are tiny (<=~19px) so they survive;
-    only big enclosed white blobs are removed. (Measured component sizes: clean
-    frames <=16, foraging arm-gap 64, defend shield 35-50, apex shield 562-913.)"""
+    the gap under her arm. Runs at HI-RES (1254px) before the resize, so the
+    cutoff is large: measured at hi-res her legit whites (eye glints, ears,
+    highlights) max ~731px (sentinel 731, alert 607, honey 452) while bg pockets
+    are all >=1633px (foraging arm-gap 1633/3664, defend shield ~3000-4500, apex
+    shield 43878/71651/73213). min_size=1100 sits in the clean 731->1633 gap, so
+    her eyes/ears survive and only the trapped background blobs are removed."""
     px = cell.load()
     w, h = cell.size
     seen = bytearray(w * h)

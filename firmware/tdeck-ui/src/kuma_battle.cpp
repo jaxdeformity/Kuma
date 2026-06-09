@@ -72,6 +72,14 @@ void drawBg() {
 }
 void spr(const BearSprite& s, int x, int y) { G()->drawPng(s.data, s.len, x, y); }
 
+// player sprite scaled to a battle-friendly height: KB poses are 120px (->1:1),
+// Shuna poses are now 192px (->0.625x). Bottom-anchored at yBottom so her feet
+// stay put regardless of source height. Enemy/skull stay native via spr().
+void sprP(const BearSprite& s, int x, int yBottom, int targetH = 120) {
+  float ps = (float)targetH / s.h;
+  G()->drawPng(s.data, s.len, x, yBottom - (int)(s.h * ps), 0, 0, 0, 0, ps, ps);
+}
+
 void hpbar(int x, int y, int w, int cur, int mx) {
   float p = mx ? (float)cur / mx : 0; if (p<0) p=0;
   uint16_t c = p>0.5f?GREEN : p>0.22f?AMBER : RED;
@@ -95,7 +103,7 @@ void scene(const char* msg, int menuMode, int sel, const BearSprite& kuma,
   spr(SKULL_S, 120, 18);                            // unknown rank (big skull)
   hpbar(10, 44, 162, eHp, eMax);
   // KUMA sprite (bottom-left)
-  spr(kuma, 6, 238 - kuma.h);
+  sprP(kuma, 6, 238);
   // KUMA info (right of sprite)
   if (g_shuna) g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 150, 116);
   else         g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 150, 116);
@@ -266,7 +274,7 @@ void run(int en, uint16_t lvl) {
     lgfx::LovyanGFX* g2 = G(); drawBg();
     g2->setTextSize(3); g2->setTextColor(GREEN); g2->setCursor(70, 40); g2->print("VICTORY!");
     g2->setTextSize(1); g2->setTextColor(CYAN); g2->setCursor(96, 76); g2->print("DATA SECURED");
-    spr(pVictory(), 110, 96); push();
+    sprP(pVictory(), 110, 216); push();
     delay(13000);                          // hold through the victory track
   } else {
     lgfx::LovyanGFX* g2 = G(); drawBg();
@@ -292,7 +300,7 @@ bool deployPrompt(int en, uint16_t lvl) {
       g->setTextSize(1); g->setTextColor(AMBER, BG);
       g->setCursor(14, 34); g->printf("Hostile %s locked on", EN_NAME[en]);
       const BearSprite& es = ENEMY_SPRITES[en]; spr(es, 318 - es.w, 44);
-      spr(pClip(5), 6, 238 - pClip(5).h);   // alert KUMA/SHUNA
+      sprP(pClip(5), 6, 238);               // alert KUMA/SHUNA
       g->setTextSize(2); g->setTextColor(CYAN, BG);
       g->setCursor(120, 92);  g->print("DEPLOY");
       g->setCursor(120, 116); g->print("COUNTER-");

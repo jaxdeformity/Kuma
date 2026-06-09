@@ -212,8 +212,10 @@ void drawHome(const KumaStatus& s) {
   // --- bear, centered + scaled up to fill the face -----------------------
   static const int BOB[4] = {0, -3, -4, -3};
   int bob = BOB[(millis() / 240) % 4];           // gentle idle bob, like the web
-  const float SC = 1.35f;                         // upscale so the bear fills the screen
+  const int   DISP_H = 172;                        // target on-screen sprite height
   const int   CY = 118;                           // vertical center between the HUD bands
+  // SC is per-sprite: 128px bear packs -> ~1.34x (unchanged look), 192px Shuna
+  // -> ~0.90x clean downscale, so the detailed art stays crisp (no double resample).
   if (!s.online) {
     // OFFLINE: Kuma paces around hunting for a signal - a 6-frame loop
     // (idle/check/no-link/retry/frustrated) plus a slow horizontal walk.
@@ -222,6 +224,7 @@ void drawHome(const KumaStatus& s) {
     int pace = (t < 3000) ? (int)t : 6000 - (int)t;     // 0..3000..0
     int cx = 115 + pace * 90 / 3000;                    // drift x=115..205 gently
     const BearSprite& sp = OFFLINE_SPRITES[f];
+    float SC = (float)DISP_H / sp.h;
     int dw = (int)(sp.w * SC), dh = (int)(sp.h * SC);
     if (!g->drawPng(sp.data, sp.len, cx - dw / 2, CY - dh / 2 + bob, 0, 0, 0, 0, SC, SC))
       drawBear(g, BearState::Error, cx, CY + bob, 72);   // decode hiccup fallback
@@ -237,6 +240,7 @@ void drawHome(const KumaStatus& s) {
     if (!pack) pack = BEAR_SPRITES;
     if (si >= 0) {
       const BearSprite& sp = pack[si];
+      float SC = (float)DISP_H / sp.h;
       int dw = (int)(sp.w * SC), dh = (int)(sp.h * SC);
       if (!g->drawPng(sp.data, sp.len, 160 - dw / 2, CY - dh / 2 + bob, 0, 0, 0, 0, SC, SC))
         drawBear(g, bs, 160, CY + bob, 78);   // decode hiccup -> algorithmic fallback
