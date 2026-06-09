@@ -21,6 +21,7 @@ String loadedBg = "";       // which home background bgDash currently holds
 static void bgDataFor(const String& name, const uint8_t*& data, size_t& len) {
   if (name == "backg2")        { data = KUMA_BG_DASH2; len = KUMA_BG_DASH2_LEN; }
   else if (name == "backgFLAG"){ data = KUMA_BG_FLAG;  len = KUMA_BG_FLAG_LEN;  }
+  else if (name == "kuroshuna"){ data = KUMA_BG_KURO;  len = KUMA_BG_KURO_LEN;  }
   else                         { data = KUMA_BG_DASH1; len = KUMA_BG_DASH1_LEN; }
 }
 
@@ -196,7 +197,8 @@ void drawHome(const KumaStatus& s) {
                                : static_cast<lgfx::LovyanGFX*>(D);
   // Pick the home background the backend selected (creator unit -> backgFLAG).
   // Only re-decodes when it actually changes.
-  ensureHomeBg(s.online ? s.background : String("backg1"));
+  ensureHomeBg(s.kuroshunaArmed ? String("kuroshuna")
+                                : (s.online ? s.background : String("backg1")));
   // home background (text drawn transparent so the scene shows through)
   if (fbReady && bgReady) {
     bgDash.pushSprite(&fb, 0, 0);

@@ -38,6 +38,8 @@ ASSETS = [
     ("evochamber", "KUMA_BG_EVO",     "bg_evo.png"),
     # Creator-unit showcase background (creator_mode). Also the README hero bg.
     ("backgFLAG",  "KUMA_BG_FLAG",    "bg_flag.png"),
+    # Kuroshuna armed-mode home background (dark shrine / red evil-twin).
+    ("kuroshuna",  "KUMA_BG_KURO",    "bg_kuroshuna.png"),
 ]
 
 
