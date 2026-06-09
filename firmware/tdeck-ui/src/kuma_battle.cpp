@@ -274,6 +274,8 @@ void run(int en, uint16_t lvl) {
     lgfx::LovyanGFX* g2 = G(); drawBg();
     g2->setTextSize(3); g2->setTextColor(GREEN); g2->setCursor(70, 40); g2->print("VICTORY!");
     g2->setTextSize(1); g2->setTextColor(CYAN); g2->setCursor(96, 76); g2->print("DATA SECURED");
+    // 10 == progress.REWARDS["battle_win"] on the Pi backend
+    g2->setTextColor(GREEN); g2->setCursor(120, 96); g2->print("+10 EXP");
     sprP(pVictory(), 110, 216); push();
     delay(13000);                          // hold through the victory track
   } else {
