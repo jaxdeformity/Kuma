@@ -59,4 +59,5 @@ namespace kuma_api {
   bool armKuroshuna(bool armed);   // POST /api/kuroshuna/arm
   bool armBroadcast(bool armed);   // POST /api/kuroshuna/broadcast-arm
   bool authorizeAction(const String& target, const String& action);  // POST /api/kuroshuna/authorize
+  bool broadcastAttack(const String& name);  // POST /api/kuroshuna/broadcast {"attack":name}
 }

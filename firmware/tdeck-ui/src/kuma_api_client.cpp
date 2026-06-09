@@ -220,6 +220,18 @@ bool authorizeAction(const String& target, const String& action) {
   return doc["allowed"] | false;
 }
 
+bool broadcastAttack(const String& name) {
+  if (!wifiConnected()) return false;
+  HTTPClient http;
+  http.setTimeout(2000);
+  if (!http.begin(baseUrl() + "/api/kuroshuna/broadcast")) return false;
+  http.addHeader("Content-Type", "application/json");
+  String body = String("{\"attack\":\"") + name + "\"}";
+  int code = http.POST(body);
+  http.end();
+  return code == 200;
+}
+
 bool sendAction(const char* action, bool confirm) {
   if (!wifiConnected()) return false;
   HTTPClient http;
