@@ -143,3 +143,14 @@ def test_authorize_broadcast_action_uses_broadcast_gate(client, lab_file):
     r2 = client.post("/api/kuroshuna/authorize",
                      json={"target": "*", "action": "broadcast"})
     assert r2.json()["allowed"] is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 8: /api/status exposes combat stats
+# ---------------------------------------------------------------------------
+
+def test_status_has_combat_stats(client):
+    body = client.get("/api/status").json()
+    assert body["pwned_count"] == 0
+    assert body["tx_frames"] == 0
+    assert body["tx_active"] is False

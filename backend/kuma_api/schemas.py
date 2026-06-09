@@ -27,6 +27,9 @@ class StatusResponse(BaseModel):
     character: str = "kuma"      # active character skin: "kuma" | "shuna"
     kuroshuna_armed: bool = False   # Tier A offensive arm (gloves off)
     broadcast_armed: bool = False   # Tier B broadcast arm
+    pwned_count: int = 0      # networks/hosts with any successful offense
+    tx_frames: int = 0        # attack frames transmitted this session
+    tx_active: bool = False   # adapter is injecting right now
 
 
 class EventModel(BaseModel):
