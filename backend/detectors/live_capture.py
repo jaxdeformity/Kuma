@@ -543,6 +543,8 @@ def run(iface: str, channel: int, channels: list[int] | None,
     karma = KarmaTracker()
     harvest = HandshakeHarvestTracker()
     pwnagotchi = PwnagotchiTracker()
+    from detectors.csa_detector import CsaTracker, parse_csa
+    csa = CsaTracker(settings.trusted_networks())   # forged channel-switch / silent-deauth
 
     def _emit(ev: dict | None) -> None:
         if not ev:
@@ -570,6 +572,9 @@ def run(iface: str, channel: int, channels: list[int] | None,
             _emit(beacons.add(bssid, ssid))
             _emit(eviltwin.add(ssid, bssid, ch, beacon_security(pkt),
                                beacon_fingerprint(pkt)))
+            csainfo = parse_csa(pkt)        # forged Channel Switch Announcement (silent deauth)
+            if csainfo:
+                _emit(csa.add(bssid, ssid, ch, *csainfo))
             _record_net(bssid, ssid, beacon_security(pkt), ch, _rssi(pkt))
             return
         # --- probe responses: karma / PineAP ------------------------------
