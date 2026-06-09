@@ -17,15 +17,25 @@ class _FakeGate:
 
 
 def _fake_nmcli(monkeypatch, active_conn="HomeWiFi",
-                active_bssid="AA\\:BB\\:CC\\:DD\\:EE\\:FF", record=None):
-    """Patch subprocess.run so auto-discovery returns a fake active Wi-Fi + BSSID."""
+                active_bssid="AA\\:BB\\:CC\\:DD\\:EE\\:FF", ap_pmf=False, record=None):
+    """Patch subprocess.run so auto-discovery returns a fake active Wi-Fi, BSSID,
+    device, and an `iw scan` whose RSN advertises MFP iff ap_pmf is True."""
+    bssid_plain = active_bssid.replace("\\:", ":").lower()
+
     def run(cmd, *a, **k):
         if record is not None:
             record.append(cmd)
         if "show" in cmd and "--active" in cmd:
-            return _Proc(f"{active_conn}:802-11-wireless\nlo:loopback\n")
+            if "NAME,TYPE" in cmd:
+                return _Proc(f"{active_conn}:802-11-wireless\nlo:loopback\n")
+            if "TYPE,DEVICE" in cmd:
+                return _Proc("802-11-wireless:wlan0\nloopback:lo\n")
         if "device" in cmd and "wifi" in cmd:
             return _Proc(f"yes:{active_bssid}\nno:11\\:22\\:33\\:44\\:55\\:66\n")
+        if cmd and cmd[0] == "iw" and "scan" in cmd:
+            cap = "MFP-capable (0x008c)" if ap_pmf else "(0x000c)"
+            return _Proc(f"BSS {bssid_plain}(on wlan0)\n\tRSN:\t * Version: 1\n"
+                         f"\t\t * Capabilities: 16-PTKSA-RC {cap}\n")
         return _Proc("")
     monkeypatch.setattr(mit.subprocess, "run", run)
 
@@ -41,14 +51,32 @@ def test_canonical_for_zeroconfig_primary():
     assert e.canonical_for("") == "mark"
 
 
-def test_harden_auto_detects_active_connection(monkeypatch):
+def test_harden_auto_detects_and_uses_optional_on_non_pmf_ap(monkeypatch):
     rec = []
-    _fake_nmcli(monkeypatch, active_conn="HomeWiFi", record=rec)
+    _fake_nmcli(monkeypatch, active_conn="HomeWiFi", ap_pmf=False, record=rec)
     e = MitigationEngine(cfg={})   # NO protected_connection configured
     res = e.apply("AA:BB:CC:DD:EE:FF", "deauth_burst")
     assert res["action"] == "harden"
-    assert "HomeWiFi" in res["message"] and "PMF" in res["message"]
-    assert any("802-11-wireless-security.pmf" in " ".join(c) for c in rec)
+    assert "HomeWiFi" in res["message"] and "PMF=optional" in res["message"]
+    # non-PMF AP -> pmf set to 1 (optional), never disconnects
+    assert any(c[-1] == "1" and "pmf" in " ".join(c) for c in rec)
+
+
+def test_harden_requires_pmf_on_capable_ap(monkeypatch):
+    rec = []
+    _fake_nmcli(monkeypatch, active_conn="HomeWiFi", ap_pmf=True, record=rec)
+    e = MitigationEngine(cfg={})
+    res = e.apply("AA:BB:CC:DD:EE:FF", "deauth_burst")
+    assert "PMF=required" in res["message"]
+    assert any(c[-1] == "2" and "pmf" in " ".join(c) for c in rec)
+
+
+def test_pmf_strict_forces_required_even_on_non_pmf_ap(monkeypatch):
+    rec = []
+    _fake_nmcli(monkeypatch, ap_pmf=False, record=rec)
+    e = MitigationEngine(cfg={"pmf_strict": True})
+    res = e.apply("AA:BB:CC:DD:EE:FF", "deauth_burst")
+    assert "PMF=required" in res["message"]
 
 
 def test_avoid_pins_to_legit_bssid_and_marks(monkeypatch):

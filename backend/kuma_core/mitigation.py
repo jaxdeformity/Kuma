@@ -77,16 +77,58 @@ class MitigationEngine:
                 return line.split(":", 1)[1].replace("\\:", ":")
         return None
 
+    def _active_wifi_device(self) -> str | None:
+        """Kernel device name (e.g. wlan0) of the active Wi-Fi connection."""
+        try:
+            out = subprocess.run(
+                ["nmcli", "-t", "-f", "TYPE,DEVICE", "connection", "show", "--active"],
+                capture_output=True, text=True, timeout=4).stdout
+        except Exception:  # noqa: BLE001
+            return None
+        for line in out.splitlines():
+            if "wireless" in line:
+                return line.rsplit(":", 1)[1]
+        return None
+
+    def _ap_supports_pmf(self) -> bool:
+        """True iff the AP KUMA is associated with advertises 802.11w (MFP) in its
+        RSN capabilities. Used to upgrade PMF to *required* only when it is SAFE --
+        forcing required on a non-PMF AP would disconnect KUMA from its own network."""
+        bssid = self._active_bssid()
+        dev = self._active_wifi_device()
+        if not bssid or not dev:
+            return False
+        try:
+            out = subprocess.run(["iw", "dev", dev, "scan"],
+                                 capture_output=True, text=True, timeout=12).stdout
+        except Exception:  # noqa: BLE001 - iw absent / scan fails -> assume non-PMF
+            return False
+        in_bss = False
+        for line in out.splitlines():
+            low = line.strip().lower()
+            if low.startswith("bss "):
+                in_bss = bssid.lower() in low
+            elif in_bss and "capabilities:" in low and (
+                    "mfp-capable" in low or "mfp-required" in low):
+                return True
+        return False
+
     # --- defensive action bodies -------------------------------------------
     def harden_pmf(self) -> str:
         conn = self.cfg.get("protected_connection") or self._active_wifi_connection()
         if not conn:
             return "harden skipped (no active Wi-Fi connection)"
+        # Capability-aware: require PMF only when the AP supports it (else optional),
+        # so we never disconnect KUMA from a non-PMF AP. pmf_strict forces required.
+        strict = bool(self.cfg.get("pmf_strict"))
+        required = strict or self._ap_supports_pmf()
+        pmf = "2" if required else "1"
         subprocess.run(
             ["nmcli", "connection", "modify", conn,
-             "802-11-wireless-security.pmf", "2"], check=False)
+             "802-11-wireless-security.pmf", pmf], check=False)
         subprocess.run(["nmcli", "connection", "up", conn], check=False)
-        return f"hardened PMF=required on '{conn}'"
+        level = "required" if required else "optional"
+        return f"hardened PMF={level} on '{conn}'"
 
     def avoid(self, attacker: str) -> str:
         conn = self.cfg.get("protected_connection") or self._active_wifi_connection()
