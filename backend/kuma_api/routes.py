@@ -17,7 +17,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import PlainTextResponse
 
-from kuma_core import database, progress
+from kuma_core import authz, database, progress
 from kuma_core.config import settings
 from . import schemas
 from . import state
@@ -37,6 +37,7 @@ def get_status() -> schemas.StatusResponse:
     ten_min_ago = (datetime.now(timezone.utc) - timedelta(minutes=10)
                    ).strftime("%Y-%m-%dT%H:%M:%SZ")
     prog = progress.get_progress()
+    lab = authz._load_lab()
     return schemas.StatusResponse(
         device=settings.device_name,
         version=settings.version,
@@ -54,6 +55,8 @@ def get_status() -> schemas.StatusResponse:
         background=prog.get("background", "backg1"),
         creator=prog.get("creator", False),
         character=settings.character,
+        kuroshuna_armed=bool(lab.get("kuroshuna_armed")),
+        broadcast_armed=bool(lab.get("broadcast_armed")),
     )
 
 

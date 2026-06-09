@@ -25,6 +25,8 @@ class StatusResponse(BaseModel):
     background: str = "backg1"   # home background the firmware should show
     creator: bool = False        # creator-mode showcase unit (Jax's)
     character: str = "kuma"      # active character skin: "kuma" | "shuna"
+    kuroshuna_armed: bool = False   # Tier A offensive arm (gloves off)
+    broadcast_armed: bool = False   # Tier B broadcast arm
 
 
 class EventModel(BaseModel):
