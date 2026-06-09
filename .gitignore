@@ -46,3 +46,6 @@ Thumbs.db
 
 # easter-egg reward image - delivered via unlock, not browseable in repo
 designs/backgrounds/backgFLAG1.png
+
+# Shuna hi-res source renders (large; local only)
+designs/sprites/shuna/hires/

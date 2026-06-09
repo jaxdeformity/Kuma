@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
-"""KUMA -> SHUNA character sprite-pack generator.
+"""KUMA -> SHUNA character sprite-pack generator (hi-res individual sources).
 
-Slices the "SHUNA // STATES" sheet (designs/sprites/shuna/_source.png, a 5x2 grid
-on a flat teal background) into the 7 frames the firmware renders, in the same
-order as the bear packs:
+Processes Jax's 10 detailed SHUNA renders (designs/sprites/shuna/hires/*.png,
+1254x1254, each on a near-white background) into the firmware sprite pack, in
+the same order as the bear packs:
 
-    0 hibernating  1 foraging  2 sentinel  3 honey  4 apex  5 alert  6 investigating
+    0 hibernating  1 foraging  2 sentinel  3 honey  4 apex  5 alert
+    6 investigating   (+ battle poses: defending / attacking / victory)
 
-Background removal is done CAREFULLY to avoid the two classic failures:
-  - NO global color-key (which would hole-punch her body / FX where they sit near
-    the bg teal). We FLOOD-FILL from the cell border, so only background-connected
-    teal is removed; her outfit + the cyan state FX (Zzz, wifi, hearts, glow) are
-    preserved.
-  - A second TIGHT pass removes flat-teal pockets trapped inside the silhouette
-    (exact bg color, small radius) without touching her darker outfit teal or the
-    brighter FX cyan.
-  - We trim with getbbox() AFTER keying, so the crop is exact and never clips her.
+Background removal is careful (the lessons from the offline/teal fix apply):
+  - FLOOD-FILL from the border removes only the white that is connected to the
+    edge, so her interior whites (hair highlights, eye glints, gear) are kept.
+  - We deliberately do NOT global-key white (her own highlights are white too).
+  - defringe() alpha-bleeds opaque colour into the keyed pixels so LANCZOS
+    downscaling can't smear a white halo onto the dark device screen.
+  - getbbox() trims AFTER keying -> exact, never clips her.
 
-Emits src/shuna_sprites_data.h (SHUNA_SPRITES[7], reuses BearSprite; include AFTER
-bear_sprites_data.h).
+Emits src/shuna_sprites_data.h (SHUNA_SPRITES[7] + SHUNA_DEFEND/ATTACK/VICTORY
++ シュナ wordmark). Reuses BearSprite; include AFTER bear_sprites_data.h.
 
 Run:  python assets/gen_shuna.py
 """
@@ -30,36 +29,35 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.normpath(os.path.join(HERE, "..", "src"))
-SHEET = os.path.normpath(
-    os.path.join(HERE, "..", "..", "..", "designs", "sprites", "shuna", "_source.png"))
-OUTDIR = os.path.dirname(SHEET)
+ART = os.path.normpath(
+    os.path.join(HERE, "..", "..", "..", "designs", "sprites", "shuna"))
+HIRES = os.path.join(ART, "hires")
 
-BG = (1, 107, 122)        # flat teal sheet background
-FLOOD_TOL = 44            # border flood-fill radius around BG -> transparent
-# Pocket key removes flat-bg teal trapped in the silhouette AND the soft teal
-# ground-shadow under her feet. Safe at this radius: her own teal/cyan accents are
-# bright cyan (dist >100 from BG) and her outfit is dark (also far), so only the
-# flat-teal background/shadow falls in range.
-POCKET_TOL = 44
+WHITE = (255, 255, 255)
+FLOOD_TOL = 60            # border flood-fill radius around white -> transparent
 TARGET_H = 128
 
-# 5 columns x 2 rows. Character ROI per row EXCLUDES the label text band.
-COL_X = [(6, 295), (301, 587), (593, 875), (881, 1167), (1173, 1463)]
-ROW_Y = [(100, 478), (558, 938)]   # (row1, row2) character bands, labels excluded
-# 7 home/state frames + 3 battle poses, as (row, col) into the 5x2 grid.
-FRAMES = [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (1, 0), (1, 1),
-          (1, 2), (1, 3), (1, 4)]
-NAMES = ["01_hibernating", "02_foraging", "03_sentinel", "04_honey",
-         "05_apex", "06_alert", "07_investigating",
-         "08_defending", "09_attacking", "10_victory"]
+# (source filename stem, output frame name) in firmware order
+SOURCES = [
+    ("hibernate",   "01_hibernating"),
+    ("forage",      "02_foraging"),
+    ("sentinel",    "03_sentinel"),
+    ("honey",       "04_honey"),
+    ("apex",        "05_apex"),
+    ("alert",       "06_alert"),
+    ("investigate", "07_investigating"),
+    ("Defend",      "08_defending"),
+    ("attack",      "09_attacking"),
+    ("victory",     "10_victory"),
+]
 
 
-def dist(c):
-    return math.sqrt((c[0] - BG[0]) ** 2 + (c[1] - BG[1]) ** 2 + (c[2] - BG[2]) ** 2)
+def wdist(c):
+    return math.sqrt((c[0] - 255) ** 2 + (c[1] - 255) ** 2 + (c[2] - 255) ** 2)
 
 
 def flood_key(cell, tol=FLOOD_TOL):
-    """Make border-connected background transparent (4-connected flood fill)."""
+    """Make border-connected near-white background transparent (4-connected)."""
     px = cell.load()
     w, h = cell.size
     seen = bytearray(w * h)
@@ -74,28 +72,16 @@ def flood_key(cell, tol=FLOOD_TOL):
             continue
         seen[y * w + x] = 1
         r, g, b, a = px[x, y]
-        if a == 0 or dist((r, g, b)) <= tol:
+        if a == 0 or wdist((r, g, b)) <= tol:
             px[x, y] = (r, g, b, 0)
             stack.append((x + 1, y)); stack.append((x - 1, y))
             stack.append((x, y + 1)); stack.append((x, y - 1))
     return cell
 
 
-def key_pockets(cell, tol=POCKET_TOL):
-    """Remove flat-bg teal trapped inside the silhouette (tight exact-bg match)."""
-    px = cell.load()
-    w, h = cell.size
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = px[x, y]
-            if a > 0 and dist((r, g, b)) <= tol:
-                px[x, y] = (r, g, b, 0)
-    return cell
-
-
-def defringe(cell, passes=4):
-    """Bleed opaque colors into adjacent transparent pixels (alpha stays 0) so
-    LANCZOS downscaling can't smear keyed teal back in as a halo."""
+def defringe(cell, passes=5):
+    """Bleed opaque colours into adjacent transparent pixels (alpha stays 0) so
+    downscaling can't smear the keyed white back in as a halo."""
     w, h = cell.size
     px = cell.load()
     for _ in range(passes):
@@ -117,21 +103,14 @@ def defringe(cell, passes=4):
     return cell
 
 
-def extract():
-    im = Image.open(SHEET).convert("RGBA")
-    out = []
-    for (row, col), name in zip(FRAMES, NAMES):
-        x0, x1 = COL_X[col]
-        y0, y1 = ROW_Y[row]
-        cell = im.crop((x0, y0, x1, y1))
-        cell = defringe(key_pockets(flood_key(cell)))
-        bbox = cell.getbbox()                       # exact trim - never clips
-        if bbox:
-            cell = cell.crop(bbox)
-        w, h = cell.size
-        cell = cell.resize((max(1, round(w * TARGET_H / h)), TARGET_H), Image.LANCZOS)
-        out.append((name, cell))
-    return out
+def process(stem):
+    im = Image.open(os.path.join(HIRES, stem + ".png")).convert("RGBA")
+    im = defringe(flood_key(im))
+    bbox = im.getbbox()
+    if bbox:
+        im = im.crop(bbox)
+    w, h = im.size
+    return im.resize((max(1, round(w * TARGET_H / h)), TARGET_H), Image.LANCZOS)
 
 
 def png_bytes(img):
@@ -153,13 +132,15 @@ def render_logo():
 
 
 def main():
-    frames = extract()
-    # save per-frame PNGs for inspection
-    for name, img in frames:
-        img.save(os.path.join(OUTDIR, name + ".png"))
+    frames = []
+    for stem, name in SOURCES:
+        img = process(stem)
+        img.save(os.path.join(ART, name + ".png"))
+        frames.append((name, img))
+
     lines = [
         "// KUMA Guard T-Deck - SHUNA character sprite pack (generated by",
-        "// assets/gen_shuna.py from designs/sprites/shuna/_source.png; do not",
+        "// assets/gen_shuna.py from designs/sprites/shuna/hires/*.png; do not",
         "// hand-edit). 128px-tall RGBA PNGs, drawPng. Reuses BearSprite from",
         "// bear_sprites_data.h, so include this AFTER it.",
         "#pragma once",
@@ -173,26 +154,20 @@ def main():
         total += len(data)
         sym = f"SHUNA_{i:02d}"
         syms.append((sym, img.size))
-        body = ",".join(str(b) for b in data)
-        lines.append(f"static const uint8_t {sym}[] = {{{body}}};")
+        lines.append(f"static const uint8_t {sym}[] = {{{','.join(str(b) for b in data)}}};")
     lines.append("")
-    # First 7 = home/state pack (same interface + order as BEAR_SPRITES).
     arr = ",\n".join(
         f"  {{{s}, sizeof {s}, {wh[0]}, {wh[1]}}}" for s, wh in syms[:7])
     lines.append("static const BearSprite SHUNA_SPRITES[7] = {")
     lines.append(arr)
     lines.append("};")
     lines.append("")
-    # Frames 8/9/10 = battle poses (defend / attack / victory), used in place of
-    # KB_DEFEND_S / KB_ATTACK_S / KB_VICTORY_S when the active character is Shuna.
     for pose, idx in (("SHUNA_DEFEND", 7), ("SHUNA_ATTACK", 8), ("SHUNA_VICTORY", 9)):
         s, wh = syms[idx]
         lines.append(
             f"static const BearSprite {pose} = {{{s}, sizeof {s}, {wh[0]}, {wh[1]}}};")
     lines.append("")
-    # シュナ wordmark (drawn in place of KUMA_LOGO when the active character is Shuna)
     logo = render_logo()
-    logo.save(os.path.join(OUTDIR, "_logo.png"))
     ld = png_bytes(logo)
     total += len(ld)
     lines.append(f"static const uint8_t SHUNA_LOGO[] = {{{','.join(str(b) for b in ld)}}};")
