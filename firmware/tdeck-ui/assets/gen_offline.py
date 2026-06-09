@@ -25,39 +25,99 @@ SRC_SHEET = os.path.join(ROOT, "designs", "sprites", "offline", "_source.png")
 OUTDIR = os.path.join(ROOT, "designs", "sprites", "offline")
 HDR = os.path.normpath(os.path.join(HERE, "..", "src", "offline_sprites_data.h"))
 
-BG = (2, 108, 123)        # flat teal sheet background
-# Kuma's own lightest blue measures ~49 from BG, so the key radius MUST stay
-# below that or it eats holes in his body. 40 removes the bg + keeps the bear
-# (a faint teal halo on anti-aliased edges is acceptable; holes are not).
-KEY_DIST = 40             # color-key radius around BG -> transparent
-# ROI spans the full bear incl. the wifi/"!" icon (top ~604) down to the feet
-# (~920); the per-frame label text sits at y~988 and is excluded.
-ROI_Y0, ROI_Y1 = 652, 924
-X_INSET = 12              # skip the per-cell border lines without clipping arms
+BG = (2, 108, 123)        # flat teal sheet background (very uniform: corners all ~this)
+# The bg is FLAT, so we lift it with a low-tolerance FLOOD FILL from the cell
+# borders rather than a global color-key. Flood fill only removes teal that is
+# connected to the border, which (a) never punches holes in Kuma's body (his
+# interior teal-ish shadows aren't border-connected) and (b) preserves the
+# cyan wifi/"!"/glitch UI icons (their cores measure >18 from BG). The old
+# global KEY_DIST=40 did the opposite: it ate the dim icons and speckled the
+# body wherever a pixel happened to fall near teal. Holes AND lost icons: gone.
+FLOOD_TOL = 18            # flood-fill radius around BG -> transparent
+# Per-frame label text sits at y~984; feet end ~922; icons start ~658. This ROI
+# spans icon-top..feet and excludes the labels.
+ROI_Y0, ROI_Y1 = 648, 928
+SEP_ROW = 640            # a pure-gap row used to auto-detect the cell separators
+SEP_INSET = 4            # trim just inside each separator line (not the paws)
 FRAMES = 6
 TARGET_H = 128
 
 
-def key_bg(cell):
+def dist(c):
+    return math.sqrt((c[0] - BG[0]) ** 2 + (c[1] - BG[1]) ** 2 + (c[2] - BG[2]) ** 2)
+
+
+def cell_bounds(im):
+    """Auto-detect the 6 frame x-ranges from the vertical separator lines."""
+    W, _ = im.size
+    px = im.load()
+    cols = [x for x in range(W) if dist(px[x, SEP_ROW][:3]) > 30]
+    groups = []
+    for x in cols:
+        if groups and x - groups[-1][-1] <= 3:
+            groups[-1].append(x)
+        else:
+            groups.append([x])
+    seps = [(g[0], g[-1]) for g in groups]
+    if len(seps) != FRAMES + 1:
+        # Fallback: equal sixths if the sheet layout ever changes.
+        cw = W / FRAMES
+        return [(int(i * cw) + SEP_INSET, int((i + 1) * cw) - SEP_INSET) for i in range(FRAMES)]
+    return [(seps[i][1] + SEP_INSET, seps[i + 1][0] - SEP_INSET) for i in range(FRAMES)]
+
+
+def flood_key(cell, tol=FLOOD_TOL):
+    """Make border-connected background transparent via flood fill (4-connected)."""
     px = cell.load()
     w, h = cell.size
+    seen = bytearray(w * h)
+    stack = []
+    for x in range(w):
+        stack.append((x, 0)); stack.append((x, h - 1))
     for y in range(h):
-        for x in range(w):
-            r, g, b, a = px[x, y]
-            if math.sqrt((r - BG[0]) ** 2 + (g - BG[1]) ** 2 + (b - BG[2]) ** 2) < KEY_DIST:
-                px[x, y] = (r, g, b, 0)
+        stack.append((0, y)); stack.append((w - 1, y))
+    while stack:
+        x, y = stack.pop()
+        if x < 0 or y < 0 or x >= w or y >= h or seen[y * w + x]:
+            continue
+        seen[y * w + x] = 1
+        r, g, b, a = px[x, y]
+        if a == 0 or dist((r, g, b)) <= tol:
+            px[x, y] = (r, g, b, 0)
+            stack.append((x + 1, y)); stack.append((x - 1, y))
+            stack.append((x, y + 1)); stack.append((x, y - 1))
+    return cell
+
+
+def defringe(cell, passes=4):
+    """Alpha-bleed opaque colors into adjacent transparent pixels so LANCZOS
+    downscaling can't smear the keyed teal back in as a halo (alpha stays 0)."""
+    w, h = cell.size
+    px = cell.load()
+    for _ in range(passes):
+        updates = []
+        for y in range(h):
+            for x in range(w):
+                if px[x, y][3] != 0:
+                    continue
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h and px[nx, ny][3] > 0:
+                        nr, ng, nb, _ = px[nx, ny]
+                        updates.append((x, y, (nr, ng, nb, 0)))
+                        break
+        if not updates:
+            break
+        for x, y, c in updates:
+            px[x, y] = c
     return cell
 
 
 def extract():
     im = Image.open(SRC_SHEET).convert("RGBA")
-    W, _ = im.size
-    cellw = W / FRAMES
     frames = []
-    for i in range(FRAMES):
-        x0 = int(i * cellw) + X_INSET
-        x1 = int((i + 1) * cellw) - X_INSET
-        cell = key_bg(im.crop((x0, ROI_Y0, x1, ROI_Y1)))
+    for x0, x1 in cell_bounds(im):
+        cell = defringe(flood_key(im.crop((x0, ROI_Y0, x1, ROI_Y1))))
         bbox = cell.getbbox()
         if bbox:
             cell = cell.crop(bbox)

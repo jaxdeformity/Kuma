@@ -40,3 +40,6 @@ Thumbs.db
 .vscode/
 .idea/
 .gstack/
+
+# save-scum working memory (local, per-machine)
+.save-scum/

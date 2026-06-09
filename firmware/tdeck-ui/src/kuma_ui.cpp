@@ -187,7 +187,7 @@ void drawHome(const KumaStatus& s) {
   if (!s.online) {
     // OFFLINE: Kuma paces around hunting for a signal - a 6-frame loop
     // (idle/check/no-link/retry/frustrated) plus a slow horizontal walk.
-    int f = (millis() / 240) % OFFLINE_SPRITE_COUNT;   // ~4 fps, calm
+    int f = (millis() / 5000) % OFFLINE_SPRITE_COUNT;  // hold each state 5s
     uint32_t t = millis() % 6000;                       // slow 6s walk cycle
     int pace = (t < 3000) ? (int)t : 6000 - (int)t;     // 0..3000..0
     int cx = 115 + pace * 90 / 3000;                    // drift x=115..205 gently
