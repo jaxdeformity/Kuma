@@ -56,3 +56,6 @@ reference/
 
 # Captured WPA handshakes (sensitive; local only)
 backend/data/handshakes/
+
+# Exfiltrated files from steal_ssh (sensitive; local only)
+backend/data/loot/

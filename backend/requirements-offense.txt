@@ -1,0 +1,7 @@
+# KUMA Kuroshuna offensive deps - install ONLY on the lab Pi, never required for
+# the core backend or the test suite (all are lazy-imported at attempt time).
+#   pip install -r requirements-offense.txt
+# Plus system binaries: nmap, xfreerdp (RDP). Telnet uses a raw socket (no dep).
+paramiko>=3.4        # SSH brute + SFTP steal
+impacket>=0.11       # SMB brute
+pymysql>=1.1         # SQL (MySQL/MariaDB) brute
