@@ -57,7 +57,10 @@ class Gate:
             self.cfg.get("kuroshuna_armed"))
 
     def is_authorized(self, target: str, action: str) -> tuple[bool, str]:
-        return self._decide(target, action)
+        allowed, reason = self._decide(target, action)
+        self.audit({"tier": "A", "action": action, "target": _norm(target),
+                    "allowed": allowed, "reason": reason})
+        return allowed, reason
 
     def _decide(self, target: str, action: str) -> tuple[bool, str]:
         if not self.armed():
@@ -117,9 +120,16 @@ class Gate:
     def auto_hostile_add(self, mac: str, evidence: str = "") -> bool:
         t = _norm(mac)
         if not t or self._matches(t, self._protected()):
+            self.audit({"tier": "A", "action": "auto_hostile_add", "target": t,
+                        "allowed": False, "reason": "refused: protected/own-infra"})
             return False
         self._auto_hostile.add(t)
+        self.audit({"tier": "A", "action": "auto_hostile_add", "target": t,
+                    "allowed": True, "reason": evidence or "confirmed attacker"})
         return True
 
-    def audit(self, event: dict) -> None:  # filled in Task 7
-        pass
+    def audit(self, event: dict) -> None:
+        rec = {"ts": utcnow_iso(), **event}
+        self.audit_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.audit_file.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec) + "\n")

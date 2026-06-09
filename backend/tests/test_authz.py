@@ -1,4 +1,6 @@
 """Unit tests for the Kuroshuna authorization gate (pure decision logic)."""
+import json as _json
+
 from kuma_core.authz import Gate
 
 
@@ -115,3 +117,31 @@ def test_broadcast_limits_have_safe_defaults(tmp_path):
     assert lim["honor_protect_bssids"] is True
     assert lim["channel"] == 6
     assert lim["max_tx_power_dbm"] == 5
+
+
+def test_decisions_are_audited(tmp_path):
+    af = tmp_path / "audit.jsonl"
+    g = Gate(config=_armed_cfg(approved_targets=["aa:bb:cc:dd:ee:ff"]),
+             audit_file=af)
+    g.is_authorized("AA:BB:CC:DD:EE:FF", "deauth")      # allow
+    g.is_authorized("11:22:33:44:55:66", "deauth")      # deny
+    lines = af.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 2
+    rec0 = _json.loads(lines[0])
+    assert rec0["tier"] == "A"
+    assert rec0["action"] == "deauth"
+    assert rec0["target"] == "AA:BB:CC:DD:EE:FF"
+    assert rec0["allowed"] is True
+    assert "ts" in rec0 and "reason" in rec0
+    rec1 = _json.loads(lines[1])
+    assert rec1["allowed"] is False
+
+
+def test_auto_hostile_add_is_audited(tmp_path):
+    af = tmp_path / "audit.jsonl"
+    g = Gate(config=_armed_cfg(), audit_file=af)
+    g.auto_hostile_add("ca:fe:ca:fe:ca:fe", evidence="deauth flood")
+    rec = _json.loads(af.read_text(encoding="utf-8").strip().splitlines()[0])
+    assert rec["action"] == "auto_hostile_add"
+    assert rec["allowed"] is True
+    assert rec["target"] == "CA:FE:CA:FE:CA:FE"
