@@ -177,7 +177,7 @@ class BroadcastRF:
                          "reason": f"{bursts} bursts/{dur}s ch{ch}"})
         if bursts > 0:
             try:
-                kuroshuna_stats.record_tx(bursts)
+                kuroshuna_stats.record_tx(bursts * len(targets))  # frames actually sent
             except Exception:
                 pass
         return BroadcastResult(True, why, "deauth_flood", bursts, dur)
@@ -222,7 +222,7 @@ class BroadcastRF:
                          "reason": f"{len(frames)} SSIDs x {bursts} bursts/{dur}s"})
         if bursts > 0:
             try:
-                kuroshuna_stats.record_tx(bursts)
+                kuroshuna_stats.record_tx(bursts * len(frames))  # frames actually sent
             except Exception:
                 pass
         return BroadcastResult(True, why, "beacon_spam", bursts, dur)
@@ -266,7 +266,7 @@ class BroadcastRF:
                          "allowed": True, "reason": f"{clients} fake STAs x {bursts}/{dur}s"})
         if bursts > 0:
             try:
-                kuroshuna_stats.record_tx(bursts)
+                kuroshuna_stats.record_tx(bursts * len(frames))  # frames actually sent
             except Exception:
                 pass
         return BroadcastResult(True, why, "assoc_flood", bursts, dur)

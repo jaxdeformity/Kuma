@@ -34,3 +34,17 @@ def test_tx_goes_inactive_when_stale(tmp_path):
     out = KS.read(stats_file=f, now=lambda: 1010.0)    # 10s later > TX_FRESH
     assert out["tx_active"] is False
     assert out["tx_frames"] == 10                       # count persists
+
+
+def test_record_pwn_ignores_empty(tmp_path):
+    f = _s(tmp_path)
+    KS.record_pwn("", stats_file=f)
+    KS.record_pwn("   ", stats_file=f)
+    assert KS.read(stats_file=f)["pwned"] == 0
+
+
+def test_corrupted_file_returns_defaults(tmp_path):
+    f = _s(tmp_path)
+    f.write_text("not json", encoding="utf-8")
+    out = KS.read(stats_file=f)
+    assert out == {"pwned": 0, "tx_frames": 0, "tx_active": False}
