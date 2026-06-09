@@ -66,6 +66,13 @@ def _load_lab() -> dict:
         return {}
 
 
+def save_lab(cfg: dict) -> None:
+    """Persist the lab_targets config (atomic-ish: write then replace)."""
+    tmp = LAB_TARGETS_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(cfg, indent=2), encoding="utf-8")
+    tmp.replace(LAB_TARGETS_FILE)
+
+
 class Gate:
     def __init__(self, config: dict | None = None,
                  audit_file: Path | None = None) -> None:
