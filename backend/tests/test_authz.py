@@ -1,6 +1,5 @@
 """Unit tests for the Kuroshuna authorization gate (pure decision logic)."""
 import json as _json
-import json as _json2
 
 from kuma_core.authz import Gate
 from kuma_core.config import LAB_TARGETS_FILE
@@ -99,7 +98,9 @@ def test_auto_hostile_refuses_protected(tmp_path):
 def test_broadcast_requires_all_three_arms(tmp_path):
     g = Gate(config={"lab_mode": True, "allow_broadcast": True,
                      "broadcast_armed": True}, audit_file=tmp_path / "a.jsonl")
-    assert g.broadcast_allowed() == (True, "broadcast armed")
+    allowed, reason = g.broadcast_allowed()
+    assert allowed is True
+    assert reason == "broadcast armed"
 
 
 def test_broadcast_denied_when_any_arm_off(tmp_path):
@@ -150,7 +151,7 @@ def test_auto_hostile_add_is_audited(tmp_path):
 
 
 def test_real_lab_targets_has_kuroshuna_schema_safe_off():
-    cfg = _json2.loads(LAB_TARGETS_FILE.read_text(encoding="utf-8"))
+    cfg = _json.loads(LAB_TARGETS_FILE.read_text(encoding="utf-8"))
     # New Kuroshuna keys must exist and default to OFF/empty.
     assert cfg.get("kuroshuna_armed") is False
     assert cfg.get("allow_broadcast") is False
@@ -160,3 +161,70 @@ def test_real_lab_targets_has_kuroshuna_schema_safe_off():
     b = cfg.get("broadcast", {})
     assert b.get("max_burst_seconds") == 30
     assert b.get("honor_protect_bssids") is True
+
+
+# FIX 1 — MAC normalization: dash-format in protect_bssids must still hard-deny
+def test_protect_bssid_dash_format_still_denies(tmp_path):
+    g = Gate(config=_armed_cfg(
+        approved_targets=["aa:bb:cc:dd:ee:ff"],
+        protect_bssids=["aa-bb-cc-dd-ee-ff"]),
+        audit_file=tmp_path / "a.jsonl")
+    allowed, reason = g.is_authorized("AA:BB:CC:DD:EE:FF", "deauth")
+    assert allowed is False
+    assert "hard deny" in reason
+
+
+# FIX 2 — IPv6 normalization: expanded form matches compressed form in own_infra
+def test_own_infra_ipv6_expanded_form_still_denies(tmp_path):
+    g = Gate(config=_armed_cfg(
+        own_infra=["::1"]),
+        audit_file=tmp_path / "a.jsonl")
+    allowed, reason = g.is_authorized("0:0:0:0:0:0:0:1", "ssh_brute")
+    assert allowed is False
+    assert "hard deny" in reason
+
+
+# FIX 3 — Garbage approved entries must not authorize
+def test_garbage_approved_entry_does_not_authorize(tmp_path):
+    g = Gate(config=_armed_cfg(approved_targets=["not-a-real-target"]),
+             audit_file=tmp_path / "a.jsonl")
+    allowed, _ = g.is_authorized("not-a-real-target", "ssh_brute")
+    assert allowed is False
+
+
+# FIX 5 — auto_hostile_add rejects garbage, accepts valid IP
+def test_auto_hostile_rejects_garbage(tmp_path):
+    g = Gate(config=_armed_cfg(), audit_file=tmp_path / "a.jsonl")
+    assert g.auto_hostile_add("garbage") is False
+
+
+def test_auto_hostile_accepts_ip(tmp_path):
+    g = Gate(config=_armed_cfg(), audit_file=tmp_path / "a.jsonl")
+    assert g.auto_hostile_add("192.168.50.162") is True
+    allowed, reason = g.is_authorized("192.168.50.162", "ssh_brute")
+    assert allowed is True
+    assert "auto-hostile" in reason
+
+
+# FIX 6 — broadcast decisions are audited
+def test_broadcast_decision_is_audited(tmp_path):
+    af = tmp_path / "audit.jsonl"
+    g = Gate(config={"lab_mode": True, "allow_broadcast": True,
+                     "broadcast_armed": True}, audit_file=af)
+    g.broadcast_allowed()
+    lines = af.read_text(encoding="utf-8").strip().splitlines()
+    assert len(lines) == 1
+    rec = _json.loads(lines[0])
+    assert rec["tier"] == "B"
+    assert rec["action"] == "broadcast"
+
+
+# FIX 8 — own_infra IP inside approved CIDR is still hard-denied
+def test_own_infra_ip_inside_approved_cidr_denied(tmp_path):
+    g = Gate(config=_armed_cfg(
+        approved_targets=["192.168.50.0/24"],
+        own_infra=["192.168.50.225"]),
+        audit_file=tmp_path / "a.jsonl")
+    allowed, reason = g.is_authorized("192.168.50.225", "ssh_brute")
+    assert allowed is False
+    assert "hard deny" in reason
