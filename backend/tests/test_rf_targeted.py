@@ -208,4 +208,5 @@ def test_cli_requires_an_action(tmp_path):
 # ---------------------------------------------------------------------------
 def test_handshakes_dir_is_gitignored():
     gi = (Path(__file__).resolve().parents[2] / ".gitignore").read_text(encoding="utf-8")
-    assert "backend/data/handshakes/" in gi
+    # backend/data/ (the broad runtime-data ignore) covers data/handshakes/.
+    assert "backend/data/" in gi

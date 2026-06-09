@@ -233,7 +233,8 @@ def test_offense_requirements_and_loot_ignored():
     for dep in ("paramiko", "impacket", "pymysql"):
         assert dep in reqs
     gi = (root / ".gitignore").read_text(encoding="utf-8")
-    assert "backend/data/loot/" in gi
+    # backend/data/ (the broad runtime-data ignore) covers data/loot/.
+    assert "backend/data/" in gi
 
 
 # ---------------------------------------------------------------------------
