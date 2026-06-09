@@ -2,6 +2,7 @@
 #include "kuma_ui.h"
 #include "bear_sprites_data.h"
 #include "evo_sprites_data.h"       // evo1..evo5 packs; reuses BearSprite, include AFTER base
+#include "shuna_sprites_data.h"     // SHUNA character pack + シュナ wordmark; AFTER base
 #include "offline_sprites_data.h"   // reuses BearSprite; include AFTER bear sprites
 #include "kuma_logo_data.h"
 #include "kuma_bg_data.h"
@@ -195,10 +196,13 @@ void drawHome(const KumaStatus& s) {
     g->fillRect(0, 205, 320, 35, BG);
   }
 
-  // --- top bar: クマ wordmark + level, online dot ------------------------
-  g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);   // katakana wordmark
+  // --- top bar: クマ/シュナ wordmark + level, online dot -----------------
+  bool shuna = (s.character == "shuna");
+  uint16_t logoW = shuna ? SHUNA_LOGO_W : KUMA_LOGO_W;
+  if (shuna) g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 8, 3);
+  else       g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);
   g->setTextSize(1); g->setTextColor(GREEN);
-  g->setCursor(8 + KUMA_LOGO_W + 8, 11);
+  g->setCursor(8 + logoW + 8, 11);
   g->printf("Lv %u", s.level);
   g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
   g->setTextColor(s.online ? GREEN : RED); g->setCursor(254, 9);
@@ -227,8 +231,9 @@ void drawHome(const KumaStatus& s) {
     bool calm = (bs == BearState::Sleeping || bs == BearState::Foraging
                  || bs == BearState::HoneyTrap);
     int si = calm ? modeSpriteIndex(s.mode) : bearSpriteIndex(bs);
-    // Pick the sprite pack for the active evolution form (states -> base pack).
-    const BearSprite* pack = evoPackFor(s.spriteSet.c_str());
+    // Shuna skin overrides the form packs; else pick the evolution pack
+    // for the active form (states -> base pack).
+    const BearSprite* pack = shuna ? SHUNA_SPRITES : evoPackFor(s.spriteSet.c_str());
     if (!pack) pack = BEAR_SPRITES;
     if (si >= 0) {
       const BearSprite& sp = pack[si];

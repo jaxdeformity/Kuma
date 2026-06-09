@@ -53,6 +53,7 @@ def get_status() -> schemas.StatusResponse:
         sprite_set=prog["sprite_set"],
         background=prog.get("background", "backg1"),
         creator=prog.get("creator", False),
+        character=settings.character,
     )
 
 

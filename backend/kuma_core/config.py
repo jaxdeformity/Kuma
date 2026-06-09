@@ -77,6 +77,12 @@ class Settings:
         return self.settings.get("creator_name", "Jax")
 
     @property
+    def character(self) -> str:
+        # Active character skin: "kuma" (default) or "shuna" (hard-unlock waifu).
+        # Changes the sprite pack and the displayed wordmark (クマ / シュナ).
+        return self.settings.get("character", "kuma")
+
+    @property
     def wifi_interface(self) -> str:
         return self.settings.get("wifi_interface", "wlan1")
 

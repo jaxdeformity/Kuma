@@ -16,6 +16,7 @@ struct KumaStatus {
   String    spriteSet = "states"; // active form's sprite pack
   String    background = "backg1"; // home background to show
   bool      creator = false;       // creator-mode showcase unit
+  String    character = "kuma";    // character skin: kuma | shuna
   String    wifiInterface;        // sensor iface
   bool      online = false;       // false => backend unreachable
 };

@@ -64,6 +64,7 @@ bool fetchStatus(KumaStatus& out) {
   out.spriteSet     = doc["sprite_set"]     | "states";
   out.background    = doc["background"]      | "backg1";
   out.creator       = doc["creator"]         | false;
+  out.character     = doc["character"]       | "kuma";
   out.wifiInterface = doc["wifi_interface"] | "wlan1mon";
   out.online        = true;
   return true;

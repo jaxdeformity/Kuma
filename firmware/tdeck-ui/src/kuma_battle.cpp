@@ -3,12 +3,21 @@
 #include "input.h"
 #include "kuma_audio.h"
 #include "bear_sprites_data.h"     // BearSprite, BEAR_SPRITES[] (shared KUMA states)
+#include "shuna_sprites_data.h"    // SHUNA pack + battle poses + シュナ wordmark
 #include "battle_sprites_data.h"   // ENEMY_SPRITES[], KB_*_S, SKULL_S
 #include "kuma_logo_data.h"        // クマ wordmark
 #include "kuma_bg_data.h"          // night-watch backgrounds
 
 namespace {
 LGFX_TDeck* D = nullptr;
+// Active character skin for this encounter (set in maybeStart). Swaps the
+// player poses, the wordmark, and the name used in battle text.
+bool g_shuna = false;
+const BearSprite& pDefend()  { return g_shuna ? SHUNA_DEFEND  : KB_DEFEND_S; }
+const BearSprite& pAttack()  { return g_shuna ? SHUNA_ATTACK  : KB_ATTACK_S; }
+const BearSprite& pVictory() { return g_shuna ? SHUNA_VICTORY : KB_VICTORY_S; }
+const BearSprite& pClip(int i){ return g_shuna ? SHUNA_SPRITES[i] : BEAR_SPRITES[i]; }
+const char* pName() { return g_shuna ? "SHUNA" : "KUMA"; }
 lgfx::LGFX_Sprite FB;
 lgfx::LGFX_Sprite bgBattle;        // night-watch arena bg, decoded once + blitted
 bool fbReady = false;
@@ -88,8 +97,10 @@ void scene(const char* msg, int menuMode, int sel, const BearSprite& kuma,
   // KUMA sprite (bottom-left)
   spr(kuma, 6, 238 - kuma.h);
   // KUMA info (right of sprite)
-  g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 150, 116);
-  g->setTextColor(GREEN, BG); g->setCursor(150 + KUMA_LOGO_W + 8, 122);
+  if (g_shuna) g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 150, 116);
+  else         g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 150, 116);
+  g->setTextColor(GREEN, BG);
+  g->setCursor(150 + (g_shuna ? SHUNA_LOGO_W : KUMA_LOGO_W) + 8, 122);
   g->printf("Lv %u", lvl);
   hpbar(152, 134, 160, kHp, kMax);
   // menu (2x2, bottom-right)
@@ -126,7 +137,7 @@ bool confirmDialog(const char* prompt, int kHp, int kMax, int eHp, int eMax, int
   int sel = 0; bool dirty = true; unsigned long t0 = millis();
   for (;;) {
     if (dirty) {
-      scene(prompt, MENU_NONE, 0, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
+      scene(prompt, MENU_NONE, 0, pDefend(), kHp, kMax, eHp, eMax, en, lvl);
       lgfx::LovyanGFX* g = G();
       const char* yn[2] = {"YES", "NO"};
       for (int i=0;i<2;i++){ bool s=(i==sel); int x=158+i*78, y=150;
@@ -163,7 +174,7 @@ void run(int en, uint16_t lvl) {
   audio::playTrack(audio::TRK_BATTLE, true);
 
   String introMsg = String("HOSTILE ") + EN_NAME[en] + " DETECTED";
-  scene(introMsg.c_str(), MENU_NONE, 0, KB_DEFEND_S, kHp, kMax, eHp, eMax, en, lvl);
+  scene(introMsg.c_str(), MENU_NONE, 0, pDefend(), kHp, kMax, eHp, eMax, en, lvl);
   delay(1500);
 
   // --- turn loop: Fight / Bag / Run / Auto ---
@@ -173,7 +184,7 @@ void run(int en, uint16_t lvl) {
     if (!autoMode) {
       int sel = 0; bool dirty = true; unsigned long t0 = millis(); act = -1;
       while (act < 0 && millis() - t0 < 30000) {
-        if (dirty) { scene("WHAT WILL KUMA DO?", MENU_CMD, sel, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
+        if (dirty) { scene((String("WHAT WILL ")+pName()+" DO?").c_str(), MENU_CMD, sel, pDefend(), kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
         InputEvent e = input::poll();
         if (e==InputEvent::Up||e==InputEvent::Left){sel=(sel+3)&3;dirty=true;}
         else if(e==InputEvent::Down||e==InputEvent::Right){sel=(sel+1)&3;dirty=true;}
@@ -183,13 +194,13 @@ void run(int en, uint16_t lvl) {
       if (act < 0) act = 0;                          // timeout -> Fight
     }
     if (act == 1) {                                  // BAG (future)
-      scene("Bag empty -- no items yet.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
+      scene("Bag empty -- no items yet.", MENU_NONE, 0, pDefend(), kHp,kMax,eHp,eMax,en,lvl);
       delay(1400); continue;
     }
     if (act == 2) {                                  // RUN
       if (confirmDialog("Attempt to flee?", kHp,kMax,eHp,eMax,en,lvl)) {
         audio::stopMusic();
-        scene("KUMA broke contact.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
+        scene((String(pName())+" broke contact.").c_str(), MENU_NONE, 0, pDefend(), kHp,kMax,eHp,eMax,en,lvl);
         delay(1500); return;
       }
       continue;
@@ -204,7 +215,7 @@ void run(int en, uint16_t lvl) {
     if (!autoMode) {
       bool dirty = true; unsigned long t0 = millis(); int ab = -1;
       while (ab == -1 && millis() - t0 < 30000) {
-        if (dirty) { scene("CHOOSE AN ATTACK", MENU_ABIL, sel, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
+        if (dirty) { scene("CHOOSE AN ATTACK", MENU_ABIL, sel, pDefend(), kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
         InputEvent e = input::poll();
         if (e==InputEvent::Up||e==InputEvent::Left){sel=(sel+3)&3;dirty=true;}
         else if(e==InputEvent::Down||e==InputEvent::Right){sel=(sel+1)&3;dirty=true;}
@@ -217,20 +228,20 @@ void run(int en, uint16_t lvl) {
     }
 
     // --- resolve the move ---
-    const BearSprite& clip = (sel==3) ? BEAR_SPRITES[4] : KB_ATTACK_S;
+    const BearSprite& clip = (sel==3) ? pClip(4) : pAttack();
     audio::sfx(AB_SFX[sel]);
-    String m1 = String("KUMA used ") + AB_NAME[sel] + "!";
+    String m1 = (String(pName())+" used ") + AB_NAME[sel] + "!";
     scene(m1.c_str(), MENU_NONE, 0, clip, kHp,kMax,eHp,eMax,en,lvl); delay(500);
     bool weak = EN_WEAK[en] & (1<<sel);
     if (sel == 1) {
       marked = true; int dmg = random(AB_MIN[1], AB_MAX[1]+1); eHp = max(0, eHp-dmg);
-      scene("Threat took the bait. MARKED.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
+      scene("Threat took the bait. MARKED.", MENU_NONE, 0, pDefend(), kHp,kMax,eHp,eMax,en,lvl);
     } else {
       int dmg = random(AB_MIN[sel], AB_MAX[sel]+1);
       if (weak) dmg = (int)(dmg*1.7f);
       if (marked) { dmg = (int)(dmg*1.5f); marked = false; }
       eHp = max(0, eHp-dmg);
-      scene(weak ? "Super effective!" : "Hit.", MENU_NONE, 0, KB_DEFEND_S, kHp,kMax,eHp,eMax,en,lvl);
+      scene(weak ? "Super effective!" : "Hit.", MENU_NONE, 0, pDefend(), kHp,kMax,eHp,eMax,en,lvl);
     }
     delay(900);
     if (eHp <= 0) break;
@@ -238,7 +249,7 @@ void run(int en, uint16_t lvl) {
     // --- enemy turn ---
     int edmg = random(8, 17); kHp = max(0, kHp-edmg);
     String em = String(EN_NAME[en]) + " strikes back!";
-    scene(em.c_str(), MENU_NONE, 0, BEAR_SPRITES[5], kHp,kMax,eHp,eMax,en,lvl);
+    scene(em.c_str(), MENU_NONE, 0, pClip(5), kHp,kMax,eHp,eMax,en,lvl);
     delay(900);
     if (kHp <= 0) break;
     if (autoMode) delay(400);
@@ -249,18 +260,18 @@ void run(int en, uint16_t lvl) {
   if (eHp <= 0) {
     audio::playTrack(audio::TRK_VICTORY, false);
     kuma_api::postBattleWin();
-    String w = String("KUMA decrypted the ") + EN_NAME[en] + ".";
-    scene(w.c_str(), MENU_NONE, 0, KB_VICTORY_S, kHp, kMax, 0, eMax, en, lvl);
+    String w = (String(pName())+" decrypted the ") + EN_NAME[en] + ".";
+    scene(w.c_str(), MENU_NONE, 0, pVictory(), kHp, kMax, 0, eMax, en, lvl);
     delay(1500);
     lgfx::LovyanGFX* g2 = G(); drawBg();
     g2->setTextSize(3); g2->setTextColor(GREEN); g2->setCursor(70, 40); g2->print("VICTORY!");
     g2->setTextSize(1); g2->setTextColor(CYAN); g2->setCursor(96, 76); g2->print("DATA SECURED");
-    spr(KB_VICTORY_S, 110, 96); push();
+    spr(pVictory(), 110, 96); push();
     delay(13000);                          // hold through the victory track
   } else {
     lgfx::LovyanGFX* g2 = G(); drawBg();
     g2->setTextSize(1); g2->setTextColor(AMBER); g2->setCursor(20, 110);
-    g2->print("Link dropped... KUMA regroups."); push();
+    g2->print((String("Link dropped... ")+pName()+" regroups.").c_str()); push();
     delay(2500);
   }
   audio::stopMusic();
@@ -281,7 +292,7 @@ bool deployPrompt(int en, uint16_t lvl) {
       g->setTextSize(1); g->setTextColor(AMBER, BG);
       g->setCursor(14, 34); g->printf("Hostile %s locked on", EN_NAME[en]);
       const BearSprite& es = ENEMY_SPRITES[en]; spr(es, 318 - es.w, 44);
-      spr(BEAR_SPRITES[5], 6, 238 - BEAR_SPRITES[5].h);   // alert KUMA
+      spr(pClip(5), 6, 238 - pClip(5).h);   // alert KUMA/SHUNA
       g->setTextSize(2); g->setTextColor(CYAN, BG);
       g->setCursor(120, 92);  g->print("DEPLOY");
       g->setCursor(120, 116); g->print("COUNTER-");
@@ -331,6 +342,7 @@ bool maybeStart(const KumaStatus& s) {
   // when the threat clears (e.g. after a battle's reset, or a mode pick).
   static int  sustain = 0;
   static bool decided = false;
+  g_shuna = (s.character == "shuna");           // skin for this encounter
   if (!s.online) { sustain = 0; decided = false; return false; }
   bool high = (s.threatLevel == "high" || s.threatLevel == "critical");
   if (!high) { sustain = 0; decided = false; return false; }   // calm -> re-arm

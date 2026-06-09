@@ -24,6 +24,7 @@ class StatusResponse(BaseModel):
     sprite_set: str = "states"
     background: str = "backg1"   # home background the firmware should show
     creator: bool = False        # creator-mode showcase unit (Jax's)
+    character: str = "kuma"      # active character skin: "kuma" | "shuna"
 
 
 class EventModel(BaseModel):
