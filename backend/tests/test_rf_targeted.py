@@ -107,8 +107,8 @@ def test_capture_authorized_writes_pcap(tmp_path):
     res = rf.capture_handshake("AA:BB:CC:DD:EE:FF", channel=6, timeout=1,
                                out_dir=tmp_path / "handshakes")
     assert res.ok is True
-    assert chans == [("wlan1mon", 6)]                 # tuned to the channel first
-    assert res.frames_sent == 2                        # EAPOL frames captured
+    assert chans == [("wlan1mon", 6)]                   # tuned to the channel first
+    assert res.frames_captured == 2                     # FIX 3: EAPOL frames RECEIVED
     pcaps = list((tmp_path / "handshakes").glob("*.pcap"))
     assert len(pcaps) == 1
     assert "AABBCCDDEEFF" in pcaps[0].name.replace(":", "").upper()
@@ -134,9 +134,46 @@ def test_capture_no_eapol_reports_empty(tmp_path):
     res = rf.capture_handshake("AA:BB:CC:DD:EE:FF", channel=6, timeout=1,
                                out_dir=tmp_path / "h")
     assert res.ok is True
-    assert res.frames_sent == 0
+    assert res.frames_captured == 0                     # FIX 3: no EAPOL received
     assert "no eapol" in res.reason.lower()
     assert list((tmp_path / "h").glob("*.pcap")) == []  # nothing to write
+
+
+def test_capture_dry_run_does_not_tune_or_sniff(tmp_path):
+    chans = []
+    sniffed = []
+    g = _armed_gate(tmp_path, approved_targets=["aa:bb:cc:dd:ee:ff"])
+    rf = TargetedRF(
+        gate=g, iface="wlan1mon",
+        set_channel=lambda iface, ch: chans.append(ch),
+        sniffer=lambda *a: sniffed.append(a) or [],
+        dry_run=True)
+    res = rf.capture_handshake("AA:BB:CC:DD:EE:FF", channel=6, timeout=1,
+                               out_dir=tmp_path / "h")
+    assert res.ok is True
+    assert res.dry_run is True
+    assert res.frames_sent == 0
+    assert chans == []       # channel NOT tuned in dry run
+    assert sniffed == []     # sniffer NOT called in dry run
+
+
+def test_deauth_sender_exception_returns_error_not_crash(tmp_path):
+    def boom(*a): raise RuntimeError("nic gone")
+    g = _armed_gate(tmp_path, approved_targets=["aa:bb:cc:dd:ee:ff"])
+    rf = TargetedRF(gate=g, sender=boom)
+    res = rf.deauth("AA:BB:CC:DD:EE:FF")
+    assert res.ok is False
+    assert "tx error" in res.reason
+
+
+def test_capture_sniffer_exception_returns_error_not_crash(tmp_path):
+    def boom(*a): raise RuntimeError("sniff fail")
+    g = _armed_gate(tmp_path, approved_targets=["aa:bb:cc:dd:ee:ff"])
+    rf = TargetedRF(gate=g, set_channel=lambda *a: None, sniffer=boom)
+    res = rf.capture_handshake("AA:BB:CC:DD:EE:FF", channel=6, timeout=1,
+                               out_dir=tmp_path / "h")
+    assert res.ok is False
+    assert "capture error" in res.reason
 
 
 # ---------------------------------------------------------------------------
