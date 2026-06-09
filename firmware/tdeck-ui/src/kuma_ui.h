@@ -3,7 +3,8 @@
 #include "display.h"
 #include "kuma_api_client.h"
 
-enum class Screen { Home, ModeSelect, EventList, Settings, Networks };
+enum class Screen { Home, ModeSelect, EventList, Settings, Networks,
+                    AttackMode, BroadcastMenu, TargetEntry };
 
 // Firmware version shown on the Settings -> Firmware row (committed, unlike the
 // gitignored config.h). Bump on flashes.
@@ -38,4 +39,8 @@ namespace kuma_ui {
   void drawSettings(const SettingsView& v);
   void drawNetworks(const KumaNetwork* nets, int n, int total, int scroll);
   void drawBear(lgfx::LovyanGFX* g, BearState st, int cx, int cy, int r);
+  // Kuroshuna attack menu screens (blood-red themed)
+  void drawAttackMode(int sel);                                  // 0=BROADCAST 1=TARGETED
+  void drawBroadcastMenu(int sel);                               // 0..4 GEMINI/DEAUTH/AOI/RENGOKU/BANKAI
+  void drawTargetEntry(const String& bssid, int ch, int field);  // field: 0=bssid 1=channel
 }

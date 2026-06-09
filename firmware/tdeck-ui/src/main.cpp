@@ -24,6 +24,7 @@
 #include "kuma_battle.h"
 #include "kuma_audio.h"
 #include "kuma_terminal.h"
+#include "kuma_rf.h"
 
 static LGFX_TDeck display;
 static KumaStatus g_status;
@@ -35,6 +36,13 @@ static int        g_netScroll = 0;
 
 static Screen g_screen = Screen::Home;
 static int    g_modeIndex = 1;             // default highlight: Foraging (manual modes 0..2)
+
+// --- Attack menu state ---
+static int     g_attackSel   = 0;   // 0=BROADCAST, 1=TARGETED in AttackMode
+static int     g_broadcastSel = 0;  // 0..4 in BroadcastMenu
+static String  g_targetBssid;       // BSSID string being entered in TargetEntry
+static int     g_targetCh    = 6;   // channel being entered
+static int     g_targetField = 0;   // 0=bssid, 1=channel
 static uint32_t g_lastStatusPoll = 0;
 static uint8_t  g_statusFails = 0;         // tolerate transient poll failures
 
@@ -124,6 +132,15 @@ static void enterScreen(Screen s) {
     case Screen::Settings:
       drawSettingsScreen();
       break;
+    case Screen::AttackMode:
+      kuma_ui::drawAttackMode(g_attackSel);
+      break;
+    case Screen::BroadcastMenu:
+      kuma_ui::drawBroadcastMenu(g_broadcastSel);
+      break;
+    case Screen::TargetEntry:
+      kuma_ui::drawTargetEntry(g_targetBssid, g_targetCh, g_targetField);
+      break;
   }
 }
 
@@ -168,7 +185,14 @@ void loop() {
 
   switch (g_screen) {
     case Screen::Home:
-      if (ev == InputEvent::Select) enterScreen(Screen::ModeSelect);
+      if (ev == InputEvent::Select) {
+        if (g_status.kuroshunaArmed) {
+          g_attackSel = 0;
+          enterScreen(Screen::AttackMode);
+        } else {
+          enterScreen(Screen::ModeSelect);
+        }
+      }
       else if (ev == InputEvent::Right) enterScreen(Screen::EventList);
       else if (ev == InputEvent::Left) { g_setSel = 0; g_setConfirm = -1; enterScreen(Screen::Settings); }
       else if (ev == InputEvent::Down) { terminal::run(); enterScreen(Screen::Home); }
@@ -207,6 +231,100 @@ void loop() {
         enterScreen(Screen::Home);
       }
       break;
+
+    case Screen::AttackMode:
+      if (ev == InputEvent::Up || ev == InputEvent::Down) {
+        g_attackSel = 1 - g_attackSel;   // toggle 0<->1
+        kuma_ui::drawAttackMode(g_attackSel);
+      } else if (ev == InputEvent::Select) {
+        if (g_attackSel == 0) {
+          g_broadcastSel = 0;
+          enterScreen(Screen::BroadcastMenu);
+        } else {
+          g_targetBssid = "";
+          g_targetCh = 6;
+          g_targetField = 0;
+          enterScreen(Screen::TargetEntry);
+        }
+      } else if (ev == InputEvent::Back || ev == InputEvent::Left) {
+        enterScreen(Screen::Home);
+      }
+      break;
+
+    case Screen::BroadcastMenu: {
+      static const char* ATTACK_NAMES[5] = {"gemini","deauth","aoi","rengoku","bankai"};
+      static const char* ATTACK_LABELS[5]= {"GEMINI","DEAUTH","AOI","RENGOKU","BANKAI"};
+      if (ev == InputEvent::Up) {
+        g_broadcastSel = (g_broadcastSel + 4) % 5;
+        kuma_ui::drawBroadcastMenu(g_broadcastSel);
+      } else if (ev == InputEvent::Down) {
+        g_broadcastSel = (g_broadcastSel + 1) % 5;
+        kuma_ui::drawBroadcastMenu(g_broadcastSel);
+      } else if (ev == InputEvent::Select) {
+        const char* nm = ATTACK_NAMES[g_broadcastSel];
+        const char* lb = ATTACK_LABELS[g_broadcastSel];
+        bool ok = kuma_api::broadcastAttack(String(nm));
+        if (ok) {
+          kuma_ui::toast(String("blasting ") + lb + "...", 3000);
+        } else {
+          kuma_ui::toast("refused - broadcast not armed", 3000);
+        }
+        enterScreen(Screen::Home);
+      } else if (ev == InputEvent::Back || ev == InputEvent::Left) {
+        g_attackSel = 0;
+        enterScreen(Screen::AttackMode);
+      }
+      break;
+    }
+
+    case Screen::TargetEntry: {
+      // Keyboard input: characters accumulate into bssid or channel field.
+      // Select on field 0 -> move to field 1; Select on field 1 -> fire.
+      // Back/Left -> cancel back to AttackMode.
+      if (ev == InputEvent::Back || ev == InputEvent::Left) {
+        enterScreen(Screen::AttackMode);
+        break;
+      }
+      if (ev == InputEvent::Up || ev == InputEvent::Down) {
+        g_targetField = 1 - g_targetField;
+        kuma_ui::drawTargetEntry(g_targetBssid, g_targetCh, g_targetField);
+        break;
+      }
+      if (ev == InputEvent::Select) {
+        if (g_targetField == 0) {
+          // advance to channel field
+          g_targetField = 1;
+          kuma_ui::drawTargetEntry(g_targetBssid, g_targetCh, g_targetField);
+        } else {
+          // fire: authorize then deauth
+          if (g_targetBssid.length() < 17) {
+            kuma_ui::toast("bad BSSID", 2000);
+            break;
+          }
+          uint8_t bssid[6], client[6];
+          if (!kuma_rf::parseMac(g_targetBssid, bssid)) {
+            kuma_ui::toast("bad BSSID format", 2000);
+            break;
+          }
+          for (int i = 0; i < 6; i++) client[i] = 0xFF;  // broadcast deauth
+          bool auth = kuma_api::authorizeAction(g_targetBssid, "deauth");
+          if (!auth) {
+            kuma_ui::toast("refused by gate", 2500);
+            enterScreen(Screen::AttackMode);
+            break;
+          }
+          int sent = kuma_rf::deauth(bssid, client, (uint8_t)g_targetCh, 64);
+          kuma_ui::toast(String("deauth ") + sent + " frames -> " + g_targetBssid, 3000);
+          enterScreen(Screen::Home);
+        }
+        break;
+      }
+      // Keyboard character input — route to current field
+      // We rely on the key character stored in the raw InputEvent.
+      // For T-Deck the key value comes via input::lastChar() if available;
+      // fall through for non-character events.
+      break;
+    }
 
     case Screen::Settings: {
       bool slider = (g_setSel == SET_VOLUME || g_setSel == SET_BRIGHT);

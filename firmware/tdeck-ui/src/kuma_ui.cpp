@@ -498,4 +498,92 @@ void drawNetworks(const KumaNetwork* nv, int n, int total, int scroll) {
   if (fbReady) fb.pushSprite(D, 0, 0);
 }
 
+// ---------------------------------------------------------------------------
+// Kuroshuna attack menu screens — blood-red themed
+// ---------------------------------------------------------------------------
+
+// KURO_RED / KURO_HOT match the values used in drawHome.
+static constexpr uint16_t KURO_RED2 = 0xF800;
+static constexpr uint16_t KURO_HOT2 = 0xFD20;
+static constexpr uint16_t KURO_DIM  = 0x9925;
+
+void drawAttackMode(int sel) {
+  // sel: 0=BROADCAST, 1=TARGETED
+  D->fillScreen(BG);
+  D->setTextSize(2); D->setTextColor(KURO_RED2, BG);
+  D->setCursor(10, 10); D->print("KUROSHUNA");
+  D->drawFastHLine(0, 32, 320, KURO_RED2);
+
+  const char* opts[2] = {"BROADCAST", "TARGETED"};
+  const char* subs[2] = {"named attack  (blasts all)", "single target deauth"};
+  for (int i = 0; i < 2; ++i) {
+    int yy = 56 + i * 72;
+    bool s = (i == sel);
+    if (s) D->fillRoundRect(6, yy - 6, 308, 58, 4, 0x4800);
+    D->setTextSize(2); D->setTextColor(s ? KURO_HOT2 : KURO_RED2, s ? 0x4800 : BG);
+    D->setCursor(16, yy); D->print(s ? ">" : " "); D->print(opts[i]);
+    D->setTextSize(1); D->setTextColor(KURO_DIM, s ? 0x4800 : BG);
+    D->setCursor(16, yy + 24); D->print(subs[i]);
+  }
+  D->setTextSize(1); D->setTextColor(GREY, BG);
+  D->setCursor(10, 226); D->print("up/dn choose  select  back=home");
+}
+
+void drawBroadcastMenu(int sel) {
+  // sel: 0=GEMINI 1=DEAUTH 2=AOI 3=RENGOKU 4=BANKAI
+  D->fillScreen(BG);
+  D->setTextSize(2); D->setTextColor(KURO_RED2, BG);
+  D->setCursor(10, 6); D->print("BROADCAST");
+  D->drawFastHLine(0, 28, 320, KURO_RED2);
+
+  static const char* names[5] = {"GEMINI",  "DEAUTH",  "AOI",
+                                  "RENGOKU", "BANKAI"};
+  static const char* subs[5]  = {"beacon spam",  "deauth flood",  "BLE spam",
+                                  "assoc flood",  "harvest ALL"};
+  for (int i = 0; i < 5; ++i) {
+    int yy = 36 + i * 38;
+    bool s = (i == sel);
+    if (s) D->fillRoundRect(6, yy - 2, 308, 34, 4, 0x4800);
+    D->setTextSize(1); D->setTextColor(s ? KURO_HOT2 : KURO_RED2, s ? 0x4800 : BG);
+    D->setCursor(16, yy + 4); D->printf("%s %s", s ? ">" : " ", names[i]);
+    D->setTextColor(KURO_DIM, s ? 0x4800 : BG);
+    D->setCursor(120, yy + 4); D->print(subs[i]);
+  }
+  D->setTextSize(1); D->setTextColor(GREY, BG);
+  D->setCursor(10, 228); D->print("up/dn  select fires  back");
+}
+
+void drawTargetEntry(const String& bssid, int ch, int field) {
+  // field 0 = editing BSSID, field 1 = editing channel
+  D->fillScreen(BG);
+  D->setTextSize(2); D->setTextColor(KURO_RED2, BG);
+  D->setCursor(10, 8); D->print("TARGETED DEAUTH");
+  D->drawFastHLine(0, 32, 320, KURO_RED2);
+
+  // BSSID field
+  bool bsF = (field == 0);
+  D->setTextSize(1); D->setTextColor(bsF ? KURO_HOT2 : KURO_RED2, BG);
+  D->setCursor(10, 50); D->print("BSSID:");
+  D->setTextColor(bsF ? FG : GREY, BG);
+  D->setCursor(70, 50);
+  D->print(bssid.length() ? bssid : "AA:BB:CC:DD:EE:FF");
+  if (bsF) D->print("_");
+  if (bsF) D->drawRect(66, 46, 248, 14, KURO_HOT2);
+
+  // Channel field
+  bool chF = (field == 1);
+  D->setTextColor(chF ? KURO_HOT2 : KURO_RED2, BG);
+  D->setCursor(10, 80); D->print("CHANNEL:");
+  D->setTextColor(chF ? FG : GREY, BG);
+  D->setCursor(78, 80);
+  if (ch > 0) D->print(ch); else D->print("6");
+  if (chF) { D->print("_"); D->drawRect(74, 76, 60, 14, KURO_HOT2); }
+
+  D->setTextColor(KURO_DIM, BG);
+  D->setCursor(10, 110);
+  D->print("type BSSID  select=next/fire  back=cancel");
+  D->setCursor(10, 124);
+  D->print("down=switch field  up=switch field");
+}
+
 }  // namespace kuma_ui
