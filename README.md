@@ -2,7 +2,9 @@
 
 KUMA. An open-source, DIY, blue-team Wi-Fi defense gadget.
 
-Pwnagotchi, [Bjorn](https://github.com/infinition/Bjorn), [HashMonster](https://github.com/G4lile0/ESP32-WiFi-Hash-Monster), and [Bruce](https://github.com/pr3y/Bruce) are pocket tools built for attacking wireless networks. KUMA is the opposite. It sits on the network you want to protect, watches the air for those attacks, scores what it sees, and shows it on a dashboard with a pixel-bear mascot whose mood tracks the threat. Detection and defense only. The device never transmits attack frames.
+Pwnagotchi, [Bjorn](https://github.com/infinition/Bjorn), [HashMonster](https://github.com/G4lile0/ESP32-WiFi-Hash-Monster), and [Bruce](https://github.com/pr3y/Bruce) are pocket tools built for attacking wireless networks. KUMA starts from the other side: it sits on the network you want to protect, watches the air for those attacks, scores what it sees, and shows it on a dashboard with a pixel-bear mascot whose mood tracks the threat. **Blue-team first** — by default it is detection and defense only, and in that default posture never transmits attack frames.
+
+It *also* ships an opt-in, heavily-gated offensive tier — **Kuroshuna** — for actively testing the resilience of a lab you own. That capability is off by default and **may only be used lawfully against equipment you own or are explicitly authorized to test**. See [Offensive capability](#offensive-capability--kuroshuna-authorized-lab-use-only) below before you go near it.
 
 Five modes: Hibernate (conserve), Foraging (discover), Sentinel (detect), Honey (deceive), Apex (respond).
 
@@ -28,6 +30,14 @@ Every live detector maps to an on-device "enemy" you can engage from the alert s
 
 ![Threat roster](docs/media/enemies.png)
 
+### Battle: engage the threat
+
+When an attack lands, KUMA drops into an on-device battle against the matching enemy — the engagement screen for the response.
+
+![KUMA battle screen](docs/media/battle.png)
+
+> KUMA squares off against a detected DEAUTHER. Composed from the device's embedded sprites and battle background at 2x the native 320x240. (Wiring the countermeasure moves to real mitigation is in progress.)
+
 ## Status
 
 Live on hardware. KUMA runs as an autonomous sensor on a Raspberry Pi under systemd and arms itself on boot. The whole path works on real attack traffic, proven by catching a live WiFi Pineapple deauth flood: 1640 frames in ten seconds, threat HIGH, bear on alert, all on the dashboard.
@@ -52,6 +62,54 @@ Apex Mode adds gated, automated defense: harden PMF, fail over to a backup link,
 Beacon fingerprinting, which catches a clone that spoofs the real BSSID exactly, also exists but ships opt-in. On a real multi-radio router it false-alarms, so it stays off until the scoring is rebuilt. The detection doc has the honest writeup.
 
 For development, `KUMA_MOCK=1` runs the entire pipeline with no Wi-Fi hardware.
+
+## Offensive capability — Kuroshuna (authorized lab use only)
+
+> **⚠️ READ THIS BEFORE ENABLING ANYTHING.**
+> The Kuroshuna tier makes KUMA *transmit real attacks*: targeted Wi-Fi
+> deauthentication, WPA handshake capture, multi-protocol credential brute-forcing
+> (SSH / FTP / SMB / RDP / Telnet / SQL), file exfiltration, and broadcast
+> deauth / beacon / BLE flooding.
+>
+> **These actions are lawful ONLY against networks and devices you personally own,
+> or for which you hold explicit, documented authorization to test.** Deauthing,
+> brute-forcing, intercepting, or jamming equipment you do not own is a crime in
+> most jurisdictions — including the U.S. Computer Fraud and Abuse Act (18 U.S.C.
+> § 1030), the U.S. Wiretap Act, the UK Computer Misuse Act 1990, and equivalents
+> worldwide — and can carry serious criminal and civil penalties. Radio jamming /
+> deauth flooding is separately illegal under FCC rules and their international
+> counterparts.
+>
+> **Broadcast attacks are indiscriminate** and cannot be contained by software; only
+> physical RF isolation (low power, distance, or a shielded/attenuated setup) keeps
+> them off bystanders' equipment. Running them outside such isolation will hit gear
+> you do not own.
+>
+> **You are solely and entirely responsible for how you use this.** It is provided
+> for authorized security research and active self-defense of your own lab. The
+> authors disclaim all liability for any misuse. If you are not certain a target is
+> yours or authorized in writing, **do not arm this.**
+
+KUMA's default posture is unchanged — passive blue-team. Kuroshuna is the opt-in
+"gloves off" tier for proving your own defenses hold and for active self-defense in a
+lab. It is built to be hard to fire by accident and impossible to point off-scope:
+
+- **Off by default, multiply gated.** Nothing transmits unless `lab_mode` *and* a
+  deliberate on-device arm are set. Every single action is checked against one
+  authorization gate and written to an append-only audit log.
+- **Scoped to your targets.** Targeted offense only acts on an explicit
+  `approved_targets` allowlist, or on attackers confirmed to be hitting your own
+  protected APs. Your own infrastructure is hard-denied, always — it cannot be
+  targeted even by mistake.
+- **Broadcast is double-armed and time-boxed.** The indiscriminate flood/spam tier
+  needs a *second*, separate broadcast arm, auto-stops on a timer, and is pinned to a
+  single channel at capped power.
+- **The handheld asks first.** The T-Deck's own-radio deauth authorizes every shot
+  with the Pi gate before transmitting; a refusal means nothing is sent.
+
+It is armed only from the device terminal (`kuroshuna arm` → explicit confirm; the
+broadcast tier requires a stricter second confirm). Full design and gating model:
+[the Kuroshuna spec](docs/superpowers/specs/2026-06-09-kuroshuna-offensive-mode-design.md).
 
 ## Hardware
 
@@ -125,11 +183,11 @@ The look is locked in [DESIGN.md](DESIGN.md): a dark, monospace instrument conso
 
 1. If it does not work on a desk, it does not deserve a pocket.
 2. Confidence scored, never absolute. Every detection says "suspected." MACs can be spoofed, so we never overclaim attribution.
-3. No disruptive RF. Apex is gated behind `lab_mode` and an allowlist. No deauth, no jamming, no credential capture.
+3. Defense is the default; offense is opt-in, gated, and lawful-use-only. The passive blue-team build never transmits attack frames. The Kuroshuna offensive tier (deauth, credential testing, broadcast simulation) stays off behind `lab_mode` + a deliberate arm + an approved-target allowlist, and may be used **only** against equipment you own or are explicitly authorized to test. See [Offensive capability](#offensive-capability--kuroshuna-authorized-lab-use-only).
 
 ## Scope
 
-KUMA is a defensive tool for networks you own or are authorized to monitor. It does not attack. Use it lawfully.
+KUMA is a defensive tool for networks you own or are authorized to monitor. Its optional Kuroshuna offensive tier transmits real attacks and may be used **only** against equipment you own or are explicitly, documentably authorized to test — see [Offensive capability](#offensive-capability--kuroshuna-authorized-lab-use-only) for the full legal warning. Unauthorized use is illegal and entirely your responsibility. Use it lawfully or not at all.
 
 ## License
 

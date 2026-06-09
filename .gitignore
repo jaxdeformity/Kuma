@@ -54,8 +54,6 @@ designs/sprites/kuroshuna/hires/
 # Cloned source repos (pwnagotchi / Bjorn / Bruce), read-only reference only
 reference/
 
-# Captured WPA handshakes (sensitive; local only)
-backend/data/handshakes/
-
-# Exfiltrated files from steal_ssh (sensitive; local only)
-backend/data/loot/
+# Runtime data: SQLite DB, kuroshuna audit log, captured handshakes, exfil loot.
+# Never commit - generated on the Pi at runtime, often sensitive.
+backend/data/
