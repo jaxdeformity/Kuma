@@ -25,6 +25,17 @@ from . import state
 
 router = APIRouter(prefix="/api")
 
+
+def _check_ctrl_token(token_header: str) -> None:
+    """Gate the offensive control surface. FAIL-CLOSED: if no KUMA_SHELL_TOKEN is set
+    in the backend env, these endpoints are DISABLED (503); otherwise the caller must
+    present the token. Stops anyone on the LAN from arming/firing Kuma."""
+    token = settings.shell_token
+    if not token:
+        raise HTTPException(status_code=503, detail="offensive control disabled (no KUMA_SHELL_TOKEN set)")
+    if token_header != token:
+        raise HTTPException(status_code=403, detail="bad control token")
+
 # Actions the backend will accept in Sprint 1. All safe / local-only.
 SAFE_ACTIONS = {
     "acknowledge_alert", "start_mock_capture", "export_events",
@@ -169,7 +180,9 @@ def _arm_response(lab: dict) -> schemas.KuroshunaArmResponse:
 
 
 @router.post("/kuroshuna/arm", response_model=schemas.KuroshunaArmResponse)
-def kuroshuna_arm(req: schemas.KuroshunaArmRequest):
+def kuroshuna_arm(req: schemas.KuroshunaArmRequest,
+                  x_kuma_shell_token: str = Header(default="")):
+    _check_ctrl_token(x_kuma_shell_token)
     lab = authz._load_lab()
     if req.armed and not lab.get("lab_mode"):
         raise HTTPException(status_code=409,
@@ -187,7 +200,9 @@ def kuroshuna_arm(req: schemas.KuroshunaArmRequest):
 
 
 @router.post("/kuroshuna/broadcast-arm", response_model=schemas.KuroshunaArmResponse)
-def kuroshuna_broadcast_arm(req: schemas.KuroshunaArmRequest):
+def kuroshuna_broadcast_arm(req: schemas.KuroshunaArmRequest,
+                             x_kuma_shell_token: str = Header(default="")):
+    _check_ctrl_token(x_kuma_shell_token)
     lab = authz._load_lab()
     if req.armed:
         if not lab.get("lab_mode"):
@@ -208,9 +223,11 @@ def kuroshuna_broadcast_arm(req: schemas.KuroshunaArmRequest):
 
 @router.post("/kuroshuna/authorize",
              response_model=schemas.KuroshunaAuthorizeResponse)
-def kuroshuna_authorize(req: schemas.KuroshunaAuthorizeRequest):
+def kuroshuna_authorize(req: schemas.KuroshunaAuthorizeRequest,
+                        x_kuma_shell_token: str = Header(default="")):
     """The T-Deck calls this BEFORE its own ESP32 radio transmits, so the Pi gate
     stays authoritative. The gate audits every decision."""
+    _check_ctrl_token(x_kuma_shell_token)
     gate = Gate()  # reads current lab_targets.json
     if req.action == "broadcast":
         allowed, reason = gate.broadcast_allowed()
@@ -227,7 +244,9 @@ _BROADCAST_ATTACKS = {"gemini", "deauth", "aoi", "rengoku", "bankai"}
 
 
 @router.post("/kuroshuna/broadcast", response_model=schemas.BroadcastAttackResponse)
-def kuroshuna_broadcast(req: schemas.BroadcastAttackRequest):
+def kuroshuna_broadcast(req: schemas.BroadcastAttackRequest,
+                        x_kuma_shell_token: str = Header(default="")):
+    _check_ctrl_token(x_kuma_shell_token)
     name = (req.attack or "").lower()
     if name not in _BROADCAST_ATTACKS:
         raise HTTPException(status_code=400, detail=f"unknown attack: {name}")

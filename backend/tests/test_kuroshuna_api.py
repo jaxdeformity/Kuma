@@ -10,6 +10,8 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from kuma_api.app import app  # noqa: E402
 
+CTRL = {"X-KUMA-Shell-Token": "testtok"}
+
 
 @pytest.fixture()
 def lab_file(tmp_path, monkeypatch):
@@ -26,6 +28,7 @@ def lab_file(tmp_path, monkeypatch):
 
 @pytest.fixture()
 def client(temp_db, lab_file, tmp_path, monkeypatch):
+    monkeypatch.setenv("KUMA_SHELL_TOKEN", "testtok")
     from kuma_core import kuroshuna_stats
     monkeypatch.setattr(kuroshuna_stats, "STATS_FILE", tmp_path / "ks.json")
     with TestClient(app) as c:
@@ -61,7 +64,7 @@ def test_status_has_kuroshuna_flags(client):
 
 def test_arm_requires_lab_mode(client, lab_file):
     # lab_mode is False -> arming Kuroshuna is refused
-    r = client.post("/api/kuroshuna/arm", json={"armed": True})
+    r = client.post("/api/kuroshuna/arm", json={"armed": True}, headers=CTRL)
     assert r.status_code == 409
     assert "lab_mode" in r.json()["detail"]
 
@@ -69,7 +72,7 @@ def test_arm_requires_lab_mode(client, lab_file):
 def test_arm_succeeds_when_lab_mode_on(client, lab_file):
     cfg = json.loads(lab_file.read_text()); cfg["lab_mode"] = True
     lab_file.write_text(json.dumps(cfg), encoding="utf-8")
-    r = client.post("/api/kuroshuna/arm", json={"armed": True})
+    r = client.post("/api/kuroshuna/arm", json={"armed": True}, headers=CTRL)
     assert r.status_code == 200
     assert r.json()["kuroshuna_armed"] is True
     assert json.loads(lab_file.read_text())["kuroshuna_armed"] is True
@@ -79,7 +82,7 @@ def test_disarm_always_allowed(client, lab_file):
     # even with lab_mode False, disarming must work (stand down)
     cfg = json.loads(lab_file.read_text()); cfg["kuroshuna_armed"] = True
     lab_file.write_text(json.dumps(cfg), encoding="utf-8")
-    r = client.post("/api/kuroshuna/arm", json={"armed": False})
+    r = client.post("/api/kuroshuna/arm", json={"armed": False}, headers=CTRL)
     assert r.status_code == 200
     assert r.json()["kuroshuna_armed"] is False
 
@@ -95,21 +98,21 @@ def _set_lab(lab_file, **kw):
 
 def test_broadcast_arm_requires_allow_broadcast(client, lab_file):
     _set_lab(lab_file, lab_mode=True, allow_broadcast=False)
-    r = client.post("/api/kuroshuna/broadcast-arm", json={"armed": True})
+    r = client.post("/api/kuroshuna/broadcast-arm", json={"armed": True}, headers=CTRL)
     assert r.status_code == 409
     assert "allow_broadcast" in r.json()["detail"]
 
 
 def test_broadcast_arm_succeeds_when_enabled(client, lab_file):
     _set_lab(lab_file, lab_mode=True, allow_broadcast=True)
-    r = client.post("/api/kuroshuna/broadcast-arm", json={"armed": True})
+    r = client.post("/api/kuroshuna/broadcast-arm", json={"armed": True}, headers=CTRL)
     assert r.status_code == 200
     assert r.json()["broadcast_armed"] is True
 
 
 def test_broadcast_disarm_always_allowed(client, lab_file):
     _set_lab(lab_file, broadcast_armed=True)
-    r = client.post("/api/kuroshuna/broadcast-arm", json={"armed": False})
+    r = client.post("/api/kuroshuna/broadcast-arm", json={"armed": False}, headers=CTRL)
     assert r.status_code == 200
     assert r.json()["broadcast_armed"] is False
 
@@ -121,7 +124,8 @@ def test_broadcast_disarm_always_allowed(client, lab_file):
 def test_authorize_denies_unapproved(client, lab_file):
     _set_lab(lab_file, lab_mode=True, kuroshuna_armed=True, approved_targets=[])
     r = client.post("/api/kuroshuna/authorize",
-                    json={"target": "AA:BB:CC:DD:EE:FF", "action": "deauth"})
+                    json={"target": "AA:BB:CC:DD:EE:FF", "action": "deauth"},
+                    headers=CTRL)
     assert r.status_code == 200
     body = r.json()
     assert body["allowed"] is False
@@ -132,18 +136,21 @@ def test_authorize_allows_approved(client, lab_file):
     _set_lab(lab_file, lab_mode=True, kuroshuna_armed=True,
              approved_targets=["aa:bb:cc:dd:ee:ff"])
     r = client.post("/api/kuroshuna/authorize",
-                    json={"target": "AA:BB:CC:DD:EE:FF", "action": "deauth"})
+                    json={"target": "AA:BB:CC:DD:EE:FF", "action": "deauth"},
+                    headers=CTRL)
     assert r.json()["allowed"] is True
 
 
 def test_authorize_broadcast_action_uses_broadcast_gate(client, lab_file):
     _set_lab(lab_file, lab_mode=True, allow_broadcast=True, broadcast_armed=True)
     r = client.post("/api/kuroshuna/authorize",
-                    json={"target": "*", "action": "broadcast"})
+                    json={"target": "*", "action": "broadcast"},
+                    headers=CTRL)
     assert r.json()["allowed"] is True
     _set_lab(lab_file, broadcast_armed=False)
     r2 = client.post("/api/kuroshuna/authorize",
-                     json={"target": "*", "action": "broadcast"})
+                     json={"target": "*", "action": "broadcast"},
+                     headers=CTRL)
     assert r2.json()["allowed"] is False
 
 
@@ -168,3 +175,25 @@ def test_status_has_xp_progress(client):
     # rising-cost curve: fresh unit is level 1 -> 0 into, xp_for_level(2)=2 to next.
     assert body["xp_into_level"] == 0
     assert body["xp_to_next"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Security: offensive endpoints require control token
+# ---------------------------------------------------------------------------
+
+def test_offensive_endpoint_requires_token(client):
+    # Token IS set (env patched in client fixture) but caller sends no header -> 403
+    r = client.post("/api/kuroshuna/arm", json={"armed": True})
+    assert r.status_code == 403
+
+
+def test_offensive_endpoint_disabled_without_token(lab_file, temp_db, tmp_path, monkeypatch):
+    # No token in env at all -> 503 (fail-closed)
+    monkeypatch.delenv("KUMA_SHELL_TOKEN", raising=False)
+    from kuma_core import kuroshuna_stats
+    monkeypatch.setattr(kuroshuna_stats, "STATS_FILE", tmp_path / "ks.json")
+    with TestClient(app) as c:
+        r = c.post("/api/kuroshuna/arm",
+                   json={"armed": True},
+                   headers={"X-KUMA-Shell-Token": "anything"})
+    assert r.status_code == 503

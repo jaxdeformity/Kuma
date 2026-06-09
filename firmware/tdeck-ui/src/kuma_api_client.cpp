@@ -186,6 +186,7 @@ bool armKuroshuna(bool armed) {
   http.setTimeout(2000);
   if (!http.begin(baseUrl() + "/api/kuroshuna/arm")) return false;
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-KUMA-Shell-Token", KUMA_SHELL_TOKEN);
   String body = String("{\"armed\":") + (armed ? "true" : "false") + "}";
   int code = http.POST(body);
   http.end();
@@ -198,6 +199,7 @@ bool armBroadcast(bool armed) {
   http.setTimeout(2000);
   if (!http.begin(baseUrl() + "/api/kuroshuna/broadcast-arm")) return false;
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-KUMA-Shell-Token", KUMA_SHELL_TOKEN);
   String body = String("{\"armed\":") + (armed ? "true" : "false") + "}";
   int code = http.POST(body);
   http.end();
@@ -210,6 +212,7 @@ bool authorizeAction(const String& target, const String& action) {
   http.setTimeout(2000);
   if (!http.begin(baseUrl() + "/api/kuroshuna/authorize")) return false;
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-KUMA-Shell-Token", KUMA_SHELL_TOKEN);
   String body = String("{\"target\":\"") + target + "\",\"action\":\"" + action + "\"}";
   int code = http.POST(body);
   if (code != 200) { http.end(); return false; }
@@ -226,6 +229,7 @@ bool broadcastAttack(const String& name) {
   http.setTimeout(2000);
   if (!http.begin(baseUrl() + "/api/kuroshuna/broadcast")) return false;
   http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-KUMA-Shell-Token", KUMA_SHELL_TOKEN);
   String body = String("{\"attack\":\"") + name + "\"}";
   int code = http.POST(body);
   http.end();

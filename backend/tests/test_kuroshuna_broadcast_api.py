@@ -51,8 +51,12 @@ from kuma_api.app import app
 from kuma_core import authz
 
 
+CTRL = {"X-KUMA-Shell-Token": "testtok"}
+
+
 @pytest.fixture()
 def client(temp_db, tmp_path, monkeypatch):
+    monkeypatch.setenv("KUMA_SHELL_TOKEN", "testtok")
     p = tmp_path / "lab.json"
     p.write_text(json.dumps({"lab_mode": True, "allow_broadcast": True,
                              "broadcast_armed": True, "broadcast": {"max_burst_seconds": 1}}),
@@ -63,7 +67,7 @@ def client(temp_db, tmp_path, monkeypatch):
 
 
 def test_broadcast_unknown_attack_400(client):
-    r = client.post("/api/kuroshuna/broadcast", json={"attack": "nope"})
+    r = client.post("/api/kuroshuna/broadcast", json={"attack": "nope"}, headers=CTRL)
     assert r.status_code == 400
 
 
@@ -72,12 +76,12 @@ def test_broadcast_requires_arm(client, tmp_path, monkeypatch):
     p.write_text(json.dumps({"lab_mode": True, "allow_broadcast": False,
                              "broadcast_armed": False}), encoding="utf-8")
     monkeypatch.setattr(authz, "LAB_TARGETS_FILE", p)
-    r = client.post("/api/kuroshuna/broadcast", json={"attack": "gemini"})
+    r = client.post("/api/kuroshuna/broadcast", json={"attack": "gemini"}, headers=CTRL)
     assert r.status_code == 409
 
 
 def test_broadcast_started(client):
-    r = client.post("/api/kuroshuna/broadcast", json={"attack": "gemini"})
+    r = client.post("/api/kuroshuna/broadcast", json={"attack": "gemini"}, headers=CTRL)
     assert r.status_code == 200
     assert r.json()["started"] is True
     assert r.json()["attack"] == "gemini"
