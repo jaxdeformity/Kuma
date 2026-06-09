@@ -68,28 +68,37 @@ class MitigationEngine:
     def apply(attacker: str, event_type: str) -> dict   # {action, target, result, message}
 ```
 
-- `harden_pmf` / `redirect` / `contain` keep their current `nmcli` / controller-API
-  behavior, including **graceful no-op** when `protected_connection` /
-  `backup_connection` / `containment.blacklist_url` are unset (return a
-  "skipped — configure X" message). This is what makes manual mitigation safe out
-  of the box.
+- `harden_pmf` / `avoid` **auto-discover** their target (the active NM Wi-Fi
+  connection + the legit associated BSSID) via `nmcli`/`iw`, so they need no
+  operator config. `harden_pmf` is capability-aware (§3.2). `redirect` / `contain`
+  are **optional upgrades** — silent no-op when `backup_connection` /
+  `containment.blacklist_url` are unset. This makes mitigation real on a fresh deploy.
 - `mark_hostile` delegates to the existing `Gate.auto_hostile_add(target, evidence)`
   (`kuma_core/authz.py:183`).
 - `ApexResponder` is refactored to delegate its action calls to the engine. Its own
   gates (lab_mode + apex_active_response, cooldown, min-frames, protect_bssids) stay
   in the responder — only the *action bodies* move to the engine.
 
-### 3.2 Canonical action map (`canonical_for`)
-Strongest *real* defense per attack type. The player always sees `HARDEN`; the
-engine selects the action from the triggering event's type:
+### 3.2 Canonical action map (`canonical_for`) — ZERO-CONFIG BY DESIGN
+Every primary action targets what KUMA already has, so HARDEN does something real on
+a fresh deploy with no operator setup. The player always sees `HARDEN`; the engine
+selects the action from the event type. Network-wide enforcement (`redirect`,
+`contain`) is an OPTIONAL upgrade, silent when unconfigured.
 
-| Attack type (event substring) | Canonical mitigation |
-|---|---|
-| `deauth` / `disassoc` / `handshake` / `eapol` | `harden_pmf` + `redirect` (defeat the deauth — the real "don't get deauthed") |
-| `rogue` / `bssid` / `twin` / `pineapple` / `karma` | `contain` (blacklist attacker BSSID via controller) |
-| `beacon` / `ssid` flood / `botnet` / `worm` | `mark_hostile` + `contain` |
-| `sniff` / `jam` (passive / RF) | `mark_hostile` (nothing to block; mark + log) |
-| (fallthrough/unknown) | `mark_hostile` |
+| Attack type (event substring) | Primary (zero-config) | Optional upgrade |
+|---|---|---|
+| `deauth` / `disassoc` / `handshake` / `eapol` | **harden** — auto-detect active Wi-Fi, enable PMF (capability-aware: required only if the AP supports 802.11w, else optional — never disconnects KUMA) | `redirect` if `backup_connection` set |
+| `rogue` / `bssid` / `twin` / `pineapple` / `karma` | **avoid** — pin the active connection to the legit associated BSSID (won't roam onto the twin) + **mark** hostile | `contain` if `containment.blacklist_url` set |
+| `beacon` / `ssid` flood / `botnet` / `worm` | **mark** hostile + alert | `contain` if configured |
+| `sniff` / `jam` (passive / RF) | **mark** (nothing to block; mark + log) | — |
+| (fallthrough/unknown) | **mark** | — |
+
+PMF level is capability-aware: `_ap_supports_pmf()` scans the associated AP's RSN
+bits and sets `pmf=required` only when MFP is advertised; otherwise `pmf=optional` so
+KUMA is never knocked off a non-PMF AP. A `pmf_strict` flag forces required for
+PMF-capable/lab setups. Scope: protects KUMA's OWN link + marking/avoidance;
+network-wide protection of other devices stays the optional controller or the Shuna
+counterstrike (and ultimately the iOS-app enforcement vision).
 
 `apply()` runs the mapped action(s), returns `{action, target, result, message}`,
 where `action` is a short label (e.g. `"harden+redirect"`, `"contain"`,
