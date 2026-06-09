@@ -57,9 +57,35 @@ class Gate:
             self.cfg.get("kuroshuna_armed"))
 
     def is_authorized(self, target: str, action: str) -> tuple[bool, str]:
+        return self._decide(target, action)
+
+    def _decide(self, target: str, action: str) -> tuple[bool, str]:
         if not self.armed():
             return False, "disarmed (need lab_mode + kuroshuna_armed)"
+        t = _norm(target)
+        if not t:
+            return False, "empty target"
+        approved = {_norm(a) for a in self.cfg.get("approved_targets", [])}
+        if self._matches(t, approved):
+            return True, "approved_targets allowlist"
         return False, "not in authorized set"
+
+    def _matches(self, target: str, allow: set[str]) -> bool:
+        if target in allow:
+            return True
+        if not _is_mac(target):
+            try:
+                ip = ipaddress.ip_address(target)
+            except ValueError:
+                return False
+            for entry in allow:
+                if "/" in entry:
+                    try:
+                        if ip in ipaddress.ip_network(entry, strict=False):
+                            return True
+                    except ValueError:
+                        continue
+        return False
 
     def audit(self, event: dict) -> None:  # filled in Task 7
         pass
