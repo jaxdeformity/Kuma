@@ -33,10 +33,41 @@ _VALID_CH = set(range(1, 15)) | {
 }
 
 
+def _parse_action_csa(body: bytes):
+    """Parse a Spectrum Management (category 0) action-frame body for a Channel
+    Switch Announcement. Action frames carry CSA with NO beacon and NO deauth —
+    the quietest redirect of all — so they must be parsed straight from the body,
+    not as dissected information elements.
+
+      action 4 (Channel Switch Announcement): body holds a CSA element (tag 37).
+      action 5 (Extended Channel Switch Announcement): mode, op-class, channel,
+               count carried inline after the category/action header.
+    """
+    if len(body) < 2 or body[0] != 0:        # category 0 = Spectrum Management
+        return None
+    action, rest = body[1], body[2:]
+    if action == 4:                          # CSA element follows; walk tag/len IEs
+        i = 0
+        while i + 2 <= len(rest):
+            eid, ln = rest[i], rest[i + 1]
+            val = rest[i + 2:i + 2 + ln]
+            if eid == 37 and len(val) >= 3:
+                return int(val[1]), int(val[2]), int(val[0])   # ch, count, mode
+            i += 2 + ln
+        return None
+    if action == 5 and len(rest) >= 4:       # mode, op-class, channel, count
+        return int(rest[2]), int(rest[3]), int(rest[0])
+    return None
+
+
 def parse_csa(pkt):
-    """Extract (new_channel, switch_count, switch_mode) from a CSA (tag 37) or
-    Extended CSA (tag 60) information element, or None if neither is present."""
-    from scapy.all import Dot11Elt  # type: ignore
+    """Extract (new_channel, switch_count, switch_mode) from a CSA, or None.
+
+    Covers every vector KUMA can be hit with: a CSA (tag 37) or Extended CSA
+    (tag 60) information element carried in a **beacon or probe response**, and a
+    Channel Switch Announcement carried in a **Spectrum-Management action frame**
+    (the silent, beaconless redirect)."""
+    from scapy.all import Dot11, Dot11Elt  # type: ignore
     el = pkt.getlayer(Dot11Elt)
     while el is not None:
         try:
@@ -49,6 +80,13 @@ def parse_csa(pkt):
         except Exception:  # noqa: BLE001
             pass
         el = el.payload.getlayer(Dot11Elt)
+    # No CSA element — check for an action-frame CSA (mgmt subtype 13).
+    d = pkt.getlayer(Dot11)
+    if d is not None and getattr(d, "type", None) == 0 and getattr(d, "subtype", None) == 13:
+        try:
+            return _parse_action_csa(bytes(d.payload))
+        except Exception:  # noqa: BLE001
+            return None
     return None
 
 

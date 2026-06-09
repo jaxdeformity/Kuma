@@ -587,8 +587,21 @@ def run(iface: str, channel: int, channels: list[int] | None,
                 except Exception:  # noqa: BLE001
                     pssid = ""
             _emit(karma.add(pkt[Dot11].addr2 or "?", pssid))
-            _record_net(pkt[Dot11].addr2 or "?", pssid, None,
-                        _current_channel or channel, _rssi(pkt))
+            pbssid = pkt[Dot11].addr2 or "?"
+            pch = _current_channel or channel
+            csainfo = parse_csa(pkt)        # CSA can also ride a probe response
+            if csainfo:
+                _emit(csa.add(pbssid, pssid, pch, *csainfo))
+            _record_net(pbssid, pssid, None, pch, _rssi(pkt))
+            return
+        # --- action frames: silent (beaconless) CSA channel-switch --------
+        if getattr(pkt[Dot11], "subtype", None) == 13 and pkt[Dot11].type == 0:
+            csainfo = parse_csa(pkt)
+            if csainfo:
+                abssid = pkt[Dot11].addr2 or "?"
+                # action-frame CSA carries no SSID; trusted-SSID match can't fire,
+                # but invalid-channel / storm / forced-switch detection still does.
+                _emit(csa.add(abssid, "", _current_channel or channel, *csainfo))
             return
         # --- EAPOL: WPA handshake harvest ---------------------------------
         if pkt.haslayer(EAPOL):
