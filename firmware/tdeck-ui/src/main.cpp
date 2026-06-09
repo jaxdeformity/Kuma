@@ -181,6 +181,29 @@ void loop() {
 
   // --- input -------------------------------------------------------------
   InputEvent ev = input::poll();
+  // TargetEntry types via the keyboard (poll() returns None for plain keys, so
+  // drain input::lastKey() here before the None early-return). Field 0 = BSSID
+  // (hex + ':'), field 1 = channel (digits). Backspace edits the BSSID.
+  if (g_screen == Screen::TargetEntry) {
+    char c = input::lastKey();
+    if (c) {
+      if (g_targetField == 0) {
+        if ((c == 8 || c == 127) && g_targetBssid.length())
+          g_targetBssid.remove(g_targetBssid.length() - 1);
+        else if (((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+                  (c >= 'A' && c <= 'F') || c == ':') && g_targetBssid.length() < 17)
+          g_targetBssid += c;
+      } else {                                   // channel field: digits
+        if (c >= '0' && c <= '9') {
+          int v = g_targetCh * 10 + (c - '0');
+          g_targetCh = (v >= 1 && v <= 14) ? v : (c - '0');   // clamp/restart at 1-14
+        } else if (c == 8 || c == 127) {
+          g_targetCh = 0;
+        }
+      }
+      kuma_ui::drawTargetEntry(g_targetBssid, g_targetCh, g_targetField);
+    }
+  }
   if (ev == InputEvent::None) { delay(15); return; }
 
   switch (g_screen) {
@@ -319,10 +342,7 @@ void loop() {
         }
         break;
       }
-      // Keyboard character input — route to current field
-      // We rely on the key character stored in the raw InputEvent.
-      // For T-Deck the key value comes via input::lastChar() if available;
-      // fall through for non-character events.
+      // (typed characters are accumulated at the top of loop() via input::lastKey())
       break;
     }
 
