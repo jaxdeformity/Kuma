@@ -8,9 +8,29 @@
 namespace {
 LGFX_TDeck* D = nullptr;
 lgfx::LGFX_Sprite fb;       // off-screen framebuffer (PSRAM) -> push once = no flicker
-lgfx::LGFX_Sprite bgDash;   // night-watch background, decoded once + blitted each frame
+lgfx::LGFX_Sprite bgDash;   // home background, decoded on change + blitted each frame
 bool fbReady = false;
 bool bgReady = false;
+String loadedBg = "";       // which home background bgDash currently holds
+
+// Map a backend background name to its baked PNG. backg1/backg2 are the two
+// selectable home backgrounds; backgFLAG is the creator/showcase background.
+static void bgDataFor(const String& name, const uint8_t*& data, size_t& len) {
+  if (name == "backg2")        { data = KUMA_BG_DASH2; len = KUMA_BG_DASH2_LEN; }
+  else if (name == "backgFLAG"){ data = KUMA_BG_FLAG;  len = KUMA_BG_FLAG_LEN;  }
+  else                         { data = KUMA_BG_DASH1; len = KUMA_BG_DASH1_LEN; }
+}
+
+// (Re)decode the home background into bgDash only when the requested one
+// changes - decoding a PNG every frame would be far too slow.
+static void ensureHomeBg(const String& name) {
+  if (name == loadedBg && bgReady) return;
+  const uint8_t* data; size_t len;
+  bgDataFor(name, data, len);
+  if (!bgDash.width() && !bgDash.createSprite(320, 240)) { bgReady = false; return; }
+  bgReady = bgDash.drawPng(data, len, 0, 0);
+  loadedBg = bgReady ? name : "";
+}
 
 // RGB565 palette
 constexpr uint16_t BG     = 0x0000;  // black
@@ -81,10 +101,7 @@ void begin(LGFX_TDeck* d) {
   // far cheaper than re-decoding the PNG ~4x/second.
   bgDash.setColorDepth(16);
   bgDash.setPsram(true);
-  if (bgDash.createSprite(320, 240)) {
-    bgReady = bgDash.drawPng(KUMA_BG_DASH1, KUMA_BG_DASH1_LEN, 0, 0);
-    if (!bgReady) bgDash.deleteSprite();
-  }
+  ensureHomeBg("backg1");   // default home background until /status says otherwise
 }
 
 void splash() {
@@ -153,10 +170,18 @@ void drawHome(const KumaStatus& s) {
   // Draw the whole dashboard into the off-screen framebuffer, then blit once.
   lgfx::LovyanGFX* g = fbReady ? static_cast<lgfx::LovyanGFX*>(&fb)
                                : static_cast<lgfx::LovyanGFX*>(D);
-  // night-watch background (text drawn transparent so the scene shows through)
-  if (fbReady && bgReady)      bgDash.pushSprite(&fb, 0, 0);
-  else if (!fbReady && bgReady) g->drawPng(KUMA_BG_DASH1, KUMA_BG_DASH1_LEN, 0, 0);
-  else                          g->fillScreen(BG);
+  // Pick the home background the backend selected (creator unit -> backgFLAG).
+  // Only re-decodes when it actually changes.
+  ensureHomeBg(s.online ? s.background : String("backg1"));
+  // home background (text drawn transparent so the scene shows through)
+  if (fbReady && bgReady) {
+    bgDash.pushSprite(&fb, 0, 0);
+  } else if (!fbReady && bgReady) {
+    const uint8_t* data; size_t len; bgDataFor(loadedBg, data, len);
+    g->drawPng(data, len, 0, 0);
+  } else {
+    g->fillScreen(BG);
+  }
 
   // HUD legibility: semi-opaque dark bands behind the top status bar and the
   // bottom stat strip so the text stays readable over the bright cyber-space

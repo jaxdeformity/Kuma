@@ -62,6 +62,8 @@ bool fetchStatus(KumaStatus& out) {
   out.level         = doc["level"]          | 1;
   out.networkCount  = doc["network_count"]  | 0;
   out.spriteSet     = doc["sprite_set"]     | "states";
+  out.background    = doc["background"]      | "backg1";
+  out.creator       = doc["creator"]         | false;
   out.wifiInterface = doc["wifi_interface"] | "wlan1mon";
   out.online        = true;
   return true;

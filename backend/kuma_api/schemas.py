@@ -22,6 +22,8 @@ class StatusResponse(BaseModel):
     xp: int = 0
     network_count: int = 0
     sprite_set: str = "states"
+    background: str = "backg1"   # home background the firmware should show
+    creator: bool = False        # creator-mode showcase unit (Jax's)
 
 
 class EventModel(BaseModel):

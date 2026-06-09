@@ -14,6 +14,8 @@ struct KumaStatus {
   uint16_t  level = 1;
   uint16_t  networkCount = 0;
   String    spriteSet = "states"; // active form's sprite pack
+  String    background = "backg1"; // home background to show
+  bool      creator = false;       // creator-mode showcase unit
   String    wifiInterface;        // sensor iface
   bool      online = false;       // false => backend unreachable
 };
