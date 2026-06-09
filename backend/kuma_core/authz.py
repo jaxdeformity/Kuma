@@ -67,6 +67,8 @@ class Gate:
             return False, "empty target"
         if self._matches(t, self._protected()):
             return False, "protected/own-infra (hard deny)"
+        if t in self._auto_hostile:
+            return True, "auto-hostile (confirmed attacker)"
         approved = {_norm(a) for a in self.cfg.get("approved_targets", [])}
         if self._matches(t, approved):
             return True, "approved_targets allowlist"
@@ -93,6 +95,13 @@ class Gate:
                     except ValueError:
                         continue
         return False
+
+    def auto_hostile_add(self, mac: str, evidence: str = "") -> bool:
+        t = _norm(mac)
+        if not t or self._matches(t, self._protected()):
+            return False
+        self._auto_hostile.add(t)
+        return True
 
     def audit(self, event: dict) -> None:  # filled in Task 7
         pass

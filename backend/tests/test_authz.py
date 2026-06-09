@@ -72,3 +72,21 @@ def test_mac_match_is_case_insensitive(tmp_path):
              audit_file=tmp_path / "a.jsonl")
     allowed, _ = g.is_authorized("de:ad:be:ef:de:ad", "deauth")  # pwnagotchi rig
     assert allowed is True
+
+
+def test_auto_hostile_add_then_authorized(tmp_path):
+    g = Gate(config=_armed_cfg(), audit_file=tmp_path / "a.jsonl")
+    assert g.is_authorized("CA:FE:CA:FE:CA:FE", "counter_deauth")[0] is False
+    added = g.auto_hostile_add("ca:fe:ca:fe:ca:fe", evidence="deauth flood vs AP")
+    assert added is True
+    allowed, reason = g.is_authorized("CA:FE:CA:FE:CA:FE", "counter_deauth")
+    assert allowed is True
+    assert "auto-hostile" in reason
+
+
+def test_auto_hostile_refuses_protected(tmp_path):
+    g = Gate(config=_armed_cfg(protect_bssids=["aa:bb:cc:dd:ee:ff"]),
+             audit_file=tmp_path / "a.jsonl")
+    added = g.auto_hostile_add("AA:BB:CC:DD:EE:FF", evidence="x")
+    assert added is False  # never auto-target our own gear
+    assert g.is_authorized("AA:BB:CC:DD:EE:FF", "counter_deauth")[0] is False
