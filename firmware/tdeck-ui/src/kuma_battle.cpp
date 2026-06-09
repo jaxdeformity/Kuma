@@ -42,6 +42,28 @@ const char* AB_TYPE[4] = {"DISRUPT","LURE","RF","CONTAIN"};   // move types
 const char* CMD_OPT[4] = {"FIGHT","BAG","RUN","AUTO"};        // top-level command menu
 enum { MENU_NONE = 0, MENU_CMD = 1, MENU_ABIL = 2 };
 
+// Turns 2+: cosmetic, enemy-specific flavor moves (no backend effect). Indexed by
+// enemy index `en` (same order as EN_NAME[10]).
+const char* FLAVOR[10][3] = {
+  {"SSID SPOOF SLAP","BEACON BONK","FAKE-PORTAL FAKEOUT"},  // ROGUE AP
+  {"MIRROR MATCH","DOPPLE-DENY","TWIN FLAME"},              // EVIL TWIN
+  {"FRAME SHRED","PACKET PARRY","RESEND STORM"},            // DEAUTHER
+  {"PINEAPPLE PULP","PROBE PUREE","JUICE BOX"},             // WIFI PINEAPPLE
+  {"FLOOD GATE","SSID TSUNAMI","BEACON BREAKER"},           // BEACON FLOOD
+  {"BAD KARMA","LURE REVERSAL","PROBE BAIT"},               // KARMA LURE
+  {"EAPOL ELBOW","HASH CRUNCH","4-WAY WHIFF"},              // HANDSHAKE HARV
+  {"PEEK-A-BOO","PROMISC POUNCE","TCPDUMP THUMP"},          // SNIFFER
+  {"NOISE CANCEL","SPECTRUM SMACK","DEAFEN"},               // RF JAMMER
+  {"C2 SEVER","SEGFAULT STOMP","FORK-BOMB FLICK"},          // BOTNET WORM
+};
+
+// The ability menu (scene/MENU_ABIL) renders these; defaults to the legacy 4-set,
+// swapped to the 3 flavor moves for turns 2+. g_abWeak gates super-effective hints.
+const char* const* g_abNames = AB_NAME;
+const char* const* g_abSubs  = AB_TYPE;
+int  g_abCount = 4;
+bool g_abWeak  = true;
+
 // Sustained-attack gate: high threat must persist this many polls (~2s each)
 // before the "DEPLOY COUNTERMEASURES?" prompt appears. Low on purpose.
 constexpr int SUSTAIN_POLLS = 1;   // ~2nd consecutive high poll (~4s)
@@ -115,6 +137,7 @@ void scene(const char* msg, int menuMode, int sel, const BearSprite& kuma,
   if (menuMode) {
     const int cx[4]={150,234,150,234}, cy[4]={146,146,192,192};
     for (int i=0;i<4;i++){
+      if (menuMode == MENU_ABIL && i >= g_abCount) continue;  // fewer moves -> skip cell
       bool s = (i==sel);
       uint16_t bgc = s ? 0x13E6 : BOX;
       g->fillRect(cx[i], cy[i], 82, 44, bgc);
@@ -123,10 +146,12 @@ void scene(const char* msg, int menuMode, int sel, const BearSprite& kuma,
         g->setTextSize(2); g->setTextColor(s?CYAN:FG, bgc);
         g->setCursor(cx[i]+8, cy[i]+14); g->print(CMD_OPT[i]); g->setTextSize(1);
       } else {
-        bool weak = EN_WEAK[en] & (1<<i);          // super-effective -> amber
+        bool weak = g_abWeak && (EN_WEAK[en] & (1<<i));   // super-effective -> amber
         g->setTextColor(s ? CYAN : (weak ? AMBER : FG), bgc);
-        g->setCursor(cx[i]+4, cy[i]+6); g->print(AB_NAME[i]);
-        g->setTextColor(GREY, bgc); g->setCursor(cx[i]+4, cy[i]+24); g->print(AB_TYPE[i]);
+        g->setCursor(cx[i]+4, cy[i]+6); g->print(g_abNames[i]);
+        if (g_abSubs && g_abSubs[i]) {
+          g->setTextColor(GREY, bgc); g->setCursor(cx[i]+4, cy[i]+24); g->print(g_abSubs[i]);
+        }
       }
     }
   }
@@ -166,7 +191,8 @@ bool confirmDialog(const char* prompt, int kHp, int kMax, int eHp, int eMax, int
 
 void run(int en, uint16_t lvl) {
   int eMax = EN_HP[en], eHp = eMax, kMax = 120, kHp = kMax;
-  bool marked = false;
+  bool hardened = false;        // turn 1 offers only HARDEN; after it fires -> flavor moves
+  MitigationResult mit;         // remembered for the victory screen
 
   // --- encounter ---
   audio::playTrack(audio::TRK_ENCOUNTER, false);
@@ -218,47 +244,57 @@ void run(int en, uint16_t lvl) {
       continue;
     }
 
-    // --- FIGHT: pick an attack ---
-    int sel = autoPick(en);
+    // --- FIGHT ---
+    if (!hardened) {
+      // Turn 1: the only move is HARDEN -> real, attack-appropriate mitigation.
+      audio::sfx(AB_SFX[2]);
+      scene((String(pName())+" used HARDEN!").c_str(), MENU_NONE, 0, pAttack(), kHp,kMax,eHp,eMax,en,lvl);
+      delay(450);
+      mit = kuma_api::mitigate();
+      String mline = mit.applied
+        ? (String("MITIGATION: ") + mit.action + " -> " + mit.target)
+        : String("No live attacker to mitigate.");
+      scene(mline.c_str(), MENU_NONE, 0, pDefend(), kHp,kMax,eHp,eMax,en,lvl);
+      delay(1200);
+      eHp = max(0, eHp - max(20, eMax/2));      // HARDEN lands the decisive real blow
+      hardened = true;
+      delay(550);
+      if (eHp <= 0) break;
+      int edmg = random(8, 17); kHp = max(0, kHp-edmg);
+      scene((String(EN_NAME[en])+" strikes back!").c_str(), MENU_NONE, 0, pClip(5), kHp,kMax,eHp,eMax,en,lvl);
+      delay(800);
+      if (kHp <= 0) break;
+      continue;
+    }
+
+    // Turns 2+: pick a cosmetic flavor move (3 options, enemy-specific).
+    g_abNames = FLAVOR[en]; g_abSubs = nullptr; g_abCount = 3; g_abWeak = false;
+    int sel = (int)random(0, 3);
     if (!autoMode) {
       bool dirty = true; unsigned long t0 = millis(); int ab = -1;
       while (ab == -1 && millis() - t0 < 30000) {
-        if (dirty) { scene("CHOOSE AN ATTACK", MENU_ABIL, sel, pDefend(), kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
+        if (dirty) { scene("CHOOSE A MOVE", MENU_ABIL, sel, pDefend(), kHp,kMax,eHp,eMax,en,lvl); dirty=false; }
         InputEvent e = input::poll();
-        if (e==InputEvent::Up||e==InputEvent::Left){sel=(sel+3)&3;dirty=true;}
-        else if(e==InputEvent::Down||e==InputEvent::Right){sel=(sel+1)&3;dirty=true;}
+        if (e==InputEvent::Up||e==InputEvent::Left){sel=(sel+2)%3;dirty=true;}
+        else if(e==InputEvent::Down||e==InputEvent::Right){sel=(sel+1)%3;dirty=true;}
         else if(e==InputEvent::Select){ab=sel;}
-        else if(e==InputEvent::Back){ab=-2;}          // back to command menu
+        else if(e==InputEvent::Back){ab=-2;}
         delay(20);
       }
-      if (ab == -2) continue;                         // backed out
-      if (ab >= 0) sel = ab;                          // else timeout keeps autoPick
+      if (ab == -2) { g_abNames=AB_NAME; g_abSubs=AB_TYPE; g_abCount=4; g_abWeak=true; continue; }
+      if (ab >= 0) sel = ab;
     }
-
-    // --- resolve the move ---
-    const BearSprite& clip = (sel==3) ? pClip(4) : pAttack();
     audio::sfx(AB_SFX[sel]);
-    String m1 = (String(pName())+" used ") + AB_NAME[sel] + "!";
-    scene(m1.c_str(), MENU_NONE, 0, clip, kHp,kMax,eHp,eMax,en,lvl); delay(500);
-    bool weak = EN_WEAK[en] & (1<<sel);
-    if (sel == 1) {
-      marked = true; int dmg = random(AB_MIN[1], AB_MAX[1]+1); eHp = max(0, eHp-dmg);
-      scene("Threat took the bait. MARKED.", MENU_NONE, 0, pDefend(), kHp,kMax,eHp,eMax,en,lvl);
-    } else {
-      int dmg = random(AB_MIN[sel], AB_MAX[sel]+1);
-      if (weak) dmg = (int)(dmg*1.7f);
-      if (marked) { dmg = (int)(dmg*1.5f); marked = false; }
-      eHp = max(0, eHp-dmg);
-      scene(weak ? "Super effective!" : "Hit.", MENU_NONE, 0, pDefend(), kHp,kMax,eHp,eMax,en,lvl);
-    }
-    delay(900);
+    scene((String(pName())+" used " + FLAVOR[en][sel] + "!").c_str(), MENU_NONE, 0, pAttack(), kHp,kMax,eHp,eMax,en,lvl);
+    eHp = max(0, eHp - (int)random(12, 28));   // cosmetic only
+    g_abNames=AB_NAME; g_abSubs=AB_TYPE; g_abCount=4; g_abWeak=true;   // restore defaults
+    delay(800);
     if (eHp <= 0) break;
 
     // --- enemy turn ---
     int edmg = random(8, 17); kHp = max(0, kHp-edmg);
-    String em = String(EN_NAME[en]) + " strikes back!";
-    scene(em.c_str(), MENU_NONE, 0, pClip(5), kHp,kMax,eHp,eMax,en,lvl);
-    delay(900);
+    scene((String(EN_NAME[en])+" strikes back!").c_str(), MENU_NONE, 0, pClip(5), kHp,kMax,eHp,eMax,en,lvl);
+    delay(800);
     if (kHp <= 0) break;
     if (autoMode) delay(400);
   }
@@ -276,6 +312,10 @@ void run(int en, uint16_t lvl) {
     g2->setTextSize(1); g2->setTextColor(CYAN); g2->setCursor(96, 76); g2->print("DATA SECURED");
     // 10 == progress.REWARDS["battle_win"] on the Pi backend
     g2->setTextColor(GREEN); g2->setCursor(120, 96); g2->print("+10 EXP");
+    if (mit.applied) {   // the real defense HARDEN applied this fight
+      g2->setTextColor(CYAN); g2->setCursor(40, 116);
+      g2->print((String("DEF: ") + mit.action).c_str());
+    }
     sprP(pVictory(), 110, 216); push();
     delay(13000);                          // hold through the victory track
   } else {
