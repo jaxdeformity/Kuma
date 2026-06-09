@@ -1,15 +1,30 @@
-"""Leveling / EXP + level-gated evolution tests."""
+"""Leveling / EXP (rising-cost curve, capped at 99) + level-gated evolution."""
 from kuma_core import progress
 
 
-def test_level_for_math():
+def test_xp_for_level_curve():
+    assert progress.xp_for_level(1) == 0
+    assert progress.xp_for_level(2) == 2
+    assert progress.xp_for_level(5) == 32
+    assert progress.xp_for_level(10) == 162
+    assert progress.xp_for_level(99) == 19208
+    assert progress.xp_for_level(150) == progress.xp_for_level(99)   # clamped
+
+
+def test_level_for_curve():
     assert progress.level_for(0) == 1
-    assert progress.level_for(29) == 1
-    assert progress.level_for(30) == 2
-    assert progress.level_for(60) == 3
-    # NO cap any more - keep leveling forever
-    assert progress.level_for(3000) == 101
-    assert progress.level_for(30_000) == 1001
+    assert progress.level_for(1) == 1
+    assert progress.level_for(2) == 2     # xp_for_level(2) == 2
+    assert progress.level_for(7) == 2
+    assert progress.level_for(8) == 3     # xp_for_level(3) == 8
+    assert progress.level_for(32) == 5    # evo1 threshold
+    assert progress.level_for(180) == 10  # ~60 discoveries (x3) -> rewarding
+    assert progress.level_for(19208) == 99
+    assert progress.level_for(10 ** 6) == 99   # hard cap
+
+
+def test_rewards_weighting():
+    assert progress.REWARDS == {"discover": 3, "connect": 30, "battle_win": 15}
 
 
 def test_form_thresholds():
@@ -24,46 +39,40 @@ def test_form_thresholds():
     assert progress.form_for(25) == 4   # evo4
     assert progress.form_for(89) == 4
     assert progress.form_for(90) == 5   # evo5
-    assert progress.form_for(500) == 5
 
 
 def test_award_discover_and_connect(temp_db):
-    p = progress.award("connect")           # +30 -> level 2, still base form
-    assert p["level"] == 2 and p["xp"] == 30 and p["active"] == 0
-    p = progress.award("discover")          # +1
-    assert p["xp"] == 31 and p["level"] == 2
-    assert p["xp_into_level"] == 1 and p["xp_to_next"] == 29
-    assert p["sprite_set"] == "states"
-    assert p["next_evo_level"] == 5
+    p = progress.award("connect")           # +30 -> level 4 (xp_for_level(4)=18)
+    assert p["xp"] == 30 and p["level"] == 4 and p["active"] == 0
+    p = progress.award("discover")          # +3 -> 33 -> level 5 (xp_for_level(5)=32)
+    assert p["xp"] == 33 and p["level"] == 5 and p["active"] == 1
+    assert p["xp_into_level"] == 1          # 33 - 32
+    assert p["xp_to_next"] == 17            # xp_for_level(6)=50 -> 50-33
+    assert p["sprite_set"] == "evo1"
 
 
 def test_battle_win_reward(temp_db):
-    p = progress.award("battle_win")
-    assert p["xp"] == 10 and p["level"] == 1
+    p = progress.award("battle_win")        # +15 -> level 3 (xp_for_level(3)=8)
+    assert p["xp"] == 15 and p["level"] == 3
 
 
 def test_evolves_to_evo1_at_level_5(temp_db):
-    # level 5 needs (5-1)*30 = 120 XP = 4 connects
-    for _ in range(4):
-        progress.award("connect")
+    progress.award("connect")               # 30
+    progress.award("discover")              # 33 -> level 5
     p = progress.get_progress()
-    assert p["level"] == 5
-    assert p["active"] == 1
-    assert p["sprite_set"] == "evo1"
+    assert p["level"] == 5 and p["active"] == 1 and p["sprite_set"] == "evo1"
     assert p["next_evo_level"] == 12
-    assert p["forms"][1]["unlocked"] is True
-    assert p["forms"][2]["unlocked"] is False
 
 
-def test_no_level_cap(temp_db):
-    # 200 connects = 6000 XP -> level 201, fully evolved (evo5), still climbing
-    for _ in range(200):
+def test_level_capped_at_99(temp_db):
+    for _ in range(1000):                   # 30000 XP, well past the cap
         progress.award("connect")
     p = progress.get_progress()
-    assert p["level"] == 201
-    assert p["max_level"] is None
+    assert p["level"] == 99
+    assert p["max_level"] == 99
     assert p["active"] == 5 and p["sprite_set"] == "evo5"
     assert p["next_evo_level"] is None
+    assert p["xp_to_next"] == 0             # nothing past max
 
 
 def test_six_forms_total(temp_db):

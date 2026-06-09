@@ -165,5 +165,6 @@ def test_status_has_combat_stats(client):
 def test_status_has_xp_progress(client):
     body = client.get("/api/status").json()
     assert "xp_into_level" in body and "xp_to_next" in body
-    # default progress: level 1, 0 into level, 30 to next (creator_mode off in tests)
-    assert body["xp_into_level"] + body["xp_to_next"] == 30
+    # rising-cost curve: fresh unit is level 1 -> 0 into, xp_for_level(2)=2 to next.
+    assert body["xp_into_level"] == 0
+    assert body["xp_to_next"] == 2
