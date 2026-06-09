@@ -1,0 +1,18 @@
+[Unit]
+Description=KUMA live 802.11 detector (deauth / pwnagotchi / evil-twin / karma)
+After=kuma-monitor.service kuma-backend.service
+Requires=kuma-monitor.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/jax/Kuma/backend
+Environment=PYTHONUNBUFFERED=1
+# Channel-hop the main 2.4GHz channels so we cover deauth bursts on 1/6/10/11
+# AND catch the Pwnagotchi advertisement (ch1) -- a fixed --channel would miss it.
+ExecStart=/home/jax/Kuma/backend/.venv/bin/python -m detectors.live_capture --iface wlan1 --hop 1,6,11,10 --apex
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

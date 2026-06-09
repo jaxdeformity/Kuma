@@ -1,0 +1,14 @@
+[Unit]
+Description=KUMA wlan1 monitor mode (Alfa sensor)
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# The script waits up to ~30s for the Alfa to enumerate, then sets monitor mode,
+# so it is robust against the USB/driver-load boot race that failed the old unit.
+ExecStart=/usr/local/sbin/kuma-monitor.sh
+
+[Install]
+WantedBy=multi-user.target

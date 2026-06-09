@@ -1,0 +1,17 @@
+[Unit]
+Description=KUMA host-based detector (SSH brute-force / LAN intrusion)
+After=kuma-backend.service
+Wants=kuma-backend.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/jax/Kuma/backend
+Environment=PYTHONUNBUFFERED=1
+# Tails the SSH journal for failed-auth floods (catches Bjorn-style LAN attackers).
+ExecStart=/home/jax/Kuma/backend/.venv/bin/python -m detectors.auth_watch --backlog 2000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
