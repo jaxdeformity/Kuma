@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from kuma_core import kuroshuna_stats
+
 DEFAULT_PORTS = {"ssh": 22, "ftp": 21, "smb": 445, "rdp": 3389,
                  "telnet": 23, "sql": 3306}
 
@@ -312,10 +314,19 @@ class NetworkOffense:
                         self.gate.audit({"tier": "A", "action": f"brute_{proto}",
                                          "target": host, "allowed": True,
                                          "reason": f"creds found in {n} attempts"})
+                        try:
+                            kuroshuna_stats.record_pwn(host)
+                        except Exception:
+                            pass
                         return BruteResult(True, why, proto, host, found, n)
         self.gate.audit({"tier": "A", "action": f"brute_{proto}", "target": host,
                          "allowed": True,
                          "reason": f"{len(found)} creds in {n} attempts"})
+        if found:
+            try:
+                kuroshuna_stats.record_pwn(host)
+            except Exception:
+                pass
         return BruteResult(True, why if found else "no creds found",
                            proto, host, found, n)
 

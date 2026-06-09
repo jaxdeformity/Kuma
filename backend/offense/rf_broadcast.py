@@ -19,6 +19,8 @@ from dataclasses import dataclass
 
 from offense.rf_targeted import BROADCAST  # reuse
 
+from kuma_core import kuroshuna_stats
+
 
 @dataclass
 class BroadcastResult:
@@ -173,6 +175,11 @@ class BroadcastRF:
         self.gate.audit({"tier": "B", "action": "deauth_flood", "target": "*",
                          "allowed": True,
                          "reason": f"{bursts} bursts/{dur}s ch{ch}"})
+        if bursts > 0:
+            try:
+                kuroshuna_stats.record_tx(bursts)
+            except Exception:
+                pass
         return BroadcastResult(True, why, "deauth_flood", bursts, dur)
 
     def beacon_spam(self, ssids=None, duration=None) -> BroadcastResult:
@@ -213,6 +220,11 @@ class BroadcastRF:
         self.gate.audit({"tier": "B", "action": "beacon_spam", "target": "*",
                          "allowed": True,
                          "reason": f"{len(frames)} SSIDs x {bursts} bursts/{dur}s"})
+        if bursts > 0:
+            try:
+                kuroshuna_stats.record_tx(bursts)
+            except Exception:
+                pass
         return BroadcastResult(True, why, "beacon_spam", bursts, dur)
 
     def assoc_flood(self, bssid: str, duration=None, clients: int = 64) -> BroadcastResult:
@@ -252,6 +264,11 @@ class BroadcastRF:
         bursts = self._run_burst(_send, dur)
         self.gate.audit({"tier": "B", "action": "assoc_flood", "target": bssid,
                          "allowed": True, "reason": f"{clients} fake STAs x {bursts}/{dur}s"})
+        if bursts > 0:
+            try:
+                kuroshuna_stats.record_tx(bursts)
+            except Exception:
+                pass
         return BroadcastResult(True, why, "assoc_flood", bursts, dur)
 
     def ble_spam(self, duration=None) -> BroadcastResult:
@@ -275,6 +292,11 @@ class BroadcastRF:
             return BroadcastResult(False, f"ble error: {e}", "ble_spam")
         self.gate.audit({"tier": "B", "action": "ble_spam", "target": "*",
                          "allowed": True, "reason": f"{bursts} adverts/{dur}s"})
+        if bursts > 0:
+            try:
+                kuroshuna_stats.record_tx(bursts)
+            except Exception:
+                pass
         return BroadcastResult(True, why, "ble_spam", bursts, dur)
 
 

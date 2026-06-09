@@ -10,6 +10,8 @@ from dataclasses import dataclass
 
 from scapy.all import Dot11, Dot11Deauth, RadioTap, wrpcap  # type: ignore
 
+from kuma_core import kuroshuna_stats
+
 BROADCAST = "ff:ff:ff:ff:ff:ff"
 DEFAULT_COUNT = 64           # deauth bursts per call (Tier A targeted, modest)
 DEFAULT_REASON = 7           # 802.11 reason 7: class-3 frame from nonassociated STA
@@ -103,6 +105,10 @@ class TargetedRF:
         except Exception as e:
             return RFResult(ok=False, reason=f"tx error: {e}", frames_sent=0,
                             detail="sender failed")
+        try:
+            kuroshuna_stats.record_tx(len(frames) * count)
+        except Exception:
+            pass
         return RFResult(ok=True, reason=why, frames_sent=len(frames) * count,
                         detail=f"deauth {bssid} <-> {client}")
 
@@ -134,6 +140,10 @@ class TargetedRF:
         except Exception as e:
             return RFResult(ok=False, reason=f"capture error: {e}", frames_sent=0,
                             detail="hardware/io failed")
+        try:
+            kuroshuna_stats.record_pwn(bssid)
+        except Exception:
+            pass
         return RFResult(ok=True, reason=why, frames_sent=0,
                         frames_captured=len(pkts),
                         detail=f"captured {len(pkts)} EAPOL -> {path.name}")

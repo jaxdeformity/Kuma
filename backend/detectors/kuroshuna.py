@@ -11,6 +11,8 @@ from __future__ import annotations
 import logging
 import time
 
+from kuma_core import kuroshuna_stats
+
 _log = logging.getLogger(__name__)
 
 from kuma_core.authz import _is_mac
@@ -65,7 +67,13 @@ class KuroshunaOrchestrator:
         actions = []
         if _is_mac(target):
             if self.rf is not None:
-                actions.append(("deauth", self.rf.deauth(target)))
+                result = self.rf.deauth(target)
+                actions.append(("deauth", result))
+                if getattr(result, "ok", False):
+                    try:
+                        kuroshuna_stats.record_pwn(target)
+                    except Exception:
+                        pass
         else:
             if self.net is not None:
                 scan = self.net.scan(target)
