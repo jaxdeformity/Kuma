@@ -171,9 +171,15 @@ def render_logo():
 
 
 def main():
+    # Battle poses must face the enemy (drawn bottom-left, enemy top-right -> face
+    # right). Source art faces left, so mirror the battle frames. Home states are
+    # centered and unaffected. Shuna has no chest emblem, so a mirror is clean.
+    BATTLE_POSES = {"08_defending", "09_attacking", "10_victory"}
     frames = []
     for stem, name in SOURCES:
         img = process(stem)
+        if name in BATTLE_POSES:
+            img = img.transpose(Image.FLIP_LEFT_RIGHT)
         img.save(os.path.join(ART, name + ".png"))
         frames.append((name, img))
 
