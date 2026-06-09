@@ -79,6 +79,41 @@ def flood_key(cell, tol=FLOOD_TOL):
     return cell
 
 
+def remove_white_pockets(cell, min_size=25, tol=58):
+    """Clear near-white components LARGER than min_size that the border flood
+    couldn't reach - trapped pockets like the apex/defend shield interiors and
+    the gap under her arm. Her own highlights are tiny (<=~19px) so they survive;
+    only big enclosed white blobs are removed. (Measured component sizes: clean
+    frames <=16, foraging arm-gap 64, defend shield 35-50, apex shield 562-913.)"""
+    px = cell.load()
+    w, h = cell.size
+    seen = bytearray(w * h)
+
+    def is_white(x, y):
+        p = px[x, y]
+        return p[3] > 150 and wdist((p[0], p[1], p[2])) <= tol
+
+    for sy in range(h):
+        for sx in range(w):
+            if seen[sy * w + sx] or not is_white(sx, sy):
+                continue
+            stack = [(sx, sy)]
+            comp = []
+            while stack:
+                x, y = stack.pop()
+                if (x < 0 or y < 0 or x >= w or y >= h
+                        or seen[y * w + x] or not is_white(x, y)):
+                    continue
+                seen[y * w + x] = 1
+                comp.append((x, y))
+                stack += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+            if len(comp) > min_size:
+                for x, y in comp:
+                    r, g, b, _ = px[x, y]
+                    px[x, y] = (r, g, b, 0)
+    return cell
+
+
 def defringe(cell, passes=5):
     """Bleed opaque colours into adjacent transparent pixels (alpha stays 0) so
     downscaling can't smear the keyed white back in as a halo."""
@@ -105,7 +140,7 @@ def defringe(cell, passes=5):
 
 def process(stem):
     im = Image.open(os.path.join(HIRES, stem + ".png")).convert("RGBA")
-    im = defringe(flood_key(im))
+    im = defringe(remove_white_pockets(flood_key(im)))
     bbox = im.getbbox()
     if bbox:
         im = im.crop(bbox)
