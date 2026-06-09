@@ -96,6 +96,24 @@ class Gate:
                         continue
         return False
 
+    def broadcast_allowed(self) -> tuple[bool, str]:
+        if not self.cfg.get("lab_mode"):
+            return False, "lab_mode off"
+        if not self.cfg.get("allow_broadcast"):
+            return False, "allow_broadcast off"
+        if not self.cfg.get("broadcast_armed"):
+            return False, "broadcast_armed off"
+        return True, "broadcast armed"
+
+    def broadcast_limits(self) -> dict:
+        b = self.cfg.get("broadcast", {})
+        return {
+            "channel": b.get("channel", 6),
+            "max_tx_power_dbm": b.get("max_tx_power_dbm", 5),
+            "max_burst_seconds": b.get("max_burst_seconds", 30),
+            "honor_protect_bssids": b.get("honor_protect_bssids", True),
+        }
+
     def auto_hostile_add(self, mac: str, evidence: str = "") -> bool:
         t = _norm(mac)
         if not t or self._matches(t, self._protected()):

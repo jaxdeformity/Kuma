@@ -90,3 +90,28 @@ def test_auto_hostile_refuses_protected(tmp_path):
     added = g.auto_hostile_add("AA:BB:CC:DD:EE:FF", evidence="x")
     assert added is False  # never auto-target our own gear
     assert g.is_authorized("AA:BB:CC:DD:EE:FF", "counter_deauth")[0] is False
+
+
+def test_broadcast_requires_all_three_arms(tmp_path):
+    g = Gate(config={"lab_mode": True, "allow_broadcast": True,
+                     "broadcast_armed": True}, audit_file=tmp_path / "a.jsonl")
+    assert g.broadcast_allowed() == (True, "broadcast armed")
+
+
+def test_broadcast_denied_when_any_arm_off(tmp_path):
+    for missing in ("lab_mode", "allow_broadcast", "broadcast_armed"):
+        cfg = {"lab_mode": True, "allow_broadcast": True, "broadcast_armed": True}
+        cfg[missing] = False
+        g = Gate(config=cfg, audit_file=tmp_path / "a.jsonl")
+        allowed, reason = g.broadcast_allowed()
+        assert allowed is False
+        assert missing in reason
+
+
+def test_broadcast_limits_have_safe_defaults(tmp_path):
+    g = Gate(config={}, audit_file=tmp_path / "a.jsonl")
+    lim = g.broadcast_limits()
+    assert lim["max_burst_seconds"] == 30
+    assert lim["honor_protect_bssids"] is True
+    assert lim["channel"] == 6
+    assert lim["max_tx_power_dbm"] == 5
