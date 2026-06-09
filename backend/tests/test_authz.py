@@ -1,7 +1,9 @@
 """Unit tests for the Kuroshuna authorization gate (pure decision logic)."""
 import json as _json
+import json as _json2
 
 from kuma_core.authz import Gate
+from kuma_core.config import LAB_TARGETS_FILE
 
 
 def _armed_cfg(**extra):
@@ -145,3 +147,16 @@ def test_auto_hostile_add_is_audited(tmp_path):
     assert rec["action"] == "auto_hostile_add"
     assert rec["allowed"] is True
     assert rec["target"] == "CA:FE:CA:FE:CA:FE"
+
+
+def test_real_lab_targets_has_kuroshuna_schema_safe_off():
+    cfg = _json2.loads(LAB_TARGETS_FILE.read_text(encoding="utf-8"))
+    # New Kuroshuna keys must exist and default to OFF/empty.
+    assert cfg.get("kuroshuna_armed") is False
+    assert cfg.get("allow_broadcast") is False
+    assert cfg.get("broadcast_armed") is False
+    assert cfg.get("lab_mode") is False
+    assert isinstance(cfg.get("own_infra"), list)
+    b = cfg.get("broadcast", {})
+    assert b.get("max_burst_seconds") == 30
+    assert b.get("honor_protect_bssids") is True

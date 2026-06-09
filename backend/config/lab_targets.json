@@ -1,9 +1,15 @@
 {
   "lab_mode": false,
   "apex_active_response": false,
+  "kuroshuna_armed": false,
+  "allow_broadcast": false,
+  "broadcast_armed": false,
   "response_cooldown": 30,
 
   "protect_bssids": [],
+  "own_infra": [],
+
+  "approved_targets": [],
 
   "protected_connection": "",
   "backup_connection": "",
@@ -21,7 +27,12 @@
     "payload": {}
   },
 
-  "approved_targets": [],
+  "broadcast": {
+    "channel": 6,
+    "max_tx_power_dbm": 5,
+    "max_burst_seconds": 30,
+    "honor_protect_bssids": true
+  },
 
-  "notes": "Apex Mode = automated active DEFENSE only (detect deauth -> harden PMF / redirect link / dispatch containment to a managed AP/controller / log evidence). It never transmits attack frames. To arm: set lab_mode=true AND apex_active_response=true, run the detector with --apex. harden_pmf/redirect modify the protected NetworkManager connection (set protected_connection/backup_connection) and can drop that link, so keep a separate management path (ethernet). contain POSTs the attacker MAC to your controller's blacklist API (set containment.blacklist_url). protect_bssids are never acted against."
+  "notes": "Apex = passive active-DEFENSE (never transmits attack frames). KUROSHUNA = the offensive tier: Tier A (targeted, gated by lab_mode+kuroshuna_armed against approved_targets/auto-hostiles; protect_bssids + own_infra are hard-denied always) and Tier B broadcast (deauth-flood/beacon/BLE spam, gated by lab_mode+allow_broadcast+broadcast_armed, time-boxed by broadcast.max_burst_seconds, pinned to broadcast.channel, capped to broadcast.max_tx_power_dbm). RF rails shrink but cannot contain the broadcast footprint -- only physical isolation (low power + distance, or a shielded/attenuated setup) keeps broadcast attacks off non-lab gear. Running Tier B is the lab owner's responsibility. own_infra = Pi/Lily/uplink MACs+IPs that must never be targeted."
 }

@@ -50,3 +50,6 @@ designs/backgrounds/backgFLAG1.png
 # Shuna hi-res source renders (large; local only)
 designs/sprites/shuna/hires/
 designs/sprites/kuroshuna/hires/
+
+# Cloned source repos (pwnagotchi / Bjorn / Bruce), read-only reference only
+reference/
