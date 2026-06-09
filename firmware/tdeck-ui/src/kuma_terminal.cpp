@@ -118,7 +118,14 @@ void exec(const String& raw) {
   String arg = (sp < 0) ? "" : line.substring(sp + 1); arg.trim();
   cmd.toLowerCase();
 
-  if (g_kuroPending && (cmd == "confirm" || cmd == "y" || cmd == "yes")) {
+  // Confirm accepts a bare "confirm"/"y"/"yes" OR "kuroshuna confirm" (what the
+  // arm prompt tells the user to type, where cmd=="kuroshuna" and arg=="confirm").
+  String _argl = arg; _argl.toLowerCase();
+  bool _kuroConfirm =
+      (cmd == "confirm" || cmd == "y" || cmd == "yes") ||
+      ((cmd == "kuroshuna" || cmd == "kuro") &&
+       (_argl == "confirm" || _argl == "y" || _argl == "yes"));
+  if (g_kuroPending && _kuroConfirm) {
     bool ok = (g_kuroPending == 1) ? kuma_api::armKuroshuna(true)
                                    : kuma_api::armBroadcast(true);
     putLine(ok ? "* KUROSHUNA armed - gloves off"
