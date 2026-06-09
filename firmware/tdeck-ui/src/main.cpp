@@ -336,7 +336,8 @@ void loop() {
             enterScreen(Screen::AttackMode);
             break;
           }
-          int sent = kuma_rf::deauth(bssid, client, (uint8_t)g_targetCh, 64);
+          uint8_t ch = (g_targetCh >= 1 && g_targetCh <= 14) ? (uint8_t)g_targetCh : 6;
+          int sent = kuma_rf::deauth(bssid, client, ch, 64);
           kuma_ui::toast(String("deauth ") + sent + " frames -> " + g_targetBssid, 3000);
           enterScreen(Screen::Home);
         }

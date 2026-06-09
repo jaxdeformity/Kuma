@@ -251,10 +251,14 @@ def _launch_broadcast(name: str) -> None:
             elif name == "deauth": rf.deauth_flood()
             elif name == "aoi":    rf.ble_spam()
             elif name == "rengoku":
-                # flood the most-recently-seen non-own AP, if any
+                # flood the first observed AP the gate will arm. auto_hostile_add
+                # HARD-REFUSES protect_bssids/own_infra, so RENGOKU never hits own gear.
                 nets = database.get_networks(limit=50)
-                tgt = next((n["bssid"] for n in nets if n.get("bssid")), None)
-                if tgt: rf.assoc_flood(tgt)
+                tgt = next((n["bssid"] for n in nets
+                            if n.get("bssid")
+                            and g.auto_hostile_add(n["bssid"], evidence="rengoku")), None)
+                if tgt:
+                    rf.assoc_flood(tgt)
             elif name == "bankai":
                 from offense import bankai
                 from offense.rf_targeted import TargetedRF
