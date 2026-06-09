@@ -8,7 +8,10 @@ the gate's session auto-hostile set.
 """
 from __future__ import annotations
 
+import logging
 import time
+
+_log = logging.getLogger(__name__)
 
 from kuma_core.authz import _is_mac
 
@@ -82,8 +85,11 @@ class KuroshunaOrchestrator:
         for t in self._authorized_targets():
             if not self._cooldown_ok(t):
                 continue
-            actions.extend(self.engage(t, channel=channel))
-            self._mark(t)
+            try:
+                actions.extend(self.engage(t, channel=channel))
+                self._mark(t)
+            except Exception as exc:  # noqa: BLE001 - one bad target must not kill the pass
+                _log.warning("engage(%s) raised: %s - skipping", t, exc)
         return {"armed": True, "actions": actions}
 
     def on_event(self, event: dict) -> bool:

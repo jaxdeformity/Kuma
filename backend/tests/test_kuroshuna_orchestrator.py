@@ -93,7 +93,7 @@ def test_engage_ip_scans_then_brutes_open_services(tmp_path):
     assert net.scanned == ["192.168.50.162"]
     assert ("192.168.50.162", "ssh") in net.bruted
     assert ("192.168.50.162", "smb") in net.bruted
-    assert all(p != 9999 for (_h, p) in [])        # unmapped port -> no brute
+    assert all(proto != 9999 for _h, proto in net.bruted)  # unmapped port -> no brute
     assert len(net.bruted) == 2                      # only ssh + smb, not 9999
 
 
@@ -116,6 +116,24 @@ def test_tick_engages_each_authorized_target(tmp_path):
     out = orch.tick()
     assert out["armed"] is True
     assert set(rf.deauthed) == {"AA:BB:CC:DD:EE:FF", "11:22:33:44:55:66"}
+
+
+def test_tick_continues_after_engine_raises(tmp_path):
+    g = _gate(tmp_path, approved_targets=["AA:BB:CC:DD:EE:FF", "11:22:33:44:55:66"])
+
+    class _RaisingRF:
+        def __init__(self): self.deauthed = []
+        def deauth(self, bssid, **kw):
+            if bssid.upper() == "AA:BB:CC:DD:EE:FF":
+                raise RuntimeError("simulated engine failure")
+            self.deauthed.append(bssid)
+            return ("rf", bssid)
+
+    rf = _RaisingRF()
+    orch = KuroshunaOrchestrator(gate=g, rf=rf, clock=_Clock())
+    out = orch.tick()                           # must not raise
+    assert "11:22:33:44:55:66" in rf.deauthed  # second target still engaged
+    assert out["armed"] is True
 
 
 def test_tick_respects_cooldown(tmp_path):
