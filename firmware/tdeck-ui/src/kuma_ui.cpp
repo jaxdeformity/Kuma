@@ -6,6 +6,7 @@
 #include "offline_sprites_data.h"   // reuses BearSprite; include AFTER bear sprites
 #include "kuma_logo_data.h"
 #include "kuma_bg_data.h"
+#include "kuroshuna_sprites_data.h"
 
 namespace {
 LGFX_TDeck* D = nullptr;
@@ -196,18 +197,22 @@ void drawHome(const KumaStatus& s) {
     g->fillRect(0, 205, 320, 35, BG);
   }
 
-  // --- top bar: クマ/シュナ wordmark + level, online dot -----------------
+  // --- top bar: クロシュナ/シュナ/クマ wordmark + level, online dot ------
+  bool kuro  = s.kuroshunaArmed;
   bool shuna = (s.character == "shuna");
-  uint16_t logoW = shuna ? SHUNA_LOGO_W : KUMA_LOGO_W;
-  if (shuna) g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 8, 3);
-  else       g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);
-  g->setTextSize(1); g->setTextColor(GREEN);
+  const uint16_t KURO_ACCENT = 0x901F;   // purple-magenta (RGB565)
+  uint16_t accent = kuro ? KURO_ACCENT : 0x2945;
+  uint16_t logoW = kuro ? KUROSHUNA_LOGO_W : (shuna ? SHUNA_LOGO_W : KUMA_LOGO_W);
+  if (kuro)        g->drawPng(KUROSHUNA_LOGO, sizeof KUROSHUNA_LOGO, 8, 3);
+  else if (shuna)  g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 8, 3);
+  else             g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);
+  g->setTextSize(1); g->setTextColor(kuro ? KURO_ACCENT : GREEN);
   g->setCursor(8 + logoW + 8, 11);
   g->printf("Lv %u", s.level);
-  g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
-  g->setTextColor(s.online ? GREEN : RED); g->setCursor(254, 9);
+  g->fillCircle(244, 12, 4, s.online ? (kuro ? RED : GREEN) : RED);
+  g->setTextColor(s.online ? (kuro ? RED : GREEN) : RED); g->setCursor(254, 9);
   g->print(s.online ? "ONLINE" : "OFFLINE");
-  g->drawFastHLine(0, 26, 320, 0x2945);
+  g->drawFastHLine(0, 26, 320, accent);
 
   // --- bear, centered + scaled up to fill the face -----------------------
   static const int BOB[4] = {0, -3, -4, -3};
@@ -234,11 +239,16 @@ void drawHome(const KumaStatus& s) {
     bool calm = (bs == BearState::Sleeping || bs == BearState::Foraging
                  || bs == BearState::HoneyTrap);
     int si = calm ? modeSpriteIndex(s.mode) : bearSpriteIndex(bs);
-    // Shuna skin overrides the form packs; else pick the evolution pack
-    // for the active form (states -> base pack).
+    // Kuroshuna armed: one pose for all states. Shuna overrides form packs otherwise.
     const BearSprite* pack = shuna ? SHUNA_SPRITES : evoPackFor(s.spriteSet.c_str());
     if (!pack) pack = BEAR_SPRITES;
-    if (si >= 0) {
+    if (kuro) {
+      const BearSprite& sp = KUROSHUNA_APEX;
+      float SC = (float)DISP_H / sp.h;
+      int dw = (int)(sp.w * SC), dh = (int)(sp.h * SC);
+      if (!g->drawPng(sp.data, sp.len, 160 - dw / 2, CY - dh / 2 + bob, 0, 0, 0, 0, SC, SC))
+        drawBear(g, bs, 160, CY + bob, 78);
+    } else if (si >= 0) {
       const BearSprite& sp = pack[si];
       float SC = (float)DISP_H / sp.h;
       int dw = (int)(sp.w * SC), dh = (int)(sp.h * SC);
@@ -252,7 +262,7 @@ void drawHome(const KumaStatus& s) {
   // (no mood/threat text - the bear's state conveys what's going on)
 
   // --- stat bar (no threat readout) --------------------------------------
-  g->drawFastHLine(0, 206, 320, 0x2945);
+  g->drawFastHLine(0, 206, 320, accent);
   const int   cxs[4]    = {40, 120, 200, 280};
   const char* labels[4] = {"UPTIME", "EVENTS", "NETWORKS", "SENSOR"};
   char up[16]; hms(s.uptimeSeconds, up);
