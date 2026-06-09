@@ -50,6 +50,22 @@ constexpr uint16_t SNOUT  = 0xC618;  // light grey
 const char* MODE_LABELS[5] = {"Hibernate", "Foraging", "Honey",
                               "Sentinel", "Apex"};
 
+// Toast state: set by kuma_ui::toast(), consumed by drawHome each frame.
+static uint32_t g_toastUntil = 0;
+static String   g_toastMsg;
+
+// Draw a small XP bar [w x 6] at (x,y) filled by into/(into+toNext), then
+// return the x coordinate just past it. Colors are per-skin (green normal, red kuro).
+static int drawXpBar(lgfx::LovyanGFX* g, int x, int y, int w,
+                     uint16_t into, uint16_t toNext,
+                     uint16_t fillCol, uint16_t frameCol) {
+  int total = (int)into + (int)toNext;
+  if (total <= 0) total = 1;
+  g->drawRect(x, y, w, 6, frameCol);
+  g->fillRect(x + 1, y + 1, (w - 2) * (int)into / total, 4, fillCol);
+  return x + w;
+}
+
 uint16_t threatColor(const String& t) {
   if (t == "high" || t == "critical") return RED;
   if (t == "medium") return AMBER;
@@ -89,6 +105,11 @@ int modeSpriteIndex(KumaMode m) {
 }  // namespace
 
 namespace kuma_ui {
+
+void toast(const String& msg, uint32_t ms) {
+  g_toastMsg   = msg;
+  g_toastUntil = millis() + ms;
+}
 
 void begin(LGFX_TDeck* d) {
   D = d;
@@ -212,7 +233,11 @@ void drawHome(const KumaStatus& s) {
     g->drawPng(KUROSHUNA_LOGO, sizeof KUROSHUNA_LOGO, wx, 3);
     char lv[12]; snprintf(lv, sizeof lv, "Lv %u", s.level);
     int lw = (int)strlen(lv) * 6;
-    g->setTextColor(KURO_RED); g->setCursor(wx - 8 - lw, 11); g->print(lv);
+    // XP bar (34px) sits immediately left of "Lv N"; both sit left of the wordmark.
+    int lvX  = wx - 8 - lw;          // x where "Lv N" text starts
+    int barX2 = lvX - 4 - 34;        // x where the 34px bar starts
+    drawXpBar(g, barX2, 10, 34, s.xpIntoLevel, s.xpToNext, KURO_HOT, KURO_RED);
+    g->setTextColor(KURO_RED); g->setCursor(lvX, 11); g->print(lv);
     g->drawFastHLine(0, 26, 320, KURO_RED);
   } else {
     // Normal top bar: wordmark + level on LEFT, online dot + label on RIGHT
@@ -220,7 +245,11 @@ void drawHome(const KumaStatus& s) {
     if (shuna) g->drawPng(SHUNA_LOGO, sizeof SHUNA_LOGO, 8, 3);
     else       g->drawPng(KUMA_LOGO, sizeof KUMA_LOGO, 8, 3);
     g->setTextSize(1); g->setTextColor(GREEN);
-    g->setCursor(8 + logoW + 8, 11);
+    // XP bar (34px wide, 6px tall) immediately left of the "Lv N" text;
+    // bar top-aligned to match the text cap height at y=10.
+    int barX = 8 + (int)logoW + 8;
+    int barEnd = drawXpBar(g, barX, 10, 34, s.xpIntoLevel, s.xpToNext, GREEN, GREY);
+    g->setCursor(barEnd + 4, 11);
     g->printf("Lv %u", s.level);
     g->fillCircle(244, 12, 4, s.online ? GREEN : RED);
     g->setTextColor(s.online ? GREEN : RED); g->setCursor(254, 9);
@@ -312,6 +341,15 @@ void drawHome(const KumaStatus& s) {
       g->setTextColor(vcol[i]);
       g->setCursor(cxs[i] - (int)strlen(vals[i]) * 3, 226); g->print(vals[i]);
     }
+  }
+
+  // Toast: draw at bottom of screen while active (millis-based expiry, ~10fps redraw)
+  if (millis() < g_toastUntil && g_toastMsg.length()) {
+    int tw = (int)g_toastMsg.length() * 6;
+    int tx = (320 - tw) / 2;
+    g->fillRect(tx - 6, 228, tw + 12, 12, BG);
+    g->setTextSize(1); g->setTextColor(GREEN);
+    g->setCursor(tx, 229); g->print(g_toastMsg);
   }
 
   if (fbReady) fb.pushSprite(D, 0, 0);

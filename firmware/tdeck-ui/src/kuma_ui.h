@@ -31,6 +31,7 @@ struct SettingsView {
 namespace kuma_ui {
   void begin(LGFX_TDeck* d);
   void splash();
+  void toast(const String& msg, uint32_t ms = 3000);  // transient bottom-of-home toast
   void drawHome(const KumaStatus& s);
   void drawModeSelect(int selectedIndex, KumaMode current);
   void drawEventList(const KumaEvent* ev, int n);
