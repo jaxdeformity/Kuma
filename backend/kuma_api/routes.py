@@ -169,6 +169,40 @@ def _now() -> str:
 
 
 # ---------------------------------------------------------------------------
+# KUMA real defense — manual mitigation (blue-team, on by default)
+# ---------------------------------------------------------------------------
+
+def _resolve_attacker() -> tuple[str | None, str | None]:
+    """Newest high/critical event that carries a BSSID = the encounter's attacker."""
+    for ev in database.get_events(limit=50):
+        if ev.get("severity") in ("high", "critical") and ev.get("bssid"):
+            return ev["bssid"], ev.get("event_type")
+    return None, None
+
+
+@router.post("/mitigate", response_model=schemas.MitigateResponse)
+def post_mitigate(x_kuma_shell_token: str = Header(default="")):
+    """KUMA real defense: attribute the current attacker and apply the canonical
+    defensive mitigation. Token-gated; no lab_mode (active defense is on by default)."""
+    _check_ctrl_token(x_kuma_shell_token)
+    attacker, etype = _resolve_attacker()
+    if not attacker:
+        return schemas.MitigateResponse(
+            applied=False, action="", target="", result="none",
+            message="no attributable attacker")
+    from kuma_core.mitigation import MitigationEngine
+    res = MitigationEngine().apply(attacker, etype or "")
+    database.insert_action({
+        "timestamp": _now(), "mode": "kuma", "action": "mitigate",
+        "target": attacker, "confirmed": 1, "result": res["result"],
+        "message": res["message"],
+        "raw_json": {"engine_action": res["action"], "event_type": etype}})
+    return schemas.MitigateResponse(
+        applied=True, action=res["action"], target=attacker,
+        result=res["result"], message=res["message"])
+
+
+# ---------------------------------------------------------------------------
 # Kuroshuna control surface
 # ---------------------------------------------------------------------------
 

@@ -44,6 +44,13 @@ struct KumaNetwork {
   int      timesSeen = 0;
 };
 
+struct MitigationResult {
+  bool   applied = false;
+  String action;     // harden+redirect | contain | mark+contain | mark
+  String target;     // attacker BSSID
+  String message;    // human-readable
+};
+
 namespace kuma_api {
   void begin();                                   // Wi-Fi STA connect
   bool wifiConnected();
@@ -60,4 +67,5 @@ namespace kuma_api {
   bool armBroadcast(bool armed);   // POST /api/kuroshuna/broadcast-arm
   bool authorizeAction(const String& target, const String& action);  // POST /api/kuroshuna/authorize
   bool broadcastAttack(const String& name);  // POST /api/kuroshuna/broadcast {"attack":name}
+  MitigationResult mitigate();   // POST /api/mitigate (token-gated; KUMA real defense)
 }

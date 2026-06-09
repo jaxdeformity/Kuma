@@ -84,6 +84,14 @@ class ActionResponse(BaseModel):
     message: str
 
 
+class MitigateResponse(BaseModel):
+    applied: bool
+    action: str
+    target: str
+    result: str
+    message: str
+
+
 class KuroshunaArmRequest(BaseModel):
     armed: bool
 

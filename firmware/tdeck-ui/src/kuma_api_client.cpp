@@ -223,6 +223,27 @@ bool authorizeAction(const String& target, const String& action) {
   return doc["allowed"] | false;
 }
 
+MitigationResult mitigate() {
+  MitigationResult r;
+  if (!wifiConnected()) return r;
+  HTTPClient http;
+  http.setTimeout(3000);
+  if (!http.begin(baseUrl() + "/api/mitigate")) return r;
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-KUMA-Shell-Token", KUMA_SHELL_TOKEN);
+  int code = http.POST("{}");
+  if (code != 200) { http.end(); return r; }
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, http.getStream());
+  http.end();
+  if (err) return r;
+  r.applied = doc["applied"] | false;
+  r.action  = String((const char*)(doc["action"]  | ""));
+  r.target  = String((const char*)(doc["target"]  | ""));
+  r.message = String((const char*)(doc["message"] | ""));
+  return r;
+}
+
 bool broadcastAttack(const String& name) {
   if (!wifiConnected()) return false;
   HTTPClient http;

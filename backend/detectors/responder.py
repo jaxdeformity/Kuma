@@ -22,9 +22,7 @@ protected_connection/backup_connection and keep a separate management path
 from __future__ import annotations
 
 import json
-import subprocess
 import time
-import urllib.request
 
 from kuma_core import database, events
 from kuma_core.config import LAB_TARGETS_FILE
@@ -42,9 +40,12 @@ class ApexResponder:
     def __init__(self) -> None:
         self.cfg = _load_lab()
         self._last = 0.0
+        from kuma_core.mitigation import MitigationEngine
+        self._engine = MitigationEngine(cfg=self.cfg)
 
     def reload(self) -> None:
         self.cfg = _load_lab()
+        self._engine.cfg = self.cfg
 
     def armed(self) -> bool:
         return bool(self.cfg.get("lab_mode")) and bool(
@@ -75,11 +76,11 @@ class ApexResponder:
             f"ch{event.get('channel')}"
         )
         if resp.get("harden_pmf"):
-            actions.append(self._harden_pmf())
+            actions.append(self._engine.harden_pmf())
         if resp.get("redirect"):
-            actions.append(self._redirect())
+            actions.append(self._engine.redirect())
         if resp.get("contain"):
-            actions.append(self._contain(attacker))
+            actions.append(self._engine.contain(attacker))
 
         msg = "APEX active defense -> " + "; ".join(a for a in actions if a)
         database.insert_action({
@@ -97,36 +98,6 @@ class ApexResponder:
         print("[apex] " + msg, flush=True)
         return ev
 
-    # --- response actions (defensive only) --------------------------------
-    def _harden_pmf(self) -> str:
-        conn = self.cfg.get("protected_connection")
-        if not conn:
-            return "harden_pmf skipped (set protected_connection)"
-        subprocess.run(
-            ["nmcli", "connection", "modify", conn,
-             "802-11-wireless-security.pmf", "2"], check=False)
-        subprocess.run(["nmcli", "connection", "up", conn], check=False)
-        return f"hardened PMF=required on '{conn}'"
-
-    def _redirect(self) -> str:
-        backup = self.cfg.get("backup_connection")
-        if not backup:
-            return "redirect skipped (set backup_connection)"
-        subprocess.run(["nmcli", "connection", "up", backup], check=False)
-        return f"redirected protected link to '{backup}'"
-
-    def _contain(self, attacker: str) -> str:
-        c = self.cfg.get("containment", {})
-        url = c.get("blacklist_url")
-        if not url:
-            return f"containment dispatched (stub) for {attacker} - set containment.blacklist_url"
-        try:
-            payload = {"mac": attacker, **c.get("payload", {})}
-            req = urllib.request.Request(
-                url, data=json.dumps(payload).encode(),
-                method=c.get("method", "POST"),
-                headers=c.get("headers", {"Content-Type": "application/json"}))
-            urllib.request.urlopen(req, timeout=5)
-            return f"containment: blacklisted {attacker} via controller"
-        except Exception as e:  # noqa: BLE001
-            return f"containment failed for {attacker}: {e}"
+    # Defensive action bodies now live in kuma_core.mitigation.MitigationEngine,
+    # shared with the manual /api/mitigate path. ApexResponder delegates via
+    # self._engine (see on_deauth) and keeps only its automated-response gating.
