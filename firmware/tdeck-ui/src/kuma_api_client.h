@@ -12,6 +12,8 @@ struct KumaStatus {
   uint32_t  uptimeSeconds = 0;
   uint16_t  eventsLast10m = 0;
   uint16_t  level = 1;
+  uint16_t  xpIntoLevel = 0;   // XP into current level (0..29)
+  uint16_t  xpToNext    = 30;  // XP to next level
   uint16_t  networkCount = 0;
   String    spriteSet = "states"; // active form's sprite pack
   String    background = "backg1"; // home background to show

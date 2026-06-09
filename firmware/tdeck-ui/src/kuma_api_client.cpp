@@ -60,6 +60,8 @@ bool fetchStatus(KumaStatus& out) {
   out.uptimeSeconds = doc["uptime_seconds"] | 0;
   out.eventsLast10m = doc["events_last_10m"] | 0;
   out.level         = doc["level"]          | 1;
+  out.xpIntoLevel   = doc["xp_into_level"]  | 0;
+  out.xpToNext      = doc["xp_to_next"]     | 30;
   out.networkCount  = doc["network_count"]  | 0;
   out.spriteSet     = doc["sprite_set"]     | "states";
   out.background    = doc["background"]      | "backg1";
