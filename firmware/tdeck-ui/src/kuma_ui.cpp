@@ -82,7 +82,7 @@ void begin(LGFX_TDeck* d) {
   bgDash.setColorDepth(16);
   bgDash.setPsram(true);
   if (bgDash.createSprite(320, 240)) {
-    bgReady = bgDash.drawPng(KUMA_BG_DASH, KUMA_BG_DASH_LEN, 0, 0);
+    bgReady = bgDash.drawPng(KUMA_BG_DASH1, KUMA_BG_DASH1_LEN, 0, 0);
     if (!bgReady) bgDash.deleteSprite();
   }
 }
@@ -155,7 +155,7 @@ void drawHome(const KumaStatus& s) {
                                : static_cast<lgfx::LovyanGFX*>(D);
   // night-watch background (text drawn transparent so the scene shows through)
   if (fbReady && bgReady)      bgDash.pushSprite(&fb, 0, 0);
-  else if (!fbReady && bgReady) g->drawPng(KUMA_BG_DASH, KUMA_BG_DASH_LEN, 0, 0);
+  else if (!fbReady && bgReady) g->drawPng(KUMA_BG_DASH1, KUMA_BG_DASH1_LEN, 0, 0);
   else                          g->fillScreen(BG);
 
   // HUD legibility: semi-opaque dark bands behind the top status bar and the
@@ -287,7 +287,8 @@ void drawSettings(const SettingsView& v) {
   g->drawFastHLine(0, 32, 320, 0x2945);
 
   const char* labels[SET_COUNT] = {
-    "Volume", "Brightness", "Wi-Fi / IP", "Firmware", "Reboot", "Power Off"};
+    "Volume", "Brightness", "Wi-Fi / IP", "Firmware", "Credits",
+    "Reboot", "Power Off"};
   const int top = 42, rowH = 28;
 
   for (int i = 0; i < SET_COUNT; ++i) {
@@ -322,6 +323,12 @@ void drawSettings(const SettingsView& v) {
           g->printf("v%s  api %s", v.fwVersion, v.backendVersion);
         else
           g->printf("v%s", v.fwVersion);
+        break;
+      }
+      case SET_CREDITS: {
+        // KUMA was designed & built by Jax. Tip of the hat on his own hardware.
+        g->setTextColor(CYAN, rowBg); g->setCursor(cx, y + 7);
+        g->print("by Jax");
         break;
       }
       case SET_REBOOT:

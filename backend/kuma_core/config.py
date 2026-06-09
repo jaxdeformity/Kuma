@@ -68,6 +68,15 @@ class Settings:
         return bool(self.settings.get("lab_mode", False))
 
     @property
+    def creator_mode(self) -> bool:
+        # Jax's personal unit: KUMA is locked to the maxed showcase form.
+        return bool(self.settings.get("creator_mode", False))
+
+    @property
+    def creator_name(self) -> str:
+        return self.settings.get("creator_name", "Jax")
+
+    @property
     def wifi_interface(self) -> str:
         return self.settings.get("wifi_interface", "wlan1")
 

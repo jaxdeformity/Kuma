@@ -67,7 +67,8 @@ def test_status_has_level_and_networks(client):
 
 def test_progress_endpoint(client):
     b = client.get("/api/progress").json()
-    assert b["level"] == 1 and b["max_level"] == 99
+    assert b["level"] == 1 and b["max_level"] is None  # uncapped
+    assert b["sprite_set"] == "states" and b["next_evo_level"] == 5
 
 
 def test_networks_export_csv(client, temp_db):

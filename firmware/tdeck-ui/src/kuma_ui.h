@@ -11,7 +11,8 @@ enum class Screen { Home, ModeSelect, EventList, Settings, Networks };
 
 // Settings rows, in display order. SET_COUNT bounds row navigation.
 enum SettingsRow {
-  SET_VOLUME, SET_BRIGHT, SET_WIFI, SET_ABOUT, SET_REBOOT, SET_POWEROFF, SET_COUNT
+  SET_VOLUME, SET_BRIGHT, SET_WIFI, SET_ABOUT, SET_CREDITS,
+  SET_REBOOT, SET_POWEROFF, SET_COUNT
 };
 
 // Everything drawSettings needs, assembled by the caller each redraw.

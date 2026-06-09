@@ -1,0 +1,170 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>クマ // battle UI mockups</title>
+<style>
+  :root{--bg:#070a09;--ink:#cdd8cf;--dim:#6a7d70;--faint:#243029;--grn:#46e07a;
+        --amb:#f2a23c;--red:#ff3b30;--wht:#eaf2ec;--box:#0c1410;--cy:#25d0ff}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#05080a;color:var(--ink);font:13px/1.4 "JetBrains Mono",ui-monospace,monospace;
+       padding:26px;display:flex;gap:30px;flex-wrap:wrap;justify-content:center}
+  img{image-rendering:pixelated}
+  .jp{font-family:"Yu Gothic","MS Gothic",sans-serif}
+  .col{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .tag{font-size:13px;color:var(--cy);letter-spacing:.12em;text-transform:uppercase}
+  .tag b{color:var(--wht)} .tag span{color:var(--dim);text-transform:none;letter-spacing:0}
+  /* actual T-Deck panel, shown at 2x */
+  .dev{width:320px;height:240px;zoom:2;
+       border:1px solid #000;position:relative;overflow:hidden;background:var(--bg)}
+  .dev::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:50;
+       background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.14) 2px 3px)}
+  .hpbar{height:5px;background:#11181400;border:1px solid var(--faint);overflow:hidden}
+  .hpbar i{display:block;height:100%}
+
+  /* ============ A : refined JRPG ============ */
+  .A{background:radial-gradient(130% 80% at 70% 20%,rgba(255,59,48,.07),transparent 55%),
+       radial-gradient(120% 80% at 25% 90%,rgba(37,208,255,.07),transparent 55%),
+       linear-gradient(180deg,#0b110d,#06090a)}
+  .A .grid{position:absolute;inset:0 0 64px 0;opacity:.10;
+       background:linear-gradient(var(--faint) 1px,transparent 1px) 0 0/100% 20px,
+                 linear-gradient(90deg,var(--faint) 1px,transparent 1px) 0 0/20px 100%;
+       -webkit-mask:linear-gradient(180deg,transparent,#000 60%)}
+  .A .plat{position:absolute;height:14px;border-radius:50%;background:radial-gradient(closest-side,rgba(120,150,130,.22),transparent)}
+  .A .pe{width:96px;top:78px;right:18px}.A .pk{width:104px;bottom:74px;left:14px}
+  .A .esp{position:absolute;top:14px;right:20px;height:78px}
+  .A .ksp{position:absolute;bottom:64px;left:16px;height:96px;filter:drop-shadow(0 4px 4px #0008)}
+  .A .plate{position:absolute;background:rgba(7,11,9,.9);border:1px solid var(--faint);padding:4px 7px;width:140px}
+  .A .pl-e{top:10px;left:10px}.A .pl-k{bottom:70px;right:10px}
+  .A .pl-row{display:flex;justify-content:space-between;color:var(--wht);font-size:11px}
+  .A .pl-row b{color:var(--dim);font-weight:400;font-size:9px}
+  .A .cmd{position:absolute;left:0;right:0;bottom:0;height:64px;border-top:1px solid var(--faint);
+       background:var(--box);display:flex}
+  .A .cmd .grid2{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--faint)}
+  .A .cmd .grid2 button{border:0;background:#0c1410;color:var(--ink);font:inherit;font-size:11px;text-align:left;padding:5px 8px}
+  .A .cmd .grid2 .s{background:#13201a;color:var(--cy)}
+  .A .cmd .grid2 small{display:block;color:var(--dim);font-size:8px}
+  .A .msg{position:absolute;left:10px;bottom:68px;font-size:10px;color:var(--ink);
+       background:rgba(7,11,9,.8);padding:2px 6px;border-left:2px solid var(--cy)}
+
+  /* ============ B : tactical SOC HUD ============ */
+  .B{background:linear-gradient(180deg,#070b0a,#040605);font-size:11px}
+  .B .bar{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;
+       border-bottom:1px solid var(--faint);background:#0a0f0d}
+  .B .bar .l{color:var(--wht);letter-spacing:.1em}.B .bar .r{color:var(--red);font-size:9px}
+  .B .body{position:absolute;inset:25px 0 70px 0;display:flex}
+  .B .threat{flex:1;padding:7px 8px;border-right:1px solid var(--faint)}
+  .B .lbl{color:var(--red);font-size:9px;letter-spacing:.14em}
+  .B .threat .nm{color:var(--wht);font-size:13px;margin:1px 0 5px}
+  .B .meter{display:flex;align-items:center;gap:5px;margin:3px 0;color:var(--dim);font-size:9px}
+  .B .meter .t{width:42px}
+  .B .bars{display:flex;gap:2px}.B .bars i{width:5px;height:9px;background:var(--faint)}
+  .B .bars i.on{background:var(--red)}.B .bars i.cy{background:var(--cy)}
+  .B .mono{font-size:9px;color:var(--dim);margin-top:4px;line-height:1.6}
+  .B .mono b{color:var(--amb)}
+  .B .esp{position:absolute;top:30px;right:6px;height:92px;opacity:.96;filter:drop-shadow(0 0 5px #f2a23c55)}
+  .B .ksp{position:absolute;bottom:74px;right:96px;height:74px;opacity:.9}
+  .B .sentinel{width:120px;padding:7px 8px}
+  .B .sentinel .lbl{color:var(--grn)}
+  .B .cmd{position:absolute;left:0;right:0;bottom:0;height:70px;border-top:1px solid var(--faint);background:#080c0a}
+  .B .cmd .row{display:flex;align-items:center;gap:7px;padding:4px 8px;border-bottom:1px solid #131a16;color:var(--ink);font-size:10px}
+  .B .cmd .row .k{color:var(--cy);border:1px solid var(--faint);padding:0 4px;font-size:9px}
+  .B .cmd .row.s{background:#0e1612}.B .cmd .row .eff{margin-left:auto;color:var(--amb);font-size:8px}
+  .B .scan{position:absolute;inset:25px 0 70px 0;pointer-events:none;z-index:30;
+       background:linear-gradient(transparent 40%,rgba(37,208,255,.05) 50%,transparent 60%)}
+
+  /* ============ C : cinematic minimal ============ */
+  .C{background:radial-gradient(80% 70% at 50% 40%,#0c1512,#05080a 75%)}
+  .C .strip{position:absolute;top:0;left:0;right:0;text-align:center;padding:5px;font-size:10px;
+       letter-spacing:.28em;color:var(--red);background:linear-gradient(180deg,rgba(255,59,48,.14),transparent)}
+  .C .esp{position:absolute;top:34px;right:24px;height:118px;filter:drop-shadow(0 0 12px #ff3b3055)}
+  .C .ksp{position:absolute;bottom:52px;left:18px;height:132px;filter:drop-shadow(0 0 12px #25d0ff44)}
+  .C .nm{position:absolute;font-size:11px;letter-spacing:.1em}
+  .C .nm.e{top:30px;right:24px;color:var(--wht);text-align:right}
+  .C .nm.e small{color:var(--red);font-size:8px;display:block;letter-spacing:.18em}
+  .C .nm.k{bottom:158px;left:18px;color:var(--wht)}
+  .C .uhp{position:absolute;height:3px;width:90px;background:#0008;box-shadow:0 0 8px currentColor}
+  .C .uhp i{display:block;height:100%}
+  .C .uhp.e{top:48px;right:24px;color:var(--red)}.C .uhp.k{bottom:152px;left:18px;color:var(--cy)}
+  .C .ribbon{position:absolute;left:0;right:0;bottom:0;height:44px;display:flex;gap:1px;background:var(--faint);
+       border-top:1px solid var(--faint)}
+  .C .ribbon button{flex:1;border:0;background:rgba(8,12,10,.92);color:var(--ink);font:inherit;font-size:10px;
+       display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .C .ribbon button .ic{font-size:13px;color:var(--cy)}
+  .C .ribbon button.s{background:#10201a;color:var(--cy);box-shadow:inset 0 2px 0 var(--cy)}
+  .C .ln{position:absolute;bottom:48px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--dim);
+       background:rgba(5,8,7,.7);padding:2px 8px;white-space:nowrap}
+</style></head><body>
+
+<!-- A -->
+<div class="col">
+  <div class="tag"><b>A.</b> Refined JRPG <span>— polish what exists</span></div>
+  <div class="dev A">
+    <div class="grid"></div>
+    <div class="plat pe"></div><div class="plat pk"></div>
+    <img class="esp" src="sprites/enemies/03_deauther.png">
+    <img class="ksp" src="sprites/states/06_alert.png">
+    <div class="plate pl-e"><div class="pl-row"><span>DEAUTHER</span><b>Lv16</b></div>
+      <div class="hpbar" style="margin-top:3px"><i style="width:64%;background:var(--amb)"></i></div></div>
+    <div class="plate pl-k"><div class="pl-row"><span class="jp">クマ</span><b>Lv5</b></div>
+      <div class="hpbar" style="margin-top:3px"><i style="width:88%;background:var(--grn)"></i></div></div>
+    <div class="msg">It’s super effective! Enemy is <b style="color:#fff">SUPPRESSED</b>.</div>
+    <div class="cmd"><div class="grid2">
+      <button class="s">CHANNEL ROAR ▸<small>break burst/flood</small></button>
+      <button>SIGNAL MAUL<small>disrupt spoof</small></button>
+      <button>HONEY SNARE<small>bait + mark</small></button>
+      <button>PAWLOCK<small>pin + contain</small></button>
+    </div></div>
+  </div>
+</div>
+
+<!-- B -->
+<div class="col">
+  <div class="tag"><b>B.</b> Tactical HUD <span>— security-console framing</span></div>
+  <div class="dev B">
+    <div class="bar"><span class="l"><span class="jp">クマ</span> · SENTINEL</span><span class="r">● ENGAGED · CH6</span></div>
+    <div class="body">
+      <div class="threat">
+        <div class="lbl">▲ HOSTILE</div><div class="nm">DEAUTHER</div>
+        <div class="meter"><span class="t">RSSI</span><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span>-71dBm</span></div>
+        <div class="meter"><span class="t">CONF</span><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span>84%</span></div>
+        <div class="meter"><span class="t">HP</span><span class="bars"><i class="cy"></i><i class="cy"></i><i class="cy"></i><i></i><i></i></span><span>64%</span></div>
+        <div class="mono">BSSID <b>de:ad:be:ef:10:24</b><br>frames <b>137</b>/10s · reason <b>7</b></div>
+      </div>
+      <div class="sentinel">
+        <div class="lbl">◆ SENTINEL</div><div class="nm" style="color:#fff;font-size:13px;margin:1px 0 5px"><span class="jp">クマ</span> Lv5</div>
+        <div class="meter"><span class="t">INTEG</span><span class="bars"><i class="cy"></i><i class="cy"></i><i class="cy"></i><i class="cy"></i><i></i></span></div>
+        <div class="mono" style="color:var(--grn)">status: <b style="color:var(--grn)">READY</b></div>
+      </div>
+    </div>
+    <img class="esp" src="sprites/enemies/03_deauther.png">
+    <img class="ksp" src="sprites/states/06_alert.png">
+    <div class="scan"></div>
+    <div class="cmd">
+      <div class="row s"><span class="k">A</span> CHANNEL ROAR<span class="eff">▸ SUPER</span></div>
+      <div class="row"><span class="k">B</span> SIGNAL MAUL</div>
+      <div class="row"><span class="k">C</span> HONEY SNARE</div>
+      <div class="row"><span class="k">D</span> PAWLOCK<span class="eff">30s ▱▱▰</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- C -->
+<div class="col">
+  <div class="tag"><b>C.</b> Cinematic <span>— big sprites, minimal chrome</span></div>
+  <div class="dev C">
+    <div class="strip">THREAT CONTAINED IMMINENT</div>
+    <img class="esp" src="sprites/enemies/03_deauther.png">
+    <img class="ksp" src="sprites/states/09_attacking.png">
+    <div class="nm e">DEAUTHER<small>LV 16 · HOSTILE</small></div>
+    <div class="uhp e"><i style="width:64%;background:currentColor"></i></div>
+    <div class="nm k"><span class="jp">クマ</span> · Lv5</div>
+    <div class="uhp k"><i style="width:88%;background:currentColor"></i></div>
+    <div class="ln"><span class="jp">クマ</span> used <b style="color:#fff">CHANNEL ROAR</b> — super effective!</div>
+    <div class="ribbon">
+      <button class="s"><span class="ic">≈</span>ROAR</button>
+      <button><span class="ic">⩘</span>MAUL</button>
+      <button><span class="ic">◆</span>SNARE</button>
+      <button><span class="ic">▣</span>LOCK</button>
+    </div>
+  </div>
+</div>
+
+</body></html>

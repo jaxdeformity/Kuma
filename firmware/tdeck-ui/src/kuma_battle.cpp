@@ -58,7 +58,7 @@ void push() { if (fbReady) FB.pushSprite(D, 0, 0); }
 void drawBg() {
   if (bgReady && fbReady) { bgBattle.pushSprite(&FB, 0, 0); return; }
   lgfx::LovyanGFX* g = G();
-  if (!(bgReady && g->drawPng(KUMA_BG_BATTLE, KUMA_BG_BATTLE_LEN, 0, 0)))
+  if (!(bgReady && g->drawPng(KUMA_BG_BATTLE1, KUMA_BG_BATTLE1_LEN, 0, 0)))
     g->fillScreen(BG);
 }
 void spr(const BearSprite& s, int x, int y) { G()->drawPng(s.data, s.len, x, y); }
@@ -318,7 +318,7 @@ void begin(LGFX_TDeck* d) {
   bgBattle.setColorDepth(16);
   bgBattle.setPsram(true);
   if (bgBattle.createSprite(320, 240)) {
-    bgReady = bgBattle.drawPng(KUMA_BG_BATTLE, KUMA_BG_BATTLE_LEN, 0, 0);
+    bgReady = bgBattle.drawPng(KUMA_BG_BATTLE1, KUMA_BG_BATTLE1_LEN, 0, 0);
     if (!bgReady) bgBattle.deleteSprite();
   }
 }

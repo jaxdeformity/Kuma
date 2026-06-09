@@ -8,7 +8,7 @@ Five modes: Hibernate (conserve), Foraging (discover), Sentinel (detect), Honey 
 
 Built from parts you can buy. No custom PCB, no sealed product. Ugly and working first.
 
-![KUMA on the LilyGo T-Deck](docs/media/tdeck_home_alert.png)
+![KUMA on the LilyGo T-Deck](docs/media/tdeck_home.png)
 
 > The T-Deck face mid-attack: a deauth burst detected, threat HIGH, bear on alert. Composed from the device's actual embedded sprites and cyber-space background at native 320x240.
 

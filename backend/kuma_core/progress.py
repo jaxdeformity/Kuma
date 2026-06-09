@@ -1,4 +1,4 @@
-"""KUMA leveling / EXP with prestige-style evolution.
+"""KUMA leveling / EXP with level-gated evolution.
 
 Network mapping is the XP engine (Jax's rules):
 
@@ -6,15 +6,19 @@ Network mapping is the XP engine (Jax's rules):
     discover a NEW network   ->  1 XP   (1/30 of a level)
     connect to a NEW network -> 30 XP   (a full level)
     win a battle             -> 10 XP
-    level = 1 + floor(xp / 30), capped at 99
+    level = 1 + floor(xp / 30)           (NO cap - keep leveling forever)
 
-Prestige: KUMA has 6 sprite forms (base + 5 evolutions). XP goes to the ACTIVE
-form. When the newest form hits level 99 it EVOLVES: the next form unlocks at
-level 1 and becomes active (like a "prestige"). Each unlocked form keeps its own
-level, and the user can switch which unlocked form battles. Only one battles at a
-time. (Future: forms also unlock display themes.)
+Evolution: KUMA has 6 sprite forms (base + 5). The active form is a function of
+LEVEL - KUMA auto-evolves as it levels up, and there is no max level:
 
-State is one JSON blob in the settings table (key 'kuma_progress').
+    level >= 5   -> evo1
+    level >= 12  -> evo2
+    level >= 16  -> evo3
+    level >= 25  -> evo4
+    level >= 90  -> evo5
+
+State is one JSON blob in the settings table (key 'kuma_progress'): a single
+cumulative xp value. (Replaces the old per-form "prestige" pools.)
 """
 from __future__ import annotations
 
@@ -23,42 +27,45 @@ import json
 from kuma_core import database
 
 XP_PER_LEVEL = 30
-MAX_LEVEL = 99
-MAX_XP = (MAX_LEVEL - 1) * XP_PER_LEVEL  # 2940
 REWARDS = {"discover": 1, "connect": 30, "battle_win": 10}
 
-NUM_FORMS = 6                                   # base + 5 evolutions
 FORMS = ["states", "evo1", "evo2", "evo3", "evo4", "evo5"]  # sprite-pack dir names
+NUM_FORMS = len(FORMS)
+EVO_LEVELS = [5, 12, 16, 25, 90]   # level at which evo1..evo5 unlock
 
 _KEY = "kuma_progress"
 _LEGACY_KEY = "kuma_xp"
 
 
 def level_for(xp: int) -> int:
-    return min(MAX_LEVEL, 1 + int(xp) // XP_PER_LEVEL)
+    """Level from cumulative XP. Uncapped."""
+    return 1 + max(0, int(xp)) // XP_PER_LEVEL
+
+
+def form_for(level: int) -> int:
+    """Active form index (0=base .. 5=evo5) for a given level."""
+    return sum(1 for t in EVO_LEVELS if level >= t)
 
 
 def _state() -> dict:
+    """Load the single-xp state, migrating older formats in place."""
     raw = database.get_setting(_KEY)
     if raw:
         try:
             s = json.loads(raw)
-            s.setdefault("xp", [0] * NUM_FORMS)
-            s.setdefault("unlocked", 1)
-            s.setdefault("active", 0)
-            if len(s["xp"]) < NUM_FORMS:
-                s["xp"] += [0] * (NUM_FORMS - len(s["xp"]))
-            return s
-        except (json.JSONDecodeError, TypeError, KeyError):
+            xp = s.get("xp", 0)
+            # migrate the old per-form prestige blob (xp was a list of pools)
+            if isinstance(xp, list):
+                xp = sum(int(v) for v in xp)
+            return {"xp": max(0, int(xp))}
+        except (json.JSONDecodeError, TypeError, ValueError):
             pass
-    # migrate the old single-value xp, if any
+    # migrate the oldest single-value legacy key, if any
     legacy = database.get_setting(_LEGACY_KEY)
-    base = 0
     try:
-        base = max(0, min(MAX_XP, int(legacy)))
+        return {"xp": max(0, int(legacy))}
     except (TypeError, ValueError):
-        base = 0
-    return {"xp": [base] + [0] * (NUM_FORMS - 1), "unlocked": 1, "active": 0}
+        return {"xp": 0}
 
 
 def _save(s: dict) -> None:
@@ -67,13 +74,7 @@ def _save(s: dict) -> None:
 
 def add_xp(amount: int, reason: str = "") -> dict:
     s = _state()
-    a = s["active"]
-    s["xp"][a] = min(MAX_XP, s["xp"][a] + max(0, int(amount)))
-    # evolve: the newest form maxing out unlocks + activates the next form
-    if (level_for(s["xp"][a]) >= MAX_LEVEL and a == s["unlocked"] - 1
-            and s["unlocked"] < NUM_FORMS):
-        s["unlocked"] += 1
-        s["active"] = s["unlocked"] - 1
+    s["xp"] = max(0, s["xp"] + max(0, int(amount)))
     _save(s)
     return get_progress()
 
@@ -83,33 +84,51 @@ def award(reason: str) -> dict:
 
 
 def select_form(index: int) -> dict:
-    s = _state()
-    if 0 <= int(index) < s["unlocked"]:
-        s["active"] = int(index)
-        _save(s)
+    """No-op kept for API compatibility: the active form now follows LEVEL
+    automatically, so a form can't be selected independently of progress."""
     return get_progress()
 
 
+# Jax's personal showcase unit is permanently locked here (creator_mode).
+CREATOR_LEVEL = 69
+CREATOR_FORM = 5          # evo5
+CREATOR_BACKGROUND = "backgFLAG"
+
+
 def get_progress() -> dict:
-    s = _state()
-    a = s["active"]
-    xp = s["xp"][a]
-    lvl = level_for(xp)
+    from kuma_core.config import settings   # local import avoids a cycle
+
+    if settings.creator_mode:
+        lvl, form = CREATOR_LEVEL, CREATOR_FORM
+        xp = (lvl - 1) * XP_PER_LEVEL
+    else:
+        xp = _state()["xp"]
+        lvl = level_for(xp)
+        form = form_for(lvl)
+
     into = xp - (lvl - 1) * XP_PER_LEVEL
-    to_next = 0 if lvl >= MAX_LEVEL else XP_PER_LEVEL - into
-    return {
+    next_evo = next((t for t in EVO_LEVELS if t > lvl), None)
+    out = {
         "level": lvl,
         "xp": xp,
         "xp_into_level": into,
-        "xp_to_next": to_next,
-        "max_level": MAX_LEVEL,
-        "active": a,
-        "unlocked": s["unlocked"],
+        "xp_to_next": XP_PER_LEVEL - into,
+        "max_level": None,                 # uncapped
+        "active": form,
+        "unlocked": form + 1,
         "num_forms": NUM_FORMS,
-        "sprite_set": FORMS[a],
+        "sprite_set": FORMS[form],
+        "next_evo_level": next_evo,        # level of the next evolution (None at evo5)
         "forms": [
-            {"form": i, "sprite_set": FORMS[i], "level": level_for(s["xp"][i]),
-             "xp": s["xp"][i], "unlocked": i < s["unlocked"]}
+            {"form": i, "sprite_set": FORMS[i],
+             "unlock_level": (EVO_LEVELS[i - 1] if i > 0 else 1),
+             "unlocked": form >= i, "active": i == form}
             for i in range(NUM_FORMS)
         ],
     }
+    if settings.creator_mode:
+        out["creator"] = True
+        out["creator_name"] = settings.creator_name
+        out["background"] = CREATOR_BACKGROUND   # firmware picks backgFLAG
+        out["locked"] = True
+    return out

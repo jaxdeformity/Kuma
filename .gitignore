@@ -43,3 +43,6 @@ Thumbs.db
 
 # save-scum working memory (local, per-machine)
 .save-scum/
+
+# easter-egg reward image - delivered via unlock, not browseable in repo
+designs/backgrounds/backgFLAG1.png
