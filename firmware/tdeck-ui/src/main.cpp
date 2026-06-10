@@ -304,12 +304,15 @@ void loop() {
       } else if (ev == InputEvent::Select) {
         const char* nm = ATTACK_NAMES[g_broadcastSel];
         const char* lb = ATTACK_LABELS[g_broadcastSel];
-        bool ok = kuma_api::broadcastAttack(String(nm));
-        if (ok) {
+        // Arm broadcast (backend requires lab_mode + allow_broadcast) then fire.
+        bool armed = kuma_api::armBroadcast(true);
+        bool ok = armed && kuma_api::broadcastAttack(String(nm));
+        if (ok)
           kuma_ui::toast(String("blasting ") + lb + "...", 3000);
-        } else {
-          kuma_ui::toast("refused - broadcast not armed", 3000);
-        }
+        else if (!armed)
+          kuma_ui::toast("refused - need lab_mode + allow_broadcast", 3500);
+        else
+          kuma_ui::toast("broadcast refused by gate", 3000);
         enterScreen(Screen::Home);
       } else if (ev == InputEvent::Back || ev == InputEvent::Left) {
         g_attackSel = 0;
