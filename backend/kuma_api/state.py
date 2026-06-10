@@ -52,7 +52,13 @@ def _recent_events() -> bool:
 
 
 def threat_level() -> str:
-    return scoring.threat_level_for(database.get_events(limit=50))
+    # Only roll up RECENT events. Reading all-time events made the device boot
+    # straight into "high"/an encounter off stale pre-reboot events, and never
+    # calm down after an attack stopped. Window matches _recent_events().
+    since = (datetime.now(timezone.utc)
+             - timedelta(minutes=settings.threat_window_minutes)
+             ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return scoring.threat_level_for(database.get_events(limit=50, since=since))
 
 
 # --- real shell (driven from the T-Deck terminal) -----------------------

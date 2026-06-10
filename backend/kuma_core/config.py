@@ -99,6 +99,14 @@ class Settings:
         return int(self.settings.get("api_port", 8080))
 
     @property
+    def threat_window_minutes(self) -> int:
+        """How long a threat event keeps the device elevated. Matches the
+        10-minute recency window used for bear_state/events_last_10m so the
+        face calms down after activity stops (and never boots into a stale
+        encounter from pre-reboot events)."""
+        return int(self.settings.get("threat_window_minutes", 10))
+
+    @property
     def thresholds(self) -> dict:
         return self.settings.get(
             "threat_thresholds",
