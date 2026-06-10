@@ -57,3 +57,12 @@ reference/
 # Runtime data: SQLite DB, kuroshuna audit log, captured handshakes, exfil loot.
 # Never commit - generated on the Pi at runtime, often sensitive.
 backend/data/
+
+# brainstorm visual-companion mockups
+.superpowers/
+
+# Claude Code project dir (local agent state, plans, settings)
+.claude/
+
+# Secret Kuroshuna dashboard mockup - shows the hidden sprite; LOCAL only, never publish
+docs/media/_kuroshuna_dash_mockup.png
