@@ -33,6 +33,7 @@ static int        g_eventCount = 0;
 static KumaNetwork g_nets[40];
 static int        g_netCount = 0;
 static int        g_netScroll = 0;
+static int        g_eventSel = 0;          // selected row in the Cases (event) list
 
 static Screen g_screen = Screen::Home;
 static int    g_modeIndex = 1;             // default highlight: Foraging (manual modes 0..2)
@@ -121,8 +122,12 @@ static void enterScreen(Screen s) {
     case Screen::Home:       kuma_ui::drawHome(g_status); break;
     case Screen::ModeSelect: kuma_ui::drawModeSelect(g_modeIndex, g_status.mode); break;
     case Screen::EventList:
+      g_eventSel = 0;
       g_eventCount = kuma_api::fetchEvents(g_events, 8);
-      kuma_ui::drawEventList(g_events, g_eventCount);
+      kuma_ui::drawEventList(g_events, g_eventCount, g_eventSel);
+      break;
+    case Screen::EventDetail:
+      kuma_ui::drawEventDetail(g_events[g_eventSel]);
       break;
     case Screen::Networks:
       g_netScroll = 0;
@@ -240,9 +245,22 @@ void loop() {
       }
       break;
 
-    case Screen::EventList:
-      if (ev == InputEvent::Back || ev == InputEvent::Left)
+    case Screen::EventList: {
+      int shown = g_eventCount < 7 ? g_eventCount : 7;
+      if (ev == InputEvent::Down && g_eventSel + 1 < shown) {
+        g_eventSel++; kuma_ui::drawEventList(g_events, g_eventCount, g_eventSel);
+      } else if (ev == InputEvent::Up && g_eventSel > 0) {
+        g_eventSel--; kuma_ui::drawEventList(g_events, g_eventCount, g_eventSel);
+      } else if (ev == InputEvent::Select && g_eventCount > 0) {
+        enterScreen(Screen::EventDetail);
+      } else if (ev == InputEvent::Back || ev == InputEvent::Left) {
         enterScreen(Screen::Home);
+      }
+      break;
+    }
+    case Screen::EventDetail:
+      if (ev == InputEvent::Back || ev == InputEvent::Left || ev == InputEvent::Select)
+        enterScreen(Screen::EventList);
       break;
 
     case Screen::Networks:

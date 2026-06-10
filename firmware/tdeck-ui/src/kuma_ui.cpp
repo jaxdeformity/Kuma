@@ -379,27 +379,73 @@ void drawModeSelect(int selectedIndex, KumaMode current) {
   D->setCursor(10, 210); D->print("Select applies + resets KUMA to calm.");
 }
 
-void drawEventList(const KumaEvent* ev, int n) {
+void drawEventList(const KumaEvent* ev, int n, int sel) {
   D->fillScreen(BG);
   D->setTextSize(2);
   D->setTextColor(CYAN, BG);
-  D->setCursor(10, 10);
-  D->print("Recent Events");
+  D->setCursor(10, 8);
+  D->print("Cases");
   if (n == 0) {
     D->setTextColor(GREY, BG);
     D->setCursor(10, 50);
-    D->print("(none)");
+    D->print("(all quiet)");
     return;
   }
-  for (int i = 0; i < n && i < 6; ++i) {
-    int yy = 48 + i * 30;
-    uint16_t c = ev[i].severity == "high" || ev[i].severity == "critical" ? RED
+  D->setTextSize(1);
+  for (int i = 0; i < n && i < 7; ++i) {
+    int yy = 40 + i * 26;
+    bool s = (i == sel);
+    uint16_t c = (ev[i].severity == "high" || ev[i].severity == "critical") ? RED
                : ev[i].severity == "medium" ? AMBER : GREEN;
-    D->setTextColor(c, BG);
-    D->setCursor(10, yy);
+    if (s) D->fillRect(4, yy - 2, 312, 24, 0x10A2);
+    uint16_t bgc = s ? 0x10A2 : BG;
+    D->setTextColor(s ? CYAN : c, bgc);
+    D->setCursor(8, yy);
     String sev = ev[i].severity; sev.toUpperCase();
-    D->printf("[%s] %s", sev.substring(0, 3).c_str(), ev[i].eventType.c_str());
+    D->printf("%s[%s] %s", s ? ">" : " ", sev.substring(0, 3).c_str(),
+              ev[i].eventType.c_str());
+    String who = ev[i].bssid.length() ? ev[i].bssid : ev[i].source;
+    D->setTextColor(s ? CYAN : GREY, bgc);
+    D->setCursor(20, yy + 12);
+    D->printf("%s  ch%d  %d%%", who.length() ? who.c_str() : "-",
+              ev[i].channel, ev[i].confidence);
   }
+  D->setTextColor(GREY, BG);
+  D->setCursor(8, 230);
+  D->print("Up/Dn  OK=detail  Back=home");
+}
+
+void drawEventDetail(const KumaEvent& ev) {
+  D->fillScreen(BG);
+  uint16_t c = (ev.severity == "high" || ev.severity == "critical") ? RED
+             : ev.severity == "medium" ? AMBER : GREEN;
+  D->setTextSize(2); D->setTextColor(c, BG); D->setCursor(10, 8);
+  D->print(ev.eventType.c_str());
+  D->drawFastHLine(0, 30, 320, 0x2945);
+  D->setTextSize(1);
+  int y = 40;
+  auto row = [&](const char* k, const String& v) {
+    D->setTextColor(GREY, BG); D->setCursor(10, y); D->print(k);
+    D->setTextColor(CYAN, BG); D->setCursor(104, y);
+    D->print(v.length() ? v.c_str() : "-");
+    y += 17;
+  };
+  String sev = ev.severity; sev.toUpperCase();
+  row("SEVERITY", sev);
+  row("CONFIDENCE", String(ev.confidence) + "%");
+  row("ATTACKER", ev.bssid.length() ? ev.bssid : ev.source);
+  row("SSID", ev.ssid);
+  row("CHANNEL", ev.channel ? String(ev.channel) : String(""));
+  row("TIME", ev.timestamp);
+  y += 4;
+  D->setTextColor(GREY, BG); D->setCursor(10, y); D->print("DETAIL"); y += 14;
+  D->setTextColor(CYAN, BG);
+  String m = ev.message; int col = 0; D->setCursor(10, y);
+  for (unsigned i = 0; i < m.length(); ++i) {
+    if (col >= 50) { y += 12; D->setCursor(10, y); col = 0; }
+    D->print(m[i]); col++;
+  }
+  D->setTextColor(GREY, BG); D->setCursor(10, 230); D->print("Back = list");
 }
 
 void drawSettings(const SettingsView& v) {

@@ -33,6 +33,11 @@ struct KumaEvent {
   String eventType;
   int    confidence = 0;
   String ssid;
+  String bssid;       // attacker BSSID (if any)
+  String source;      // attacker identifier (BSSID / IP)
+  int    channel = 0;
+  String timestamp;   // ISO time the event fired
+  String message;     // human-readable detail
 };
 
 struct KumaNetwork {

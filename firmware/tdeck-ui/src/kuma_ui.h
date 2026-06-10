@@ -3,7 +3,7 @@
 #include "display.h"
 #include "kuma_api_client.h"
 
-enum class Screen { Home, ModeSelect, EventList, Settings, Networks,
+enum class Screen { Home, ModeSelect, EventList, EventDetail, Settings, Networks,
                     AttackMode, BroadcastMenu, TargetEntry };
 
 // Firmware version shown on the Settings -> Firmware row (committed, unlike the
@@ -35,7 +35,8 @@ namespace kuma_ui {
   void toast(const String& msg, uint32_t ms = 3000);  // transient bottom-of-home toast
   void drawHome(const KumaStatus& s);
   void drawModeSelect(int selectedIndex, KumaMode current);
-  void drawEventList(const KumaEvent* ev, int n);
+  void drawEventList(const KumaEvent* ev, int n, int sel);
+  void drawEventDetail(const KumaEvent& ev);
   void drawSettings(const SettingsView& v);
   void drawNetworks(const KumaNetwork* nets, int n, int total, int scroll);
   void drawBear(lgfx::LovyanGFX* g, BearState st, int cx, int cy, int r);

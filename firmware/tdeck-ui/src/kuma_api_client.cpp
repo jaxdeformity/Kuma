@@ -98,6 +98,11 @@ int fetchEvents(KumaEvent* out, int maxN) {
     out[n].eventType  = e["event_type"] | "?";
     out[n].confidence = e["confidence"] | 0;
     out[n].ssid       = e["ssid"]       | "";
+    out[n].bssid      = e["bssid"]      | "";
+    out[n].source     = e["source"]     | "";
+    out[n].channel    = e["channel"]    | 0;
+    out[n].timestamp  = e["timestamp"]  | "";
+    out[n].message    = e["message"]    | "";
     ++n;
   }
   return n;
